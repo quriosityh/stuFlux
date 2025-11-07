@@ -1,77 +1,116 @@
-import express, { Application, Request, Response, NextFunction } from 'express'
-import cors from 'cors'
-import helmet from 'helmet'
-import morgan from 'morgan'
-// import compression from 'compression'
-import dotenv from 'dotenv'
+import dotenv from 'dotenv';
+// Load environment variables as early as possible
+dotenv.config();
 
-// Load environment variables from .env
-dotenv.config()
+import express, { Application } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import compression from 'compression';
 
-// Initialize Express app
-const app: Application = express()
+// Import routes
+import healthRoutes from './routes/health.js';
+import listingsRoutes from './routes/listings.js';
+import uploadsRoutes from './routes/uploads.js';
 
-const PORT = process.env.PORT || 4000
+// Import middleware
+import { errorHandler } from './middleware/errors.js';
+import { requestLogger } from './middleware/logger.js';
 
-// Security middleware
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:', 'https:'],
-      },
-    },
-  })
-)
+const app: Application = express();
+const PORT = process.env.PORT || 4000;
 
-// CORS configuration
-app.use(
-  cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || [
-      'http://localhost:3000',
-    ],
-    credentials: true,
-  })
-)
+// Trust proxy for Railway/Heroku deployment
+app.set('trust proxy', 1);
 
-// Common middleware
-// app.use(compression()) // optional Gzip compression
-app.use(express.json({ limit: '10mb' })) // parse JSON
-app.use(express.urlencoded({ extended: true })) // parse URL-encoded
-app.use(morgan('combined')) // HTTP request logger
+// Security middleware (Enhanced)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:", "https://res.cloudinary.com"],
+      connectSrc: ["'self'", "https://api.clerk.com"],
+    }
+  },
+  crossOriginEmbedderPolicy: false, // Required for Cloudinary uploads
+}));
 
-// Health check route
-app.get('/api/v1/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
-  })
-})
+// CORS configuration (Production ready)
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+  'http://localhost:3000',
+  'https://stuflux.vercel.app' // Add your Vercel domain
+];
 
-// Base route example
-app.get('/', (req: Request, res: Response) => {
-  res.send('API is running 🚀')
-})
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 
-// 404 handler (Express v5 safe)
-// 404 handler (Express v5 compatible)
-app.use( (req: Request, res: Response) => {
-  res.status(404).json({ error: 'Route not found' })
-})
+// Parsing & compression
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Error handler
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('❌ Error:', err.stack)
-  res.status(500).json({ error: 'Internal server error' })
-})
+// Logging
+app.use(requestLogger);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`)
-})
+// API Routes (v1 namespace)
+app.use('/api/v1/health', healthRoutes);
+app.use('/api/v1/listings', listingsRoutes);
+app.use('/api/v1/uploads', uploadsRoutes);
 
-export default app
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    name: 'StuFlux API',
+    version: '1.0.0',
+    status: 'running',
+    docs: '/api/v1/health'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: 'Route not found',
+      timestamp: new Date().toISOString(),
+      path: req.originalUrl,
+      method: req.method
+    }
+  });
+});
+
+// Global error handler (must be last)
+app.use(errorHandler);
+
+// Graceful shutdown
+const server = app.listen(PORT, () => {
+  console.log(`🚀 StuFlux API running on http://localhost:${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('⏱️  SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('💤 Process terminated');
+    process.exit(0);
+  });
+});
+
+export default app;
