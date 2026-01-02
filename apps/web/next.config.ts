@@ -1,15 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // ✅ Allow native Node modules in Server Components (e.g., 'pg')
+  serverExternalPackages: ['pg'],
+
+  // ✅ Type-safe routing (Next.js 14+)
+  typedRoutes: true,
+
+  // ✅ Enable React Compiler (Next.js 15+)
+  reactCompiler: true,
+
   experimental: {
-    // ✅ Allow native Node modules in Server Components (e.g., 'pg')
-    serverComponentsExternalPackages: ['pg'],
-
-    // ✅ Type-safe routing (Next.js 14+)
-    typedRoutes: true,
-
-    // ✅ Enable React Compiler (Next.js 15+)
-    reactCompiler: true,
-
     // ✅ Optimize imports for popular libraries
     optimizePackageImports: ['lucide-react', 'clsx', 'react-hook-form'],
   },
