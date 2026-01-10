@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { config } from 'dotenv';
-import { validateEnv } from './validate.js';
+import { validateEnv }  from './validate.js';
 
 // Get the directory path for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -20,9 +20,18 @@ const loadEnvFiles = () => {
   }
 
   envPaths.forEach(path => {
-    config({ path, override: true });
+    config({ path, override: true } as any);
   });
 };
 
 loadEnvFiles();
+
+// Set defaults for the requested vars if not provided
+process.env.CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+process.env.SOCKET_PORT = process.env.SOCKET_PORT || '5000';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+process.env.ALLOWED_ORIGINS =
+  process.env.ALLOWED_ORIGINS ||
+  'http://localhost:3000,https://stuflux.vercel.app';
+
 export const env = validateEnv();

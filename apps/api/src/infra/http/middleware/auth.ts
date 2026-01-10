@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { createClerkClient, verifyToken } from '@clerk/backend';
-import { AppError } from './errors.js';
+import { AppError } from '../../../common/errors.js';
 
 const clerkClient = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY!,

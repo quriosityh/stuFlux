@@ -1,5 +1,5 @@
 import request from 'supertest';
-import app from '../src/index.js';
+import { app } from '../src/index.js';
 import { beforeAll, afterAll, describe, it, expect } from '@jest/globals';
 
 describe('StuFlux API Integration Tests', () => {
@@ -13,7 +13,7 @@ describe('StuFlux API Integration Tests', () => {
     try {
       // Close the server first
       await new Promise<void>((resolve, reject) => {
-        server.close((err) => {
+        server.close((err?: Error) => {
           if (err) reject(err);
           else resolve();
         });

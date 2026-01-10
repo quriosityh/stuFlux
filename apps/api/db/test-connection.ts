@@ -1,5 +1,6 @@
 import { db, testConnection } from './index.js';
 import { sql } from 'drizzle-orm';
+import { env } from '../src/config/env.js';
 
 async function verifyDatabase() {
   console.log('🔍 Testing database connection...');
@@ -8,10 +9,8 @@ async function verifyDatabase() {
     // Try a direct pool query first
     const { Pool } = await import('pg');
     const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: {
-        rejectUnauthorized: false
-      }
+      connectionString: env.DATABASE_URL,
+      ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : true,
     });
 
     console.log('Testing direct pool connection...');

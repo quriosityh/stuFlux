@@ -67,3 +67,27 @@ export const listings = pgTable("listings", {
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
+
+// ====================== LISTING_PHOTOS ======================
+export const listingPhotos = pgTable("listing_photos", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listing_id: uuid("listing_id")
+        .notNull()
+        .references(() => listings.id, { onDelete: "cascade" }),
+
+    url: text("url").notNull(),
+    thumbnail_url: text("thumbnail_url"),
+
+    width: integer("width"),
+    height: integer("height"),
+    size_kb: integer("size_kb"),
+    mime_type: text("mime_type"),
+
+    position: integer("position").default(0),
+    is_primary: boolean("is_primary").default(false),
+    is_approved: boolean("is_approved").default(true),
+
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+    deleted_at: timestamp("deleted_at", { withTimezone: true }),
+});
