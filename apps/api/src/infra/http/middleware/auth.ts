@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createClerkClient, verifyToken } from '@clerk/backend';
 import { AppError } from '../../../common/errors.js';
+import { ensureUserSynced } from '../../../modules/users/service.js';
 
 const clerkClient = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY!,
@@ -40,6 +41,8 @@ export const requireAuth = async (
       claims: payload
     };
 
+    await ensureUserSynced(req.auth.userId);
+
     next();
   } catch (error: any) {
     console.error('🔒 Auth verification failed:', error.message);
@@ -72,6 +75,8 @@ export const optionalAuth = async (
         sessionId: payload.sid as string,
         claims: payload
       };
+
+      await ensureUserSynced(req.auth.userId);
     }
 
     next();

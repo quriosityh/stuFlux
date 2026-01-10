@@ -17,6 +17,11 @@ export const users = pgTable("users", {
     city: text("city").notNull(), // Required city
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(), // Auto timestamp
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(), // Auto timestamp
+    
+    //  -- Clerk data (synced via webhooks)
+
+    email: text("email"),
+    avatar_url: text("avatar_url"),
 });
 
 // ====================== USER_VERIFICATIONS ======================
