@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../../../infra/http/middleware/errorHandler.js';
-import { listListings, getListing, createListing, updateListing } from '../application/service.js';
+import { listListings, getListing, createListing, updateListing, getOwnerListings } from '../application/service.js';
 import { type AuthenticatedRequest } from '../../../infra/http/middleware/auth.js';
 
 export const browseListings = asyncHandler(async (req: Request, res: Response) => {
@@ -12,6 +12,11 @@ export const getListingById = asyncHandler(async (req: Request, res: Response) =
   const { id } = req.params;
   const result = await getListing(id);
   res.json({ data: result });
+});
+
+export const getOwnerListingsHandler = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const result = await getOwnerListings(req.auth!.userId, req.query);
+  res.json(result);
 });
 
 export const createListingHandler = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {

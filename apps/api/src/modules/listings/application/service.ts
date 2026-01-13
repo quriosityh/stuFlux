@@ -1,4 +1,5 @@
 import { listingsRepository } from '../infrastructure/repository.js';
+import { categoriesRepository } from '../../categories/repository.js';
 import {
   createListingSchema,
   updateListingSchema,
@@ -35,9 +36,30 @@ export const getListing = async (id: string) => {
   return listing;
 };
 
+export const getOwnerListings = async (ownerId: string, filters: unknown) => {
+  const parsed = listFiltersSchema.parse(filters ?? {});
+  const result = await listingsRepository.findByOwner(ownerId, parsed);
+  return {
+    data: result.rows,
+    meta: {
+      page: parsed.page,
+      limit: parsed.limit,
+      total: result.total,
+      totalPages: Math.ceil(result.total / parsed.limit),
+    },
+  };
+};
+
 export const createListing = async (payload: unknown, ownerId: string) => {
   const data = createListingSchema.parse(payload);
   assertSpecsSize(data.specs);
+  
+  // Enforce category exists
+  const category = await categoriesRepository.findById(data.category_id);
+  if (!category) {
+    throw new AppError('Category not found', 404, 'CATEGORY_NOT_FOUND');
+  }
+  
   await enforceOwnerLimit(ownerId);
   const normalizedPhotos = normalizePhotos(data.photos ?? []);
   if (data.status === 'active') {

@@ -1,5 +1,5 @@
 import { db } from '../../../infra/db/client.js';
-import { listings, listingPhotos, users } from '../../../../db/schema.js';
+import { listings, listingPhotos, users, categories } from '../../../../db/schema.js';
 import {
   and,
   asc,
@@ -37,15 +37,20 @@ export const listingsRepository = {
         description: listings.description,
         daily_rate: listings.daily_rate,
         city: listings.city,
-        category_id: listings.category_id,
         status: listings.status,
         view_count: listings.view_count,
         created_at: listings.created_at,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+          icon: categories.icon,
+        },
         owner: {
           id: users.id,
           display_name: users.display_name,
           city: users.city,
-          avatar: sql<string | null>`NULL`, // placeholder until user avatar column exists
+          avatar_url: users.avatar_url,
         },
         photo: {
           url: listingPhotos.url,
@@ -53,6 +58,7 @@ export const listingsRepository = {
         },
       })
       .from(listings)
+      .leftJoin(categories, eq(categories.id, listings.category_id))
       .leftJoin(users, eq(users.id, listings.owner_id))
       .leftJoin(
         listingPhotos,
@@ -81,7 +87,6 @@ export const listingsRepository = {
         id: listings.id,
         title: listings.title,
         description: listings.description,
-        category_id: listings.category_id,
         daily_rate: listings.daily_rate,
         city: listings.city,
         address: listings.address,
@@ -95,14 +100,22 @@ export const listingsRepository = {
         view_count: listings.view_count,
         created_at: listings.created_at,
         updated_at: listings.updated_at,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+          icon: categories.icon,
+        },
         owner: {
           id: users.id,
           display_name: users.display_name,
           city: users.city,
-          avatar: sql<string | null>`NULL`,
+          avatar_url: users.avatar_url,
+          email: users.email,
         },
       })
       .from(listings)
+      .leftJoin(categories, eq(categories.id, listings.category_id))
       .leftJoin(users, eq(users.id, listings.owner_id))
       .where(eq(listings.id, id));
 
@@ -137,6 +150,49 @@ export const listingsRepository = {
       .from(listings)
       .where(and(eq(listings.id, id), eq(listings.owner_id, ownerId)));
     return row ?? null;
+  },
+
+  async findByOwner(ownerId: string, filters: ListFiltersInput) {
+    const { page, limit, sort } = filters;
+    const offset = (page - 1) * limit;
+    const orderBy = buildSort(sort);
+
+    const rows = await db
+      .select({
+        id: listings.id,
+        title: listings.title,
+        description: listings.description,
+        daily_rate: listings.daily_rate,
+        city: listings.city,
+        status: listings.status,
+        view_count: listings.view_count,
+        created_at: listings.created_at,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+          icon: categories.icon,
+        },
+        owner: {
+          id: users.id,
+          display_name: users.display_name,
+          city: users.city,
+        },
+      })
+      .from(listings)
+      .leftJoin(categories, eq(categories.id, listings.category_id))
+      .leftJoin(users, eq(users.id, listings.owner_id))
+      .where(eq(listings.owner_id, ownerId))
+      .orderBy(...orderBy)
+      .limit(limit)
+      .offset(offset);
+
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(listings)
+      .where(eq(listings.owner_id, ownerId));
+
+    return { rows, total: Number(total ?? 0) };
   },
 
   async create(data: CreateListingInput & { ownerId: string; photos: PhotoInput[] }) {
