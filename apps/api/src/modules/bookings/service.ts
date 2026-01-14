@@ -60,8 +60,8 @@ export const confirmBooking = async (bookingId: string, ownerId: string) => {
 
   const hasConfirmedOverlap = await bookingsRepository.checkConfirmedOverlap(
     booking.listing_id,
-    booking.start_date,
-    booking.end_date
+    new Date(booking.start_date),
+    new Date(booking.end_date)
   );
   if (hasConfirmedOverlap) {
     throw new AppError('Dates already booked', 400, 'BOOKING_DATES_UNAVAILABLE');
