@@ -6,6 +6,7 @@ import categoriesRoutes from './categories/index.js';
 import usersRoutes from './users/index.js';
 import webhookRoutes from './webhooks/routes.js';
 import bookingsRoutes from './bookings/index.js';
+import messagesRoutes from './messages/index.js';
 
 const apiV1: Router = Router();
 
@@ -16,6 +17,7 @@ apiV1.use('/categories', categoriesRoutes);
 apiV1.use('/', usersRoutes);
 apiV1.use('/webhooks', webhookRoutes);
 apiV1.use('/bookings', bookingsRoutes);
+apiV1.use('/', messagesRoutes);
 
 export { apiV1 };
 export default apiV1;
