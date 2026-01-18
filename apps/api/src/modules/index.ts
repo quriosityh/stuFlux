@@ -7,7 +7,7 @@ import usersRoutes from './users/index.js';
 import webhookRoutes from './webhooks/routes.js';
 import bookingsRoutes from './bookings/index.js';
 import messagesRoutes from './messages/index.js';
-
+import reviewsRouter from './reviews/index.js';
 const apiV1: Router = Router();
 
 apiV1.use('/health', healthRoutes);
@@ -18,6 +18,6 @@ apiV1.use('/', usersRoutes);
 apiV1.use('/webhooks', webhookRoutes);
 apiV1.use('/bookings', bookingsRoutes);
 apiV1.use('/', messagesRoutes);
-
+apiV1.use('/reviews', reviewsRouter);
 export { apiV1 };
 export default apiV1;
