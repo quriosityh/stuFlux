@@ -3,8 +3,10 @@ import * as repository from './repository.js';
 import type { CreateReviewInput, UpdateReviewInput, GetReviewsQuery } from './validations.js';
 import type { NewReview } from './schema.js';
 import { db } from '../../infra/db/client.js';
-import { reviews } from './schema.js';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+
+// Constants
+const RATE_LIMIT_REVIEWS_PER_HOUR = 3;
+const REVIEW_EDIT_WINDOW_DAYS = 7;
 
 /**
  * Service layer for review business logic
@@ -46,9 +48,9 @@ export const createReview = async (userId: string, input: CreateReviewInput) => 
   return await db.transaction(async (tx) => {
     // 1. Rate limiting
     const recentReviewCount = await repository.getRecentReviewCount(userId, tx);
-    if (recentReviewCount >= 3) {
+    if (recentReviewCount >= RATE_LIMIT_REVIEWS_PER_HOUR) {
       throw new AppError(
-        'You have reached the maximum number of reviews per hour (3). Please try again later.',
+        `You have reached the maximum number of reviews per hour (${RATE_LIMIT_REVIEWS_PER_HOUR}). Please try again later.`,
         429,
         'RATE_LIMIT_EXCEEDED'
       );
@@ -57,8 +59,15 @@ export const createReview = async (userId: string, input: CreateReviewInput) => 
     // 2. Get booking
     const booking = await repository.getBookingDetails(input.bookingId, tx);
     if (!booking) throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
+    
+    // ✅ FIXED: Check booking status AND end date is in the past
     if (booking.status !== 'completed') {
       throw new AppError('You can only review completed bookings', 400, 'BOOKING_NOT_COMPLETED');
+    }
+
+    const now = new Date();
+    if (booking.endDate > now) {
+      throw new AppError('You can only review bookings after the end date', 400, 'BOOKING_NOT_ENDED');
     }
 
     // 3. Get listing
@@ -101,12 +110,12 @@ export const createReview = async (userId: string, input: CreateReviewInput) => 
     };
 
     // 10. Insert review in TRANSACTION
-    const [review] = await tx.insert(reviews).values(reviewData).returning();
+    const review = await repository.createReview(reviewData, tx);
 
     // 11. Update anonymity status in SAME transaction
     await repository.updateAnonymityStatus(input.bookingId, tx);
 
-    // 12. Return updated review
+    // 12. Return updated review (fetch fresh to get anonymity status)
     const updatedReview = await repository.findReviewById(review.id, tx);
     return updatedReview;
   });
@@ -132,42 +141,65 @@ export const getOwnerReviews = async (query: GetReviewsQuery) => {
  * Update review
  */
 export const updateReview = async (userId: string, reviewId: string, input: UpdateReviewInput) => {
-  const review = await repository.findReviewById(reviewId);
-  if (!review) throw new AppError('Review not found', 404, 'REVIEW_NOT_FOUND');
-  if (review.reviewerId !== userId) throw new AppError('Not authorized to edit', 403, 'UNAUTHORIZED_EDIT');
+  return await db.transaction(async (tx) => {
+    const review = await repository.findReviewById(reviewId, tx);
+    if (!review) throw new AppError('Review not found', 404, 'REVIEW_NOT_FOUND');
+    if (review.reviewerId !== userId) {
+      throw new AppError('Not authorized to edit this review', 403, 'UNAUTHORIZED_EDIT');
+    }
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  if (review.createdAt < sevenDaysAgo) throw new AppError('Edit window expired (7 days)', 400, 'EDIT_WINDOW_EXPIRED');
+    // Check edit window
+    const editWindowEnd = new Date(review.createdAt);
+    editWindowEnd.setDate(editWindowEnd.getDate() + REVIEW_EDIT_WINDOW_DAYS);
+    
+    if (new Date() > editWindowEnd) {
+      throw new AppError(
+        `Edit window expired (${REVIEW_EDIT_WINDOW_DAYS} days)`, 
+        400, 
+        'EDIT_WINDOW_EXPIRED'
+      );
+    }
 
-  let overallRating = review.rating;
-  if (input.rating !== undefined || input.categoryRatings !== undefined) {
-    const newRating = input.rating ?? review.rating;
-    const newCategories = input.categoryRatings ?? (review.categoryRatings as Record<string, number>);
-    overallRating = calculateOverallRating(newRating, newCategories);
-  }
+    // Calculate new overall rating if rating/categoryRatings changed
+    let overallRating = review.rating;
+    if (input.rating !== undefined || input.categoryRatings !== undefined) {
+      const newRating = input.rating ?? review.rating;
+      const newCategories = input.categoryRatings ?? (review.categoryRatings as Record<string, number>);
+      overallRating = calculateOverallRating(newRating, newCategories);
+    }
 
-  const updateData: Partial<NewReview> = {};
-  if (input.rating !== undefined || input.categoryRatings !== undefined) updateData.rating = overallRating;
-  if (input.categoryRatings !== undefined) updateData.categoryRatings = input.categoryRatings;
-  if (input.comment !== undefined) updateData.comment = input.comment;
+    // Prepare update data
+    const updateData: Partial<NewReview> = {};
+    if (input.rating !== undefined || input.categoryRatings !== undefined) {
+      updateData.rating = overallRating;
+    }
+    if (input.categoryRatings !== undefined) updateData.categoryRatings = input.categoryRatings;
+    if (input.comment !== undefined) updateData.comment = input.comment;
 
-  const updatedReview = await repository.updateReview(reviewId, updateData);
-  if (!updatedReview) throw new AppError('Failed to update review', 500, 'UPDATE_FAILED');
-  return updatedReview;
+    // Update in transaction
+    const updatedReview = await repository.updateReview(reviewId, updateData, tx);
+    if (!updatedReview) throw new AppError('Failed to update review', 500, 'UPDATE_FAILED');
+    
+    return updatedReview;
+  });
 };
 
 /**
  * Delete review (soft delete)
  */
 export const deleteReview = async (userId: string, reviewId: string) => {
-  const review = await repository.findReviewById(reviewId);
-  if (!review) throw new AppError('Review not found', 404, 'REVIEW_NOT_FOUND');
-  if (review.reviewerId !== userId) throw new AppError('Not authorized to delete', 403, 'UNAUTHORIZED_DELETE');
+  return await db.transaction(async (tx) => {
+    const review = await repository.findReviewById(reviewId, tx);
+    if (!review) throw new AppError('Review not found', 404, 'REVIEW_NOT_FOUND');
+    if (review.reviewerId !== userId) {
+      throw new AppError('Not authorized to delete this review', 403, 'UNAUTHORIZED_DELETE');
+    }
 
-  const deleted = await repository.softDeleteReview(reviewId);
-  if (!deleted) throw new AppError('Failed to delete review', 500, 'DELETE_FAILED');
-  return { success: true, message: 'Review deleted successfully' };
+    const deleted = await repository.softDeleteReview(reviewId, tx);
+    if (!deleted) throw new AppError('Failed to delete review', 500, 'DELETE_FAILED');
+    
+    return { success: true, message: 'Review deleted successfully' };
+  });
 };
 
 /**

@@ -1,14 +1,18 @@
 import { db } from '../../infra/db/client.js';
 import { reviews, bookings, listings, users } from '../../../db/schema.js';
-import { eq, and, isNull, desc, asc, sql } from 'drizzle-orm';
+import { eq, and, isNull, desc, asc, sql, inArray } from 'drizzle-orm';
 import type { NewReview, Review } from './schema.js';
 import type { GetReviewsQuery } from './validations.js';
+import type { PgTransaction } from 'drizzle-orm/pg-core';
+
+// Constants
+const REVIEW_ANONYMITY_PERIOD_DAYS = 14;
 
 /**
  * Get listing details
  */
-export const getListingDetails = async (listingId: string) => {
-  const [listing] = await db
+export const getListingDetails = async (listingId: string, tx: any = db) => {
+  const [listing] = await tx
     .select({
       id: listings.id,
       ownerId: listings.owner_id,
@@ -23,12 +27,12 @@ export const getListingDetails = async (listingId: string) => {
 /**
  * Get booking details
  */
-export const getBookingDetails = async (bookingId: string) => {
-  const [booking] = await db
+export const getBookingDetails = async (bookingId: string, tx: any = db) => {
+  const [booking] = await tx
     .select({
       id: bookings.id,
       status: bookings.status,
-      renterId:  bookings.renter_id,
+      renterId: bookings.renter_id,
       listingId: bookings.listing_id,
       startDate: bookings.start_date,
       endDate: bookings.end_date,
@@ -44,9 +48,10 @@ export const getBookingDetails = async (bookingId: string) => {
  */
 export const findReviewByBookingAndReviewer = async (
   bookingId: string,
-  reviewerId: string
+  reviewerId: string,
+  tx: any = db
 ): Promise<Review | null> => {
-  const [review] = await db
+  const [review] = await tx
     .select()
     .from(reviews)
     .where(and(
@@ -61,8 +66,8 @@ export const findReviewByBookingAndReviewer = async (
 /**
  * Find review by ID
  */
-export const findReviewById = async (id: string): Promise<Review | null> => {
-  const [review] = await db
+export const findReviewById = async (id: string, tx: any = db): Promise<Review | null> => {
+  const [review] = await tx
     .select()
     .from(reviews)
     .where(and(eq(reviews.id, id), isNull(reviews.deletedAt)));
@@ -73,16 +78,16 @@ export const findReviewById = async (id: string): Promise<Review | null> => {
 /**
  * Create new review
  */
-export const createReview = async (data: NewReview): Promise<Review> => {
-  const [review] = await db.insert(reviews).values(data).returning();
+export const createReview = async (data: NewReview, tx: any = db): Promise<Review> => {
+  const [review] = await tx.insert(reviews).values(data).returning();
   return review;
 };
 
 /**
  * Soft delete review
  */
-export const softDeleteReview = async (id: string): Promise<boolean> => {
-  const [deleted] = await db.update(reviews)
+export const softDeleteReview = async (id: string, tx: any = db): Promise<boolean> => {
+  const [deleted] = await tx.update(reviews)
     .set({ deletedAt: new Date() })
     .where(and(eq(reviews.id, id), isNull(reviews.deletedAt)))
     .returning();
@@ -93,8 +98,12 @@ export const softDeleteReview = async (id: string): Promise<boolean> => {
 /**
  * Update review
  */
-export const updateReview = async (id: string, data: Partial<NewReview>): Promise<Review | null> => {
-  const [updated] = await db.update(reviews)
+export const updateReview = async (
+  id: string, 
+  data: Partial<NewReview>,
+  tx: any = db
+): Promise<Review | null> => {
+  const [updated] = await tx.update(reviews)
     .set({ ...data, updatedAt: new Date() })
     .where(and(eq(reviews.id, id), isNull(reviews.deletedAt)))
     .returning();
@@ -105,11 +114,11 @@ export const updateReview = async (id: string, data: Partial<NewReview>): Promis
 /**
  * Rate limiting (reviews in last 1 hour)
  */
-export const getRecentReviewCount = async (userId: string): Promise<number> => {
+export const getRecentReviewCount = async (userId: string, tx: any = db): Promise<number> => {
   const oneHourAgo = new Date();
   oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
-  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` })
+  const [{ count }] = await tx.select({ count: sql<number>`count(*)::int` })
     .from(reviews)
     .where(and(
       eq(reviews.reviewerId, userId),
@@ -121,24 +130,30 @@ export const getRecentReviewCount = async (userId: string): Promise<number> => {
 
 /**
  * Update anonymity after both parties review or 14 days
+ * ✅ FIXED: SQL injection vulnerability removed
  */
-export const updateAnonymityStatus = async (bookingId: string): Promise<void> => {
-  const bookingReviews = await db.select().from(reviews)
+export const updateAnonymityStatus = async (bookingId: string, tx: any = db): Promise<void> => {
+  const bookingReviews = await tx.select().from(reviews)
     .where(and(eq(reviews.bookingId, bookingId), isNull(reviews.deletedAt)));
 
+  // Case 1: Both parties have reviewed - reveal immediately
   if (bookingReviews.length === 2) {
     const reviewIds = bookingReviews.map(r => r.id);
-    await db.update(reviews).set({ anonymous: false, updatedAt: new Date() })
-      .where(sql`${reviews.id} IN (${reviewIds.map(id => `'${id}'`).join(',')})`);
+    await tx.update(reviews)
+      .set({ anonymous: false, updatedAt: new Date() })
+      .where(inArray(reviews.id, reviewIds)); // ✅ SAFE: Using inArray instead of string interpolation
   }
 
+  // Case 2: 14 days have passed - reveal any remaining anonymous reviews
   const fourteenDaysAgo = new Date();
-  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - REVIEW_ANONYMITY_PERIOD_DAYS);
 
-  await db.update(reviews).set({ anonymous: false, updatedAt: new Date() })
+  await tx.update(reviews)
+    .set({ anonymous: false, updatedAt: new Date() })
     .where(and(
       eq(reviews.bookingId, bookingId),
       isNull(reviews.deletedAt),
+      eq(reviews.anonymous, true),
       sql`${reviews.createdAt} <= ${fourteenDaysAgo}`
     ));
 };
@@ -177,6 +192,8 @@ export const getListingReviews = async (query: GetReviewsQuery) => {
       categoryRatings: reviews.categoryRatings,
       comment: reviews.comment,
       reviewerType: reviews.reviewerType,
+      anonymous: reviews.anonymous,
+      reviewerId: reviews.reviewerId,
       createdAt: reviews.createdAt,
     })
     .from(reviews)
@@ -247,6 +264,8 @@ export const getOwnerReviews = async (query: GetReviewsQuery) => {
       categoryRatings: reviews.categoryRatings,
       comment: reviews.comment,
       reviewerType: reviews.reviewerType,
+      anonymous: reviews.anonymous,
+      reviewerId: reviews.reviewerId,
       createdAt: reviews.createdAt,
     })
     .from(reviews)
