@@ -7,9 +7,12 @@ import {
     jsonb,
     timestamp,
     serial,
+    pgEnum,
+    date,
 } from "drizzle-orm/pg-core";
 
 // ====================== USERS ======================
+
 export const users = pgTable("users", {
     id: uuid("id").defaultRandom().primaryKey(), // UUID with default random generation
     clerk_user_id: text("clerk_user_id").unique().notNull(), // Clerk-provided ID (must be unique)
@@ -17,6 +20,12 @@ export const users = pgTable("users", {
     city: text("city").notNull(), // Required city
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(), // Auto timestamp
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(), // Auto timestamp
+
+
+    //  -- Clerk data (synced via webhooks)
+
+    email: text("email"),
+    avatar_url: text("avatar_url"),
 });
 
 // ====================== USER_VERIFICATIONS ======================
@@ -66,4 +75,88 @@ export const listings = pgTable("listings", {
     view_count: integer("view_count").default(0),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// ====================== BOOKINGS ======================
+export const bookingStatus = pgEnum('booking_status', ['pending', 'confirmed', 'rejected', 'completed']);
+
+export const bookings = pgTable("bookings", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listing_id: uuid("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+    renter_id: uuid("renter_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    owner_id: uuid("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    start_date: date("start_date").notNull(),
+    end_date: date("end_date").notNull(),
+    total_days: integer("total_days").notNull(),
+    total_amount: integer("total_amount").notNull(),
+    status: bookingStatus("status").default('pending').notNull(),
+    message: text("message"),
+    security_deposit: integer("security_deposit").default(0),
+    delivery_fee: integer("delivery_fee").default(0),
+    confirmed_at: timestamp("confirmed_at", { withTimezone: true }),
+    rejected_at: timestamp("rejected_at", { withTimezone: true }),
+    completed_at: timestamp("completed_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// ====================== LISTING_PHOTOS ======================
+export const listingPhotos = pgTable("listing_photos", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listing_id: uuid("listing_id")
+        .notNull()
+        .references(() => listings.id, { onDelete: "cascade" }),
+
+    url: text("url").notNull(),
+    thumbnail_url: text("thumbnail_url"),
+
+    width: integer("width"),
+    height: integer("height"),
+    size_kb: integer("size_kb"),
+    mime_type: text("mime_type"),
+
+    position: integer("position").default(0),
+    is_primary: boolean("is_primary").default(false),
+    is_approved: boolean("is_approved").default(true),
+
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+    deleted_at: timestamp("deleted_at", { withTimezone: true }),
+});
+
+// ====================== CONVERSATIONS ======================
+export const conversations = pgTable("conversations", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listing_id: uuid("listing_id")
+        .notNull()
+        .references(() => listings.id, { onDelete: "cascade" }),
+    renter_id: uuid("renter_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    owner_id: uuid("owner_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+    // Unique constraint: one conversation per listing-renter pair
+    unique_conversation: {
+        columns: [table.listing_id, table.renter_id],
+    },
+}));
+
+// ====================== MESSAGES ======================
+export const messages = pgTable("messages", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    conversation_id: uuid("conversation_id")
+        .notNull()
+        .references(() => conversations.id, { onDelete: "cascade" }),
+    sender_id: uuid("sender_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    delivered_at: timestamp("delivered_at", { withTimezone: true }),
+    read_at: timestamp("read_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    deleted_at: timestamp("deleted_at", { withTimezone: true }),
 });
