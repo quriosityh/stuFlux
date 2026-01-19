@@ -134,8 +134,56 @@ export const getListingReviews = async (query: GetReviewsQuery) => {
  */
 export const getOwnerReviews = async (query: GetReviewsQuery) => {
   if (!query.ownerId) throw new AppError('Owner ID is required', 400, 'MISSING_OWNER_ID');
-  return await repository.getOwnerReviews(query);
+
+  // 1️⃣ Reviews on owner's listings by renters
+  const fromRenters = await db
+    .select()
+    .from(reviews)
+    .where(and(
+      eq(reviews.ownerId, query.ownerId!),
+      eq(reviews.reviewerType, 'renter'),
+      isNull(reviews.deletedAt)
+    ));
+
+  // 2️⃣ Reviews owner received when they were a renter (booking of other owners)
+  const fromOwners = await db
+    .select()
+    .from(reviews)
+    .where(and(
+      eq(reviews.reviewerType, 'owner'),  // reviewer is another owner
+      eq(reviews.reviewerId, query.ownerId!), // current owner was the renter
+      isNull(reviews.deletedAt)
+    ));
+
+  // 3️⃣ Total reviews
+  const totalReviews = fromRenters.length + fromOwners.length;
+
+  // 4️⃣ Average rating based on renter reviews (primary)
+  const avgRating = fromRenters.length
+    ? parseFloat((fromRenters.reduce((sum, r) => sum + r.rating, 0) / fromRenters.length).toFixed(1))
+    : 0;
+
+  // 5️⃣ Average category ratings based on renter reviews
+  const avgCategory = {
+    cleanliness: fromRenters.length ? parseFloat((fromRenters.reduce((sum, r) => sum + (r.categoryRatings.cleanliness || 0), 0) / fromRenters.length).toFixed(1)) : 0,
+    communication: fromRenters.length ? parseFloat((fromRenters.reduce((sum, r) => sum + (r.categoryRatings.communication || 0), 0) / fromRenters.length).toFixed(1)) : 0,
+    accuracy: fromRenters.length ? parseFloat((fromRenters.reduce((sum, r) => sum + (r.categoryRatings.accuracy || 0), 0) / fromRenters.length).toFixed(1)) : 0,
+    value: fromRenters.length ? parseFloat((fromRenters.reduce((sum, r) => sum + (r.categoryRatings.value || 0), 0) / fromRenters.length).toFixed(1)) : 0,
+  };
+
+  return {
+    total: totalReviews,
+    fromRenters: fromRenters.length,
+    fromOwners: fromOwners.length,
+    reviewsFromRenters: fromRenters,
+    reviewsFromOwners: fromOwners,
+    ratings: {
+      average: avgRating,
+      category: avgCategory,
+    },
+  };
 };
+
 
 /**
  * Update review
