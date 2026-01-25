@@ -32,7 +32,7 @@ export const messagesRepository = {
         const last = await db
           .select()
           .from(messages)
-          .where(eq(messages.conversation_id, conv.id))
+          .where(and(eq(messages.conversation_id, conv.id), isNull(messages.deleted_at)))
           .orderBy(desc(messages.created_at))
           .limit(1);
 
@@ -43,7 +43,8 @@ export const messagesRepository = {
             and(
               eq(messages.conversation_id, conv.id),
               ne(messages.sender_id, userId),
-              isNull(messages.read_at)
+              isNull(messages.read_at),
+              isNull(messages.deleted_at)
             )
           );
 
@@ -62,7 +63,7 @@ export const messagesRepository = {
     return db
       .select()
       .from(messages)
-      .where(eq(messages.conversation_id, conversationId))
+      .where(and(eq(messages.conversation_id, conversationId), isNull(messages.deleted_at)))
       .orderBy(desc(messages.created_at))
       .limit(limit)
       .offset(offset);
@@ -87,7 +88,39 @@ export const messagesRepository = {
     return db
       .update(messages)
       .set({ read_at: new Date() })
-      .where(and(eq(messages.conversation_id, conversationId), ne(messages.sender_id, userId), isNull(messages.read_at)));
+      .where(
+        and(
+          eq(messages.conversation_id, conversationId),
+          ne(messages.sender_id, userId),
+          isNull(messages.read_at),
+          isNull(messages.deleted_at)
+        )
+      );
+  },
+
+  markDelivered: async (messageId: string, deliveredAt: Date) => {
+    const [row] = await db
+      .update(messages)
+      .set({ delivered_at: deliveredAt })
+      .where(and(eq(messages.id, messageId), isNull(messages.delivered_at)))
+      .returning();
+    return row ?? null;
+  },
+
+  markUndeliveredAsDelivered: async (conversationId: string, recipientId: string) => {
+    const deliveredAt = new Date();
+    await db
+      .update(messages)
+      .set({ delivered_at: deliveredAt })
+      .where(
+        and(
+          eq(messages.conversation_id, conversationId),
+          ne(messages.sender_id, recipientId),
+          isNull(messages.delivered_at),
+          isNull(messages.deleted_at)
+        )
+      );
+    return deliveredAt;
   },
 
   softDeleteMessage: async (messageId: string, userId: string) => {
@@ -97,35 +130,5 @@ export const messagesRepository = {
       .where(and(eq(messages.id, messageId), eq(messages.sender_id, userId)))
       .returning();
     return updated[0] ?? null;
-  },
-
-  markDelivered: async (messageId: string) => {
-    const updated = await db
-      .update(messages)
-      .set({ delivered_at: new Date() })
-      .where(eq(messages.id, messageId))
-      .returning();
-    return updated[0] ?? null;
-  },
-
-  markDeliveredBulk: async (messageIds: string[]) => {
-    if (messageIds.length === 0) return [];
-    return db
-      .update(messages)
-      .set({ delivered_at: new Date() })
-      .where(sql`${messages.id} = ANY(${messageIds})`);
-  },
-
-  getUndeliveredMessages: async (conversationId: string, userId: string) => {
-    return db
-      .select()
-      .from(messages)
-      .where(
-        and(
-          eq(messages.conversation_id, conversationId),
-          ne(messages.sender_id, userId),
-          isNull(messages.delivered_at)
-        )
-      );
   },
 };

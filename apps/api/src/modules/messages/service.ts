@@ -10,7 +10,6 @@ export const sendMessage = async (payload: unknown, senderId: string) => {
   let conversation = null;
   let renterId: string;
   let ownerId: string;
-  let receiverId: string;
 
   if (data.conversation_id) {
     conversation = await messagesRepository.findConversationById(data.conversation_id);
@@ -20,7 +19,6 @@ export const sendMessage = async (payload: unknown, senderId: string) => {
     }
     renterId = conversation.renter_id;
     ownerId = conversation.owner_id;
-    receiverId = senderId === ownerId ? renterId : ownerId;
   } else {
     const listing = await listingsRepository.findById(data.listing_id!);
     if (!listing) throw new AppError('Listing not found', 404, 'LISTING_NOT_FOUND');
@@ -30,7 +28,6 @@ export const sendMessage = async (payload: unknown, senderId: string) => {
     }
     renterId = senderId;
     ownerId = listing.owner.id;
-    receiverId = ownerId;
     conversation = await messagesRepository.ensureConversation(data.listing_id!, renterId, ownerId);
   }
 
@@ -38,12 +35,16 @@ export const sendMessage = async (payload: unknown, senderId: string) => {
 
   const message = await messagesRepository.addMessage(conversation.id, senderId, data.body.trim());
 
-  // Check if receiver is online via active SSE stream
-  if (isUserConnected(conversation.id, receiverId)) {
-    await messagesRepository.markDelivered(message.id);
+  // Determine recipient for delivery semantics
+  const recipientId = senderId === renterId ? ownerId : renterId;
+
+  let deliveredAt: Date | null = null;
+  if (isUserConnected(conversation.id, recipientId)) {
+    deliveredAt = new Date();
+    await messagesRepository.markDelivered(message.id, deliveredAt);
   }
 
-  const eventPayload = { ...message, conversation_id: conversation.id };
+  const eventPayload = { ...message, conversation_id: conversation.id, delivered_at: deliveredAt ?? message.delivered_at };
   messageEmitter.emit(`conversation:${conversation.id}`, eventPayload);
 
   return {
@@ -81,6 +82,7 @@ export const markConversationSeen = async (conversationId: string, userId: strin
   if (convo.renter_id !== userId && convo.owner_id !== userId) {
     throw new AppError('Not allowed', 403, 'FORBIDDEN');
   }
+
   await messagesRepository.markConversationRead(conversationId, userId);
-  return { success: true };
+  return { conversation_id: conversationId, status: 'seen' } as const;
 };
