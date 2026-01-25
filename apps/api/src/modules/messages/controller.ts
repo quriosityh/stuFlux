@@ -53,9 +53,10 @@ export const streamConversationHandler = [
   requireAuth,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
+    const userId = req.auth!.userId;
     const convo = await messagesRepository.findConversationById(id);
     if (!convo) throw new AppError('Conversation not found', 404, 'CONVERSATION_NOT_FOUND');
-    if (convo.renter_id !== req.auth!.userId && convo.owner_id !== req.auth!.userId) {
+    if (convo.renter_id !== userId && convo.owner_id !== userId) {
       throw new AppError('Not allowed', 403, 'FORBIDDEN');
     }
 
