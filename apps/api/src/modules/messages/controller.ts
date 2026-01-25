@@ -40,12 +40,12 @@ export const deleteMessageHandler = [
   }),
 ];
 
-export const markSeenHandler = [
+export const markConversationSeenHandler = [
   requireAuth,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    const result = await markConversationSeen(id, req.auth!.userId);
-    res.json({ data: result });
+    const data = await markConversationSeen(id, req.auth!.userId);
+    res.json({ data });
   }),
 ];
 
@@ -53,10 +53,9 @@ export const streamConversationHandler = [
   requireAuth,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    const userId = req.auth!.userId;
     const convo = await messagesRepository.findConversationById(id);
     if (!convo) throw new AppError('Conversation not found', 404, 'CONVERSATION_NOT_FOUND');
-    if (convo.renter_id !== userId && convo.owner_id !== userId) {
+    if (convo.renter_id !== req.auth!.userId && convo.owner_id !== req.auth!.userId) {
       throw new AppError('Not allowed', 403, 'FORBIDDEN');
     }
 
@@ -65,14 +64,11 @@ export const streamConversationHandler = [
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders?.();
 
-    // Track this user as connected to this conversation
-    trackStream(id, userId);
+    // Track active stream for delivery semantics
+    trackStream(id, req.auth!.userId);
 
-    // Mark any undelivered messages as delivered (retroactive delivery)
-    const undelivered = await messagesRepository.getUndeliveredMessages(id, userId);
-    if (undelivered.length > 0) {
-      await messagesRepository.markDeliveredBulk(undelivered.map(m => m.id));
-    }
+    // Mark any pending undelivered messages as delivered upon connection
+    await messagesRepository.markUndeliveredAsDelivered(id, req.auth!.userId);
 
     const heartbeat = setInterval(() => {
       res.write(':heartbeat\n\n');
@@ -87,7 +83,7 @@ export const streamConversationHandler = [
     req.on('close', () => {
       clearInterval(heartbeat);
       messageEmitter.off(`conversation:${id}`, listener);
-      untrackStream(id, userId);
+      untrackStream(id, req.auth!.userId);
     });
   }),
 ];
