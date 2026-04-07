@@ -70,6 +70,19 @@ describe('Messaging HTTP flows', () => {
     expect(convo.unread_count).toBe(1);
   });
 
+  it('leaves delivered_at null when receiver is offline', async () => {
+    const res = await request(app)
+      .post('/api/v1/messages')
+      .set(authHeader(renterId))
+      .send({ listing_id: listingId, body: 'Hi there' });
+
+    expect(res.status).toBe(201);
+    const messageId = res.body.data.id;
+
+    const dbMsg = await findMessageById(messageId);
+    expect(dbMsg?.delivered_at).toBeNull();
+  });
+
   it('lists messages and marks them read for the viewer', async () => {
     const convo = await createConversation(listingId, renterId, ownerId);
     await createMessage(convo.id, renterId, 'First');
