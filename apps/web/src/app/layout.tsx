@@ -1,9 +1,20 @@
 import { clerkAppearance } from '@/lib/clerk-theme'
 import { ClerkProvider, SignedIn, SignedOut } from '@clerk/nextjs'
-import { Inter } from 'next/font/google'
+import { Syne, Manrope } from 'next/font/google'
 import './globals.css'
+import { Navigation } from '@/components/navigation/Navigation'
 
-const inter = Inter({ subsets: ['latin'] })
+const syne = Syne({ 
+  subsets: ['latin'],
+  variable: '--font-syne',
+  display: 'swap',
+})
+
+const manrope = Manrope({ 
+  subsets: ['latin'],
+  variable: '--font-manrope',
+  display: 'swap',
+})
 
 export const metadata = {
   title: 'StuFlux - Peer-to-Peer Rental Platform',
@@ -16,13 +27,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
       appearance={clerkAppearance}
     >
-      <html lang="en">
-        <body className={inter.className}>
+      <html lang="en" className={`${syne.variable} ${manrope.variable}`}>
+        <body className="font-sans antialiased transition-colors duration-300">
+          <Navigation />
           <SignedOut>
-            <div className="min-h-screen bg-gray-50">{children}</div>
+            <main className="min-h-screen relative z-0 pt-16 pb-24 md:pb-0">{children}</main>
           </SignedOut>
           <SignedIn>
-            <div className="min-h-screen bg-gray-50">{children}</div>
+            <main className="min-h-screen relative z-0 pt-16 pb-24 md:pb-0">{children}</main>
           </SignedIn>
         </body>
       </html>

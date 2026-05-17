@@ -1,26 +1,276 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
 
-@theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-border: var(--border-color);
+  
+  --radius-pill: 9999px;
+}
+
+:root, :root.light {
+  /* Light Mode (Icy Daylight Chrome) */
+  --background: #F2F4F7;
+  --foreground: #0A0A0A;
+  --surface: rgba(255, 255, 255, 0.85);
+  --border-color: rgba(0, 0, 0, 0.08);
+  --accent: #5B7BFE;
+  --accent-hover: #A972FF;
+  --liquid-gradient: linear-gradient(135deg, #5B7BFE 0%, #A972FF 50%, #FF85E4 100%);
+  --inner-bevel: inset 0 1px 0 rgba(255, 255, 255, 1);
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --noise-opacity: 0.4;
+  
+  --btn-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.1);
+  --btn-shadow-hover: 0 6px 20px 0 rgba(0, 0, 0, 0.15);
+}
+
+:root.dark {
+  /* Dark Mode (Deep Space Chrome) */
+  --background: #050505;
+  --foreground: #FFFFFF;
+  --surface: rgba(28, 28, 30, 0.6);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --accent: #39FF14;
+  --accent-hover: #CCFF00;
+  --liquid-gradient: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 50%, var(--accent) 100%);
+  --inner-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --noise-opacity: 0.15;
+
+  --btn-shadow: 0 4px 14px 0 rgba(57, 255, 20, 0.39);
+  --btn-shadow-hover: 0 6px 20px 0 rgba(57, 255, 20, 0.5);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not(.light) {
+    --background: #050505;
+    --foreground: #FFFFFF;
+    --surface: rgba(28, 28, 30, 0.6);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --accent: #39FF14;
+    --accent-hover: #CCFF00;
+    --liquid-gradient: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 50%, var(--accent) 100%);
+    --inner-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    --shadow-color: rgba(0, 0, 0, 0.4);
+    --noise-opacity: 0.15;
+
+    --btn-shadow: 0 4px 14px 0 rgba(57, 255, 20, 0.39);
+    --btn-shadow-hover: 0 6px 20px 0 rgba(57, 255, 20, 0.5);
   }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* WOW FACTOR 1: Liquid Chrome Surfaces */
+.chrome-card {
+  background-color: var(--surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 32px 0 var(--shadow-color), var(--inner-bevel);
+  position: relative;
+  overflow: hidden;
+}
+
+.chrome-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: var(--noise-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* WOW FACTOR 2: Liquid Button */
+.liquid-button {
+  border-radius: var(--radius-pill);
+  background: var(--liquid-gradient);
+  background-size: 200% 200%;
+  color: #000000; /* Always dark text for high contrast on accents */
+  font-weight: 700;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--btn-shadow);
+  padding: 0.5rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.liquid-button:hover {
+  background-position: 100% 50%;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--btn-shadow-hover);
+}
+
+.liquid-button:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* WOW FACTOR 3: Glitch Text (Chromatic Aberration) */
+.glitch-text {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.glitch-text:hover {
+  text-shadow: 
+    -2px 0px 0px rgba(255, 0, 0, 0.7), 
+    2px 0px 0px rgba(0, 255, 255, 0.7);
+}
+
+/* Force headings to use Syne */
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display);
+}
+
+/* 
+  NEW 2026 BUTTON INTERACTIONS 
+*/
+@keyframes sheenSweep {
+  0% { transform: translateX(-100%) skewX(-15deg); }
+  100% { transform: translateX(200%) skewX(-15deg); }
+}
+
+@keyframes glitchSlice {
+  0% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); transform: translate(0); }
+  20% { clip-path: polygon(0 15%, 100% 15%, 100% 30%, 0 30%); transform: translate(-2px, 2px); }
+  40% { clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%); transform: translate(2px, -2px); }
+  60% { clip-path: polygon(0 40%, 100% 40%, 100% 50%, 0 50%); transform: translate(-2px, 0); }
+  80% { clip-path: polygon(0 85%, 100% 85%, 100% 100%, 0 100%); transform: translate(2px, 0); }
+  100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); transform: translate(0); }
+}
+
+.hyper-liquid {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--liquid-gradient);
+  background-size: 200% 200%;
+  color: #000000;
+  font-weight: 700;
+  box-shadow: 0 0 15px 0 var(--accent), inset 0 1px 0 rgba(255,255,255,0.5);
+  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  border: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .hyper-liquid {
+     box-shadow: 0 0 15px 0 rgba(57, 255, 20, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+}
+:root.dark .hyper-liquid {
+  box-shadow: 0 0 15px 0 rgba(57, 255, 20, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.hyper-liquid::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+  transform: skewX(-15deg);
+  pointer-events: none;
+}
+
+.hyper-liquid:hover {
+  background-position: 100% 50%;
+  text-shadow: 0 0 8px rgba(0,0,0,0.3);
+  transform: scale(1.02);
+  box-shadow: 0 0 30px 0 var(--accent), inset 0 1px 0 rgba(255,255,255,0.7);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .hyper-liquid:hover {
+     text-shadow: 0 0 8px rgba(0,0,0,0.8);
+     box-shadow: 0 0 30px 0 rgba(57, 255, 20, 0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+}
+:root.dark .hyper-liquid:hover {
+  text-shadow: 0 0 8px rgba(0,0,0,0.8);
+  box-shadow: 0 0 30px 0 rgba(57, 255, 20, 0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+.hyper-liquid:hover::after {
+  animation: sheenSweep 2s ease-in-out infinite;
+}
+
+.hyper-liquid:active {
+  transform: scale(1.02) !important; /* Strictly no size/displacement change from hover */
+  background-image: none !important;
+  background-color: transparent !important; /* Surface goes transparent */
+  color: var(--accent) !important; 
+  /* Massive layered glow for the text to fill ~80% of the button area */
+  text-shadow: 
+    0 0 10px var(--accent), 
+    0 0 30px var(--accent), 
+    0 0 60px var(--accent),
+    0 0 90px var(--accent),
+    0 0 120px var(--accent) !important; 
+  box-shadow: none !important; /* Removes outer glow so only the text shines */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important; /* Smooth and structured transition */
+}
+
+.hyper-liquid:active::after {
+  opacity: 0; /* Hide the sheen while pressed */
+  transition: opacity 0.3s ease;
+}
+
+.glass-spotlight {
+  position: relative;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  color: var(--foreground);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.glass-spotlight:hover {
+  /* Removed Y-offset and black-mix to create a pure, evenly radiating luminous glow instead of a drop shadow */
+  box-shadow: 0 0 15px 0 color-mix(in srgb, var(--accent) 80%, transparent), 
+              0 0 30px 0 color-mix(in srgb, var(--accent) 40%, transparent),
+              inset 0 0 20px 0 color-mix(in srgb, var(--accent) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent); /* Faint tint on the physical border to anchor the glow */
+}
+
+.tactile-glitch {
+  position: relative;
+  background: transparent;
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.tactile-glitch::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 50%; width: 0; height: 2px;
+  background: var(--accent);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.tactile-glitch:hover {
+  animation: glitchSlice 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  text-shadow: -2px 0px 0px rgba(255, 0, 0, 0.7), 2px 0px 0px rgba(0, 255, 255, 0.7);
+}
+
+.tactile-glitch:hover::after {
+  width: 100%;
 }
