@@ -1,0 +1,8 @@
+- `[/]` Document the design system
+  - `[ ]` Create `docs/VISUAL_DNA.md`
+  - `[ ]` Update `docs/PROJECT.md`
+- `[ ]` Update CSS tokens and utilities
+  - `[ ]` Modify `apps/web/src/app/globals.css`
+- `[ ]` Update scaffolding
+  - `[ ]` Modify `apps/web/src/app/layout.tsx`
+  - `[ ]` Modify `apps/web/src/app/page.tsx`
