@@ -19,7 +19,7 @@ export function DesktopNav() {
     <nav className="hidden md:block fixed top-0 left-0 right-0 z-50">
       {/* Clean Frosted Container */}
       <div className="w-full bg-[var(--surface)] backdrop-blur-2xl border-b border-[var(--border-color)] shadow-sm">
-        <div className="w-full max-w-7xl mx-auto px-6 md:px-8 py-2.5 flex items-center justify-between">
+        <div className="w-[90%] max-w-none mx-auto py-2.5 flex items-center justify-between">
           {/* Left: Brand Only */}
           <Link href="/" className="font-['Clash_Display',_sans-serif] font-bold text-3xl tracking-tighter flex items-center hover:opacity-80 transition-opacity">
             <span className="text-zinc-800 dark:text-gray-300 drop-shadow-sm">Stu</span>

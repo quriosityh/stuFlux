@@ -1,11 +1,20 @@
+'use client';
+
+import { usePathname } from 'next/navigation';
 import { MobileNav } from './MobileNav';
-import { DesktopNav } from './DesktopNav';
+import { NavHeader } from './NavHeader';
 
 export function Navigation() {
+  const pathname = usePathname();
+  const isPDP = pathname?.startsWith('/listings/');
+
   return (
     <>
-      <MobileNav />
-      <DesktopNav />
+      {!isPDP && <MobileNav />}
+      
+      <div className={isPDP ? 'hidden md:block' : ''}>
+        <NavHeader />
+      </div>
     </>
   );
 }

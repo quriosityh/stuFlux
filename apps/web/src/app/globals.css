@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
+/* Enable manual dark mode toggling via data attribute (prevents Next.js class reconciliation conflicts) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 @theme {
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -14,7 +16,7 @@
   --radius-pill: 9999px;
 }
 
-:root, :root.light {
+:root, :root[data-theme="light"] {
   /* Light Mode (Icy Daylight Chrome) */
   --background: #F2F4F7;
   --foreground: #0A0A0A;
@@ -31,7 +33,7 @@
   --btn-shadow-hover: 0 6px 20px 0 rgba(0, 0, 0, 0.15);
 }
 
-:root.dark {
+:root[data-theme="dark"] {
   /* Dark Mode (Deep Space Chrome) */
   --background: #050505;
   --foreground: #FFFFFF;
@@ -49,7 +51,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not(.light) {
+  :root:not([data-theme="light"]) {
     --background: #050505;
     --foreground: #FFFFFF;
     --surface: rgba(28, 28, 30, 0.6);
@@ -132,7 +134,7 @@ body {
     2px 0px 0px rgba(0, 255, 255, 0.7);
 }
 
-/* Force headings to use Syne */
+/* Force headings to use Space Grotesk */
 h1, h2, h3, h4, h5, h6, .font-display {
   font-family: var(--font-display);
 }
@@ -168,11 +170,11 @@ h1, h2, h3, h4, h5, h6, .font-display {
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not(.light) .hyper-liquid {
+  :root:not([data-theme="light"]) .hyper-liquid {
      box-shadow: 0 0 15px 0 rgba(57, 255, 20, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
   }
 }
-:root.dark .hyper-liquid {
+:root[data-theme="dark"] .hyper-liquid {
   box-shadow: 0 0 15px 0 rgba(57, 255, 20, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 
@@ -193,12 +195,12 @@ h1, h2, h3, h4, h5, h6, .font-display {
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not(.light) .hyper-liquid:hover {
+  :root:not([data-theme="light"]) .hyper-liquid:hover {
      text-shadow: 0 0 8px rgba(0,0,0,0.8);
      box-shadow: 0 0 30px 0 rgba(57, 255, 20, 0.6), inset 0 1px 0 rgba(255,255,255,0.3);
   }
 }
-:root.dark .hyper-liquid:hover {
+:root[data-theme="dark"] .hyper-liquid:hover {
   text-shadow: 0 0 8px rgba(0,0,0,0.8);
   box-shadow: 0 0 30px 0 rgba(57, 255, 20, 0.6), inset 0 1px 0 rgba(255,255,255,0.3);
 }
@@ -231,9 +233,11 @@ h1, h2, h3, h4, h5, h6, .font-display {
 .glass-spotlight {
   position: relative;
   border-radius: var(--radius-pill);
-  background: var(--surface);
+  /* Tint background slightly and add a faint static glow so it pops off the background */
+  background: color-mix(in srgb, var(--surface) 95%, var(--accent) 5%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 10px 0 color-mix(in srgb, var(--accent) 15%, transparent);
   border: 1px solid var(--border-color);
   color: var(--foreground);
   overflow: hidden;

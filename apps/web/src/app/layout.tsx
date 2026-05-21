@@ -1,12 +1,12 @@
 import { clerkAppearance } from '@/lib/clerk-theme'
 import { ClerkProvider, SignedIn, SignedOut } from '@clerk/nextjs'
-import { Syne, Manrope } from 'next/font/google'
+import { Space_Grotesk, Manrope } from 'next/font/google'
 import './globals.css'
 import { Navigation } from '@/components/navigation/Navigation'
 
-const syne = Syne({ 
+const spaceGrotesk = Space_Grotesk({ 
   subsets: ['latin'],
-  variable: '--font-syne',
+  variable: '--font-heading',
   display: 'swap',
 })
 
@@ -21,21 +21,25 @@ export const metadata = {
   description: 'Rent anything from your neighbors - cameras, tools, vehicles & more',
 }
 
+import { TopSpacer, BottomSpacer } from '@/components/navigation/LayoutSpacers'
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
       appearance={clerkAppearance}
     >
-      <html lang="en" className={`${syne.variable} ${manrope.variable}`}>
-        <body className="font-sans antialiased transition-colors duration-300">
+      <html lang="en" className={`${spaceGrotesk.variable} ${manrope.variable}`}>
+        <body className="font-sans antialiased transition-colors duration-300 flex flex-col min-h-screen">
           <Navigation />
+          <TopSpacer />
           <SignedOut>
-            <main className="min-h-screen relative z-0 pt-16 pb-24 md:pb-0">{children}</main>
+            <main className="flex-1 relative z-0 flex flex-col">{children}</main>
           </SignedOut>
           <SignedIn>
-            <main className="min-h-screen relative z-0 pt-16 pb-24 md:pb-0">{children}</main>
+            <main className="flex-1 relative z-0 flex flex-col">{children}</main>
           </SignedIn>
+          <BottomSpacer />
         </body>
       </html>
     </ClerkProvider>
