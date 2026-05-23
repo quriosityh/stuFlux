@@ -12,7 +12,7 @@ export function Navigation() {
     <>
       {!isPDP && <MobileNav />}
       
-      <div className={isPDP ? 'hidden md:block' : ''}>
+      <div className="hidden md:block">
         <NavHeader />
       </div>
     </>
