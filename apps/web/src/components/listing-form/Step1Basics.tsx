@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ListingFormData } from './types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -11,9 +11,9 @@ type Step1Props = {
   data: Partial<ListingFormData>;
   updateData: (data: Partial<ListingFormData>) => void;
   onNext: () => void;
+  hideFooter?: boolean;
 };
 
-// Mock categories since we are focusing on UI right now without full API integration
 const MOCK_CATEGORIES = [
   { id: 1, name: 'Electronics', icon: '💻' },
   { id: 2, name: 'Furniture', icon: '🛋️' },
@@ -23,7 +23,7 @@ const MOCK_CATEGORIES = [
   { id: 6, name: 'Others', icon: '📦' },
 ];
 
-export function Step1Basics({ data, updateData, onNext }: Step1Props) {
+export function Step1Basics({ data, updateData, onNext, hideFooter }: Step1Props) {
   const [title, setTitle] = useState(data.title || '');
   const [description, setDescription] = useState(data.description || '');
   const [categoryId, setCategoryId] = useState<number | undefined>(data.category_id);
@@ -33,58 +33,54 @@ export function Step1Basics({ data, updateData, onNext }: Step1Props) {
 
   const handleNext = () => {
     if (isValid) {
-      updateData({
-        title,
-        description,
-        category_id: categoryId,
-        daily_rate: Number(dailyRate)
-      });
+      updateData({ title, description, category_id: categoryId, daily_rate: Number(dailyRate) });
       onNext();
     }
   };
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="space-y-2 mt-6">
-        <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">Tell us about your item</h2>
-        <p className="text-foreground/80 text-lg">Share some basic info to help renters find what they need.</p>
+    <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-2">
+      <div className="flex flex-col items-center text-center space-y-2 mt-2 mb-8">
+        <div className="text-accent font-semibold text-[10px] sm:text-xs tracking-widest uppercase">Step 1 of 4</div>
+        <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-white">Create Your Listing</h2>
+        <p className="text-white/50 text-xs sm:text-sm max-w-sm">Enter the basic information for your item. You will be able to add photos and availability later.</p>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Title */}
-        <div className="space-y-3">
-          <label className="text-sm font-bold uppercase tracking-wider text-foreground/90 pl-2">Listing Title</label>
-          <div className="bg-surface border-2 border-foreground/20 hover:border-foreground/40 rounded-xl relative focus-within:!border-accent focus-within:ring-1 focus-within:ring-accent focus-within:bg-background transition-all duration-300 overflow-hidden group">
+        <div className="space-y-2">
+          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Listing Title</label>
+          <div className="bg-[#161622] border border-[#2A2A35] hover:border-[#3A3A4A] rounded-xl relative focus-within:!border-accent focus-within:ring-1 focus-within:ring-accent/50 transition-all duration-300 overflow-hidden group">
             <input
               type="text"
-              placeholder="e.g. Sony A7III with 28-70mm Lens"
+              placeholder="e.g. Sony A7III Camera with Lens"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={100}
-              className="w-full bg-transparent border-none outline-none px-4 py-4 pr-16 text-foreground placeholder:text-foreground/40 focus:ring-0 text-lg"
+              className="w-full bg-transparent border-none outline-none px-4 py-3.5 pr-16 text-foreground placeholder:text-foreground/30 focus:ring-0"
             />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-foreground/40 group-focus-within:text-accent transition-colors">
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-foreground/30 group-focus-within:text-accent transition-colors">
               {title.length}/100
             </div>
           </div>
         </div>
 
-        {/* Category Selector */}
-        <div className="space-y-3">
-          <label className="text-sm font-bold uppercase tracking-wider text-foreground/90 pl-2">Category</label>
-          <div className="flex flex-wrap gap-3">
+        {/* Category */}
+        <div className="space-y-2">
+          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Category</label>
+          <div className="flex flex-wrap gap-2">
             {MOCK_CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setCategoryId(cat.id)}
                 className={cn(
-                  "flex items-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-300 border-2",
+                  'flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 border-2',
                   categoryId === cat.id
-                    ? "bg-accent border-accent text-black shadow-[0_0_15px_rgba(57,255,20,0.3)] transform scale-105"
-                    : "bg-surface border-foreground/30 text-foreground/80 hover:bg-foreground/10 hover:border-foreground/50 hover:-translate-y-1"
+                    ? 'liquid-button !border-transparent !text-black shadow-lg shadow-accent/20 scale-105'
+                    : 'bg-[#161622] border-[#2A2A35] text-white/60 hover:border-[#3A3A4A] hover:text-white'
                 )}
               >
-                <span className="text-xl">{cat.icon}</span>
+                <span>{cat.icon}</span>
                 <span>{cat.name}</span>
               </button>
             ))}
@@ -92,28 +88,28 @@ export function Step1Basics({ data, updateData, onNext }: Step1Props) {
         </div>
 
         {/* Description */}
-        <div className="space-y-3">
-          <label className="text-sm font-bold uppercase tracking-wider text-foreground/90 pl-2">Description</label>
-          <div className="bg-surface border-2 border-foreground/20 hover:border-foreground/40 rounded-xl focus-within:!border-accent focus-within:ring-1 focus-within:ring-accent focus-within:bg-background transition-all duration-300 overflow-hidden group">
+        <div className="space-y-2">
+          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Description</label>
+          <div className="bg-[#161622] border border-[#2A2A35] hover:border-[#3A3A4A] rounded-xl focus-within:!border-accent focus-within:ring-1 focus-within:ring-accent/50 transition-all duration-300 overflow-hidden group">
             <textarea
-              placeholder="Describe the condition, what's included, and any important rules..."
+              placeholder="What's included? Condition? Any rules for renters?"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               maxLength={1000}
-              rows={5}
-              className="w-full bg-transparent border-none outline-none px-4 py-4 text-foreground placeholder:text-foreground/40 focus:ring-0 resize-none text-base leading-relaxed"
+              rows={4}
+              className="w-full bg-transparent border-none outline-none px-4 py-3.5 text-foreground placeholder:text-foreground/30 focus:ring-0 resize-none text-sm leading-relaxed"
             />
-            <div className="flex justify-end px-4 pb-3 text-xs font-medium text-foreground/40 group-focus-within:text-accent transition-colors">
+            <div className="flex justify-end px-4 pb-2 text-xs text-foreground/30 group-focus-within:text-accent transition-colors">
               {description.length}/1000
             </div>
           </div>
         </div>
 
         {/* Daily Rate */}
-        <div className="space-y-3">
-          <label className="text-sm font-bold uppercase tracking-wider text-foreground/90 pl-2">Daily Rate</label>
-          <div className="bg-surface border-2 border-foreground/20 hover:border-foreground/40 rounded-xl flex items-center w-full md:w-1/2 relative overflow-hidden focus-within:!border-accent focus-within:ring-1 focus-within:ring-accent focus-within:bg-background transition-all duration-300">
-            <div className="flex-shrink-0 flex items-center justify-center bg-foreground/10 border-r-2 border-foreground/20 px-5 py-4 font-bold text-accent">
+        <div className="space-y-2">
+          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Daily Rate</label>
+          <div className="bg-[#161622] border border-[#2A2A35] hover:border-[#3A3A4A] rounded-xl flex items-stretch w-full md:w-64 overflow-hidden focus-within:!border-accent focus-within:ring-1 focus-within:ring-accent/50 transition-all duration-300">
+            <div className="flex items-center justify-center bg-[#1A1A2A] border-r border-[#2A2A35] px-4 font-bold text-accent text-sm">
               PKR
             </div>
             <input
@@ -122,27 +118,31 @@ export function Step1Basics({ data, updateData, onNext }: Step1Props) {
               min="0"
               value={dailyRate}
               onChange={(e) => setDailyRate(e.target.value)}
-              className="flex-grow bg-transparent border-none outline-none px-4 py-4 text-foreground placeholder:text-foreground/40 font-display text-xl focus:ring-0 text-center"
+              className="flex-grow bg-transparent border-none outline-none px-4 py-3.5 text-foreground placeholder:text-foreground/30 font-display text-lg focus:ring-0"
             />
-            <span className="flex-shrink-0 pr-5 text-foreground/50 font-medium">/ day</span>
+            <div className="flex items-center pr-4 text-foreground/40 font-medium text-sm">/ day</div>
           </div>
         </div>
       </div>
 
-      <div className="mt-8 flex justify-end">
-        <button
-          onClick={handleNext}
-          disabled={!isValid}
-          className={cn(
-            "px-8 py-3 rounded-full font-bold transition-all duration-300",
-            isValid
-              ? "liquid-button"
-              : "glass-spotlight opacity-50 cursor-not-allowed"
-          )}
-        >
-          Next: Item Details
-        </button>
-      </div>
+      {/* Hidden trigger button — clicked by card footer */}
+      <button id="step-next-trigger" onClick={handleNext} className="hidden" />
+
+      {/* Inline footer only when not inside modal card */}
+      {!hideFooter && (
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={handleNext}
+            disabled={!isValid}
+            className={cn(
+              'px-8 py-3 rounded-full font-bold transition-all duration-300',
+              isValid ? 'liquid-button' : 'glass-spotlight opacity-50 cursor-not-allowed'
+            )}
+          >
+            Next: Item Details
+          </button>
+        </div>
+      )}
     </div>
   );
 }

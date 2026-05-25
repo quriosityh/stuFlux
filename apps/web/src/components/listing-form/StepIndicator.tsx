@@ -19,50 +19,50 @@ export function StepIndicator({ currentStep, totalSteps = 4 }: StepIndicatorProp
     { id: 4, label: 'Photos' },
   ];
 
-  return (
-    <div className="w-full max-w-2xl mx-auto mb-10 mt-6 relative">
-      <div className="flex justify-between items-center relative z-10">
-        {steps.map((step, idx) => {
-          const isCompleted = currentStep > step.id;
-          const isActive = currentStep === step.id;
-          const isPending = currentStep < step.id;
+  const progressPercentage = ((currentStep - 1) / (steps.length - 1)) * 100;
 
-          return (
-            <div key={step.id} className="flex flex-col items-center gap-2 flex-1 relative">
-              {/* Connector Line */}
-              {idx !== 0 && (
-                <div
-                  className={cn(
-                    "absolute top-[1.125rem] right-[50%] left-[-50%] h-[3px] -z-10 transition-colors duration-500",
-                    isCompleted || isActive ? "bg-accent" : "bg-border/30"
-                  )}
-                />
-              )}
-              
-              {/* Circle */}
-              <div
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-sm transition-all duration-300",
-                  isCompleted && "liquid-button !w-10 !h-10 !p-0 !text-black", // checkmark completed state
-                  isActive && "bg-surface border-2 border-accent text-accent shadow-[0_0_15px_rgba(57,255,20,0.3)]",
-                  isPending && "glass-spotlight border border-border/40 text-foreground/50"
-                )}
-              >
-                {isCompleted ? <Check className="w-5 h-5 text-black" strokeWidth={3} /> : step.id}
+  return (
+    <div className="w-full mb-12 mt-8 px-2 sm:px-8">
+      <div className="relative flex items-center">
+        {/* Background track line */}
+        <div className="absolute left-0 right-0 h-[2px] bg-[#2A2A35]" />
+        
+        {/* Active progress line */}
+        <div 
+          className="absolute left-0 h-[2px] bg-accent transition-all duration-500 ease-in-out" 
+          style={{ width: `${progressPercentage}%` }} 
+        />
+
+        {/* Steps */}
+        <div className="relative flex justify-between w-full z-10">
+          {steps.map((step) => {
+            const isActive = currentStep === step.id;
+            const isCompleted = currentStep > step.id;
+
+            return (
+              <div key={step.id} className="relative flex flex-col items-center justify-center">
+                {/* Label above */}
+                <span className={cn(
+                  "absolute bottom-5 sm:bottom-6 whitespace-nowrap text-[9px] sm:text-[11px] font-bold uppercase tracking-wider transition-colors duration-300",
+                  isActive || isCompleted ? "text-accent" : "text-white/40"
+                )}>
+                  {step.label}
+                </span>
+
+                {/* Node */}
+                <div className={cn(
+                  "w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all duration-300 bg-[#0B0B13] border-[2px]",
+                  isCompleted ? "border-accent bg-accent" : 
+                  isActive ? "border-accent shadow-[0_0_10px_rgba(57,255,20,0.4)]" : 
+                  "border-[#2A2A35]"
+                )}>
+                  {isActive && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-accent" />}
+                  {isCompleted && <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-black" strokeWidth={4} />}
+                </div>
               </div>
-              
-              {/* Label */}
-              <span
-                className={cn(
-                  "text-xs font-semibold tracking-wide uppercase transition-colors duration-300",
-                  isActive ? "text-foreground" : "text-foreground/40"
-                )}
-              >
-                {step.label}
-              </span>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

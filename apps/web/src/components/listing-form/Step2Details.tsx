@@ -13,13 +13,15 @@ type Step2Props = {
   updateData: (data: Partial<ListingFormData>) => void;
   onNext: () => void;
   onBack: () => void;
+  hideFooter?: boolean;
 };
 
-export function Step2Details({ data, updateData, onNext, onBack }: Step2Props) {
+const CONDITIONS = ['New', 'Like new', 'Used', 'Damaged'] as const;
+
+export function Step2Details({ data, updateData, onNext, onBack, hideFooter }: Step2Props) {
   const [specs, setSpecs] = useState<Record<string, string>>(data.specs || {});
   const [status, setStatus] = useState<'draft' | 'active'>(data.status || 'active');
   const [condition, setCondition] = useState<ListingFormData['condition']>(data.condition);
-  
   const [newSpecKey, setNewSpecKey] = useState('');
   const [newSpecValue, setNewSpecValue] = useState('');
   const [isAddingSpec, setIsAddingSpec] = useState(false);
@@ -44,104 +46,29 @@ export function Step2Details({ data, updateData, onNext, onBack }: Step2Props) {
     onNext();
   };
 
-  const CONDITIONS = ['New', 'Like new', 'Used', 'Damaged'] as const;
-
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="space-y-2">
-        <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight">Make it stand out</h2>
-        <p className="text-foreground/70">Add specific technical details and choose if you want to publish immediately.</p>
+    <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-2">
+      <div className="flex flex-col items-center text-center space-y-2 mt-2 mb-8">
+        <div className="text-accent font-semibold text-[10px] sm:text-xs tracking-widest uppercase">Step 2 of 4</div>
+        <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-white">Item Details</h2>
+        <p className="text-white/50 text-xs sm:text-sm max-w-sm">Add specific details to build trust with renters and make your item stand out.</p>
       </div>
 
-      <div className="space-y-10">
-        {/* Specifications */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-end">
-            <label className="text-sm font-semibold uppercase tracking-wider text-foreground/80 pl-2">
-              Item Specifications <span className="normal-case text-foreground/50 font-normal ml-2">(Optional)</span>
-            </label>
-            {!isAddingSpec && (
-              <button 
-                onClick={() => setIsAddingSpec(true)}
-                className="text-accent hover:text-accent-hover text-sm font-bold flex items-center gap-1 transition-colors"
-              >
-                <Plus className="w-4 h-4" /> Add Spec
-              </button>
-            )}
-          </div>
-          
-          {/* Spec List */}
-          <div className="flex flex-wrap gap-3">
-            {Object.entries(specs).map(([key, value]) => (
-              <div key={key} className="glass-spotlight px-4 py-2 rounded-full flex items-center gap-3">
-                <span className="text-foreground/60 font-semibold">{key}:</span>
-                <span className="text-foreground font-medium">{value}</span>
-                <button 
-                  onClick={() => handleRemoveSpec(key)}
-                  className="w-5 h-5 rounded-full bg-foreground/10 flex items-center justify-center hover:bg-red-500/20 hover:text-red-500 transition-colors ml-1"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-            
-            {Object.keys(specs).length === 0 && !isAddingSpec && (
-              <div className="w-full chrome-card rounded-xl p-8 border-dashed flex flex-col items-center justify-center text-center opacity-60">
-                <p className="text-sm mb-2">No specifications added.</p>
-                <p className="text-xs text-foreground/50">Add things like Brand, Model, Year, Dimensions, etc.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Add Spec Form */}
-          {isAddingSpec && (
-            <div className="chrome-card rounded-2xl p-4 flex flex-col md:flex-row gap-3 items-center animate-in zoom-in-95 duration-200">
-              <input 
-                type="text" 
-                placeholder="e.g. Brand" 
-                value={newSpecKey}
-                onChange={(e) => setNewSpecKey(e.target.value)}
-                className="w-full bg-surface border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent"
-              />
-              <input 
-                type="text" 
-                placeholder="e.g. Sony" 
-                value={newSpecValue}
-                onChange={(e) => setNewSpecValue(e.target.value)}
-                className="w-full bg-surface border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent"
-              />
-              <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                <button 
-                  onClick={() => setIsAddingSpec(false)}
-                  className="px-4 py-2.5 rounded-xl font-bold bg-foreground/10 hover:bg-foreground/20 text-sm flex-1 md:flex-none transition-colors"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleAddSpec}
-                  disabled={!newSpecKey.trim() || !newSpecValue.trim()}
-                  className="px-4 py-2.5 rounded-xl font-bold bg-accent text-black disabled:opacity-50 text-sm flex-1 md:flex-none transition-colors"
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="space-y-6">
 
         {/* Item Condition */}
-        <div className="space-y-4">
-          <label className="text-sm font-semibold uppercase tracking-wider text-foreground/80 pl-2">Item Condition</label>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="space-y-2">
+          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Item Condition</label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {CONDITIONS.map(cond => (
               <button
                 key={cond}
                 onClick={() => setCondition(cond)}
                 className={cn(
-                  "py-3 px-4 rounded-xl font-semibold transition-all duration-300 text-sm",
-                  condition === cond 
-                    ? "bg-accent text-black shadow-[0_0_15px_rgba(57,255,20,0.3)] transform scale-105" 
-                    : "bg-surface border border-border/50 text-foreground/70 hover:bg-foreground/5"
+                  'py-3 px-4 rounded-xl font-semibold transition-all duration-200 text-sm border',
+                  condition === cond
+                    ? 'liquid-button !border-transparent !text-black shadow-lg shadow-accent/20 scale-105'
+                    : 'bg-[#161622] border-[#2A2A35] text-white/60 hover:border-[#3A3A4A] hover:text-white'
                 )}
               >
                 {cond}
@@ -150,51 +77,126 @@ export function Step2Details({ data, updateData, onNext, onBack }: Step2Props) {
           </div>
         </div>
 
-        {/* Status Toggle */}
-        <div className="space-y-4">
-          <label className="text-sm font-semibold uppercase tracking-wider text-foreground/80 pl-2">Visibility Status</label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Specifications */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">
+              Specifications <span className="normal-case text-white/30 font-normal ml-1">(Optional)</span>
+            </label>
+            {!isAddingSpec && (
+              <button
+                onClick={() => setIsAddingSpec(true)}
+                className="text-accent text-xs font-bold flex items-center gap-1 transition-colors hover:opacity-80"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Spec
+              </button>
+            )}
+          </div>
+
+          {/* Spec Tags */}
+          <div className="flex flex-wrap gap-2 min-h-[36px]">
+            {Object.entries(specs).map(([key, value]) => (
+              <div key={key} className="bg-[#161622] border border-[#2A2A35] px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm text-white">
+                <span className="text-white/50 font-medium">{key}:</span>
+                <span className="font-semibold">{value}</span>
+                <button
+                  onClick={() => handleRemoveSpec(key)}
+                  className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center hover:bg-red-500/20 hover:text-red-400 transition-colors ml-1"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ))}
+            {Object.keys(specs).length === 0 && !isAddingSpec && (
+              <p className="text-white/30 text-xs sm:text-sm italic">e.g. Brand: Sony, Year: 2022, Weight: 650g</p>
+            )}
+          </div>
+
+          {/* Inline Add Form */}
+          {isAddingSpec && (
+            <div className="bg-[#161622] border border-[#2A2A35] rounded-xl p-3 flex flex-col sm:flex-row gap-2 animate-in zoom-in-95 duration-200">
+              <input
+                type="text"
+                placeholder="Label (e.g. Brand)"
+                value={newSpecKey}
+                onChange={(e) => setNewSpecKey(e.target.value)}
+                className="flex-1 bg-[#1A1A2A] border border-[#2A2A35] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent text-white placeholder:text-white/30"
+              />
+              <input
+                type="text"
+                placeholder="Value (e.g. Sony)"
+                value={newSpecValue}
+                onChange={(e) => setNewSpecValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddSpec()}
+                className="flex-1 bg-[#1A1A2A] border border-[#2A2A35] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent text-white placeholder:text-white/30"
+              />
+              <div className="flex gap-2 mt-2 sm:mt-0">
+                <button
+                  onClick={() => setIsAddingSpec(false)}
+                  className="flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm font-semibold bg-white/5 hover:bg-white/10 text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddSpec}
+                  disabled={!newSpecKey.trim() || !newSpecValue.trim()}
+                  className="flex-1 sm:flex-none liquid-button !py-2 !rounded-lg text-sm font-bold disabled:opacity-50 transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Visibility Status */}
+        <div className="space-y-2">
+          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Visibility</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => setStatus('draft')}
               className={cn(
-                "chrome-card rounded-2xl p-6 flex flex-col items-start gap-2 text-left transition-all duration-300",
-                status === 'draft' ? "border-2 border-accent shadow-[0_0_20px_rgba(57,255,20,0.15)]" : "opacity-70 hover:opacity-100"
+                'rounded-xl p-4 flex flex-col items-start gap-1 text-left transition-all duration-200 border',
+                status === 'draft'
+                  ? 'border-accent bg-accent/5 shadow-[0_0_15px_rgba(57,255,20,0.15)] text-white'
+                  : 'border-[#2A2A35] bg-[#161622] hover:border-[#3A3A4A] text-white/70'
               )}
             >
-              <div className={cn("w-4 h-4 rounded-full border-2 mb-2", status === 'draft' ? "border-accent bg-accent" : "border-foreground/30")} />
-              <span className="font-display font-bold text-lg">Save as Draft</span>
-              <span className="text-sm text-foreground/60">Keep it hidden. You can edit and publish it later.</span>
+              <div className={cn('w-3.5 h-3.5 rounded-full border-2 mb-1 transition-colors', status === 'draft' ? 'border-accent bg-accent' : 'border-[#3A3A4A]')} />
+              <span className="font-bold text-sm">Save as Draft</span>
+              <span className="text-xs text-white/40">Hidden — publish later.</span>
             </button>
-            
+
             <button
               onClick={() => setStatus('active')}
               className={cn(
-                "chrome-card rounded-2xl p-6 flex flex-col items-start gap-2 text-left transition-all duration-300",
-                status === 'active' ? "border-2 border-accent shadow-[0_0_20px_rgba(57,255,20,0.15)]" : "opacity-70 hover:opacity-100"
+                'rounded-xl p-4 flex flex-col items-start gap-1 text-left transition-all duration-200 border',
+                status === 'active'
+                  ? 'border-accent bg-accent/5 shadow-[0_0_15px_rgba(57,255,20,0.15)] text-white'
+                  : 'border-[#2A2A35] bg-[#161622] hover:border-[#3A3A4A] text-white/70'
               )}
             >
-              <div className={cn("w-4 h-4 rounded-full border-2 mb-2", status === 'active' ? "border-accent bg-accent" : "border-foreground/30")} />
-              <span className="font-display font-bold text-lg">Publish Now</span>
-              <span className="text-sm text-foreground/60">Make it instantly visible in the marketplace after finishing.</span>
+              <div className={cn('w-3.5 h-3.5 rounded-full border-2 mb-1 transition-colors', status === 'active' ? 'border-accent bg-accent' : 'border-[#3A3A4A]')} />
+              <span className="font-bold text-sm">Publish Now</span>
+              <span className="text-xs text-white/40">Go live immediately.</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="mt-8 flex justify-between">
-        <button 
-          onClick={onBack}
-          className="px-6 py-3 rounded-full font-bold transition-colors hover:text-accent hover:bg-foreground/5"
-        >
-          ← Back
-        </button>
-        <button 
-          onClick={handleNext}
-          className="px-8 py-3 rounded-full font-bold liquid-button"
-        >
-          Next: Availability
-        </button>
-      </div>
+      {/* Hidden trigger for card footer */}
+      <button id="step-next-trigger" onClick={handleNext} className="hidden" />
+
+      {!hideFooter && (
+        <div className="mt-4 flex justify-between">
+          <button onClick={onBack} className="px-6 py-3 rounded-full font-bold transition-colors hover:text-accent hover:bg-foreground/5">
+            ← Back
+          </button>
+          <button onClick={handleNext} className="px-8 py-3 rounded-full font-bold liquid-button">
+            Next: Availability
+          </button>
+        </div>
+      )}
     </div>
   );
 }
