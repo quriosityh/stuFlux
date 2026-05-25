@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { ListingFormData } from './types';
+import { StepIndicator } from './StepIndicator';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Camera, X, ImageIcon, UploadCloud, ChevronLeft, ChevronRight, MapPin, Star, CheckCircle2, MessageCircle } from 'lucide-react';
@@ -67,19 +68,20 @@ export function Step4Photos({ data, onSubmit, onBack, isSubmitting }: Step4Props
 
       <div className="w-full relative z-10 bg-[#0D0D16]/90 backdrop-blur-xl border border-[#2A2A35] rounded-[2rem] shadow-2xl flex flex-col overflow-hidden" style={{ maxWidth: '820px' }}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-10 pt-6 sm:pt-8 pb-4 border-b border-[#2A2A35]">
+        {/* ── Step Indicator (matches steps 1–3) ── */}
+        <div className="px-4 sm:px-8 pt-6 sm:pt-10 pb-2">
+          <StepIndicator currentStep={4} totalSteps={4} />
+        </div>
+
+        {/* Back button row */}
+        <div className="flex items-center px-4 sm:px-10 pb-4 border-b border-[#2A2A35]">
           <button onClick={onBack} className="text-white/50 hover:text-white font-semibold text-xs sm:text-sm transition-colors">
             ← Back
           </button>
-          <span className="font-display font-bold text-[10px] sm:text-xs tracking-[0.2em] uppercase text-accent">
-            Step 4 of 4 — Photos
-          </span>
-          <div className="w-16" />
         </div>
 
-        {/* Body */}
-        <div className="px-4 sm:px-10 py-6 sm:py-8 space-y-6">
+        {/* Body — scrollable like steps 1–3 */}
+        <div className="px-4 sm:px-10 py-6 sm:py-8 space-y-6 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ maxHeight: 'calc(100vh - 280px)' }}>
           <div className="flex flex-col items-center text-center space-y-2 mb-8">
             <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-white">Showcase Your Item</h2>
             <p className="text-white/50 text-xs sm:text-sm max-w-sm">Add up to 5 clear photos. The first photo is your cover.</p>
