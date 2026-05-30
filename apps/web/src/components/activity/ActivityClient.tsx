@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useApiClient } from '@/lib/api-client';
-import ActivityTabs from './ActivityTabs';
+import { Loader2 } from 'lucide-react';
+import type { ActivityBooking } from './types';
 import RentingTab from './RentingTab';
 import LendingTab from './LendingTab';
-import type { ActivityBooking, BookingsResponse } from './types';
-import { Loader2 } from 'lucide-react';
 
 const MOCK_RENTING: ActivityBooking[] = [
   {
@@ -14,8 +12,8 @@ const MOCK_RENTING: ActivityBooking[] = [
     listing_id: 'l1',
     renter_id: 'me',
     owner_id: 'u1',
-    start_date: new Date(Date.now() - 86400000 * 2).toISOString(), // started 2 days ago
-    end_date: new Date(Date.now() + 86400000 * 3).toISOString(), // ends in 3 days
+    start_date: new Date(Date.now() - 86400000 * 2).toISOString(),
+    end_date: new Date(Date.now() + 86400000 * 3).toISOString(),
     total_days: 5,
     total_amount: 15000,
     status: 'confirmed',
@@ -31,8 +29,8 @@ const MOCK_RENTING: ActivityBooking[] = [
     listing_id: 'l2',
     renter_id: 'me',
     owner_id: 'u2',
-    start_date: new Date(Date.now() + 86400000 * 5).toISOString(), // starts in 5 days
-    end_date: new Date(Date.now() + 86400000 * 7).toISOString(), 
+    start_date: new Date(Date.now() + 86400000 * 5).toISOString(),
+    end_date: new Date(Date.now() + 86400000 * 7).toISOString(),
     total_days: 2,
     total_amount: 4000,
     status: 'confirmed',
@@ -48,8 +46,8 @@ const MOCK_RENTING: ActivityBooking[] = [
     listing_id: 'l3',
     renter_id: 'me',
     owner_id: 'u3',
-    start_date: new Date(Date.now() - 86400000 * 10).toISOString(), 
-    end_date: new Date(Date.now() - 86400000 * 8).toISOString(), // completed
+    start_date: new Date(Date.now() - 86400000 * 10).toISOString(),
+    end_date: new Date(Date.now() - 86400000 * 8).toISOString(),
     total_days: 2,
     total_amount: 6000,
     status: 'completed',
@@ -59,7 +57,7 @@ const MOCK_RENTING: ActivityBooking[] = [
     listing_photo: { url: 'https://images.unsplash.com/photo-1507582020474-9a35b7d455d9?auto=format&fit=crop&q=80&w=500' },
     renter: { display_name: 'Me', avatar_url: null },
     owner: { display_name: 'Usman', avatar_url: null },
-  }
+  },
 ];
 
 const MOCK_LENDING: ActivityBooking[] = [
@@ -96,74 +94,111 @@ const MOCK_LENDING: ActivityBooking[] = [
     listing_photo: { url: 'https://images.unsplash.com/photo-1610444319307-5fa965fcc96d?auto=format&fit=crop&q=80&w=500' },
     renter: { display_name: 'Sara', avatar_url: null },
     owner: { display_name: 'Me', avatar_url: null },
-  }
+  },
 ];
 
 export default function ActivityClient() {
   const [activeTab, setActiveTab] = useState<'renting' | 'lending'>('renting');
-  
   const [rentingBookings, setRentingBookings] = useState<ActivityBooking[]>([]);
   const [lendingBookings, setLendingBookings] = useState<ActivityBooking[]>([]);
-  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const api = useApiClient();
-
   const fetchBookings = async () => {
-    // USING STATIC DUMMY DATA FOR UI PREVIEW
     setIsLoading(true);
     setTimeout(() => {
       setRentingBookings(MOCK_RENTING);
       setLendingBookings(MOCK_LENDING);
       setIsLoading(false);
-    }, 500); // simulate short network delay
+    }, 500);
   };
 
-  useEffect(() => {
-    fetchBookings();
-  }, []);
+  useEffect(() => { fetchBookings(); }, []);
 
-  // Compute unread/pending request count for Lending tab
-  const pendingRequestsCount = lendingBookings.filter(b => b.status === 'pending').length;
+  const pendingCount = lendingBookings.filter(b => b.status === 'pending').length;
 
   return (
-    <div className="flex flex-col md:flex-row gap-8 items-start">
-      {/* Left Sidebar (Sticky on Desktop) */}
-      <div className="w-full md:w-64 shrink-0 md:sticky md:top-32 space-y-6">
-        <ActivityTabs 
-          activeTab={activeTab} 
-          onChange={setActiveTab} 
-          rentingCount={rentingBookings.length}
-          lendingCount={lendingBookings.length}
-          pendingRequestsCount={pendingRequestsCount}
+    <div className="w-full">
+      {/* Horizontal pill tabs */}
+      <div className="flex items-center gap-1 mb-8 p-1 bg-surface/5 backdrop-blur-[20px] border border-border/8 rounded-full w-fit">
+        <TabPill
+          label="Renting"
+          count={rentingBookings.length}
+          active={activeTab === 'renting'}
+          onClick={() => setActiveTab('renting')}
+        />
+        <TabPill
+          label="Lending"
+          count={lendingBookings.length}
+          badge={pendingCount}
+          active={activeTab === 'lending'}
+          onClick={() => setActiveTab('lending')}
         />
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 min-w-0">
-        {error ? (
-          <div className="bg-[#0A0A0A] border border-red-500/20 rounded-2xl p-8 text-center space-y-4">
-            <p className="text-red-400">{error}</p>
-            <button onClick={fetchBookings} className="liquid-button">Try Again</button>
-          </div>
-        ) : isLoading ? (
-          <div className="flex justify-center items-center py-32">
-            <Loader2 className="w-8 h-8 animate-spin text-accent" />
-          </div>
-        ) : (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {activeTab === 'renting' ? (
-              <RentingTab bookings={rentingBookings} />
-            ) : (
-              <LendingTab 
-                bookings={lendingBookings} 
-                onBookingUpdated={fetchBookings} 
-              />
-            )}
-          </div>
-        )}
-      </div>
+      {/* Content */}
+      {error ? (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-8 text-center">
+          <p className="text-red-400 text-sm mb-4">{error}</p>
+          <button
+            onClick={fetchBookings}
+            className="px-4 py-2 rounded-lg bg-surface border border-border text-sm font-medium hover:bg-foreground/5 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : isLoading ? (
+        <div className="flex justify-center items-center py-24">
+          <Loader2 className="w-6 h-6 animate-spin text-foreground/30" />
+        </div>
+      ) : (
+        <div>
+          {activeTab === 'renting' ? (
+            <RentingTab bookings={rentingBookings} />
+          ) : (
+            <LendingTab bookings={lendingBookings} onBookingUpdated={fetchBookings} />
+          )}
+        </div>
+      )}
     </div>
+  );
+}
+
+function TabPill({
+  label,
+  count,
+  badge,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  badge?: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] transition-colors ${
+        active
+          ? 'bg-foreground text-background font-medium'
+          : 'bg-transparent text-foreground/50 hover:text-foreground font-normal'
+      }`}
+    >
+      {label}
+      <span
+        className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${
+          active ? 'bg-background/20 text-background' : 'bg-foreground/10 text-foreground/50'
+        }`}
+      >
+        {count}
+      </span>
+      {badge && badge > 0 ? (
+        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-[10px] font-medium text-white flex items-center justify-center">
+          {badge}
+        </span>
+      ) : null}
+    </button>
   );
 }

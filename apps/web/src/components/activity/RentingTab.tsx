@@ -1,89 +1,94 @@
-import { ActivityBooking } from './types';
-import BookingCard from './BookingCard';
-import BookingSection from './BookingSection';
-import EmptyState from './EmptyState';
+'use client';
+
 import { isFuture, isPast } from 'date-fns';
+import type { ActivityBooking } from './types';
+import BookingCard, { getDisplayStatus } from './BookingCard';
+import BookingSection from './BookingSection';
+import { IconReceipt, IconStar } from '@tabler/icons-react';
 
 interface RentingTabProps {
   bookings: ActivityBooking[];
 }
 
 export default function RentingTab({ bookings }: RentingTabProps) {
-  const today = new Date();
-  
-  // Categorize bookings
-  const activeBookings = bookings.filter(b => 
-    b.status === 'confirmed' && 
-    new Date(b.start_date) <= today && 
-    new Date(b.end_date) >= today
-  );
-  
-  const upcomingBookings = bookings.filter(b => 
-    b.status === 'confirmed' && 
-    isFuture(new Date(b.start_date))
-  );
-  
-  const pastBookings = bookings.filter(b => 
-    b.status === 'completed' || 
-    b.status === 'rejected' ||
-    (b.status === 'confirmed' && isPast(new Date(b.end_date)))
-  );
+  const activeRentals = bookings.filter(b => {
+    if (b.status !== 'confirmed') return false;
+    const start = new Date(b.start_date);
+    const end = new Date(b.end_date);
+    const now = new Date();
+    return start <= now && end >= now;
+  });
 
-  // If literally no bookings ever
-  if (bookings.length === 0) {
+  const upcoming = bookings.filter(b => {
+    if (b.status !== 'confirmed') return false;
+    return isFuture(new Date(b.start_date));
+  });
+
+  const past = bookings.filter(b => {
+    const status = getDisplayStatus(b);
+    return status === 'completed' || status === 'declined';
+  });
+
+  const isEmpty = bookings.length === 0;
+
+  if (isEmpty) {
     return (
-      <EmptyState
-        icon="🛍️"
-        title="No rentals yet"
-        description="You haven't rented anything yet. Browse our marketplace to find what you need."
-        actionLabel="Browse Items"
-        actionHref="/"
-      />
+      <div className="py-16 text-center">
+        <p className="text-[14px] text-foreground/40">No rentals yet.</p>
+        <p className="text-[12px] text-foreground/25 mt-1">Browse listings to start renting.</p>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-12">
-      <BookingSection 
-        title="Active Rentals" 
-        icon="🟢" 
-        count={activeBookings.length}
-        isEmpty={activeBookings.length === 0}
+    <div className="space-y-6">
+      {/* Active */}
+      <BookingSection
+        title="Active Rentals"
+        count={activeRentals.length}
+        isEmpty={activeRentals.length === 0}
+        indicator="green-dot"
       >
-        {activeBookings.map(booking => (
-          <BookingCard key={booking.id} booking={booking} role="renter" />
+        {activeRentals.map(b => (
+          <BookingCard key={b.id} booking={b} role="renter" />
         ))}
       </BookingSection>
 
-      <BookingSection 
-        title="Upcoming" 
-        icon="📅" 
-        count={upcomingBookings.length}
-        isEmpty={upcomingBookings.length === 0}
+      {/* Upcoming */}
+      <BookingSection
+        title="Upcoming"
+        count={upcoming.length}
+        isEmpty={upcoming.length === 0}
+        indicator="clock"
       >
-        {upcomingBookings.map(booking => (
-          <BookingCard key={booking.id} booking={booking} role="renter" />
+        {upcoming.map(b => (
+          <BookingCard key={b.id} booking={b} role="renter" />
         ))}
       </BookingSection>
 
-      <BookingSection 
-        title="Past Rentals" 
-        icon="📦"
-        isEmpty={pastBookings.length === 0}
+      {/* Past */}
+      <BookingSection
+        title="Past Rentals"
+        count={past.length}
+        isEmpty={past.length === 0}
+        indicator="check"
       >
-        {pastBookings.map(booking => (
-          <BookingCard 
-            key={booking.id} 
-            booking={booking} 
-            role="renter" 
-            actions={
-              <button 
-                disabled 
-                title="Coming soon"
-                className="glass-spotlight px-4 py-2 text-sm opacity-50 cursor-not-allowed"
-              >
-                Leave Review
-              </button>
+        {past.map(b => (
+          <BookingCard
+            key={b.id}
+            booking={b}
+            role="renter"
+            footer={
+              <div className="flex items-center gap-2 mt-2">
+                <button className="flex items-center gap-1.5 px-[12px] py-[5px] rounded-[6px] text-[12px] font-medium bg-foreground text-background hover:bg-foreground/90 transition-colors">
+                  <IconStar className="w-3.5 h-3.5" stroke={1.5} />
+                  Leave review
+                </button>
+                <button className="flex items-center gap-1.5 px-[12px] py-[5px] rounded-[6px] text-[12px] font-medium border border-border/60 bg-surface text-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-colors">
+                  <IconReceipt className="w-3.5 h-3.5" stroke={1.5} />
+                  Receipt
+                </button>
+              </div>
             }
           />
         ))}

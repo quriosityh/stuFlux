@@ -282,6 +282,16 @@ h1, h2, h3, h4, h5, h6, .font-display {
   width: 100%;
 }
 
+/* Subtle amber pulse for urgent warnings */
+@keyframes urgentPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-urgent-pulse {
+  animation: urgentPulse 2s ease-in-out infinite;
+}
+
 /* Hide scrollbar for Chrome, Safari and Opera */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

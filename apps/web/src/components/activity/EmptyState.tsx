@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
+import { ReactNode } from 'react';
+
 interface EmptyStateProps {
-  icon: string;
+  icon: ReactNode;
   title: string;
   description: string;
   actionLabel: string;
@@ -18,10 +20,10 @@ export default function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className="chrome-card rounded-3xl p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
-      <div className="text-6xl mb-6 filter drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+      <div className="mb-6 flex justify-center text-foreground/40">
         {icon}
       </div>
-      <h3 className="font-display text-2xl font-bold mb-3">{title}</h3>
+      <h3 className="text-[20px] font-medium mb-3">{title}</h3>
       <p className="text-foreground/60 max-w-sm mb-8 text-lg">
         {description}
       </p>

@@ -10,10 +10,10 @@ export default async function ActivityPage() {
   return (
     <div className="min-h-screen bg-background text-foreground pb-24 lg:pb-8">
       {/* Desktop Top Padding for Navigation */}
-      <div className="pt-24 px-4 max-w-5xl mx-auto space-y-8">
+      <div className="pt-12 px-4 max-w-[860px] mx-auto space-y-8">
         <div>
-          <h1 className="font-display text-4xl lg:text-5xl tracking-tight mb-2">Activity</h1>
-          <p className="text-foreground/60 text-lg">Manage your rentals and track your earnings.</p>
+          <h1 className="text-[28px] font-medium tracking-[-0.4px] mb-1">Activity</h1>
+          <p className="text-foreground/60 text-[13px]">Manage your rentals and track your earnings.</p>
         </div>
         
         <ActivityClient />

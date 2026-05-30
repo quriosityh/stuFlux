@@ -6,6 +6,7 @@ import EarningsSummary from './EarningsSummary';
 import EmptyState from './EmptyState';
 import { useApiClient } from '@/lib/api-client';
 import { Loader2 } from 'lucide-react';
+import { IconCheck, IconX, IconMessage, IconDeviceLaptop } from '@tabler/icons-react';
 
 interface LendingTabProps {
   bookings: ActivityBooking[];
@@ -45,7 +46,7 @@ export default function LendingTab({ bookings, onBookingUpdated }: LendingTabPro
   if (bookings.length === 0) {
     return (
       <EmptyState
-        icon="💸"
+        icon={<IconDeviceLaptop className="w-12 h-12" stroke={1} />}
         title="Start earning today"
         description="You don't have any lending activity yet. List your unused items to start earning cash."
         actionLabel="List an Item"
@@ -61,35 +62,46 @@ export default function LendingTab({ bookings, onBookingUpdated }: LendingTabPro
 
       <BookingSection 
         title="Incoming Requests" 
-        icon="🔔" 
         count={pendingRequests.length}
         hasNotification={pendingRequests.length > 0}
         isEmpty={pendingRequests.length === 0}
+        indicator="amber-dot"
       >
         {pendingRequests.map(booking => (
           <BookingCard 
             key={booking.id} 
             booking={booking} 
             role="owner"
-            actions={
-              <div className="flex gap-2 bg-white/5 rounded-lg p-2 border border-white/10 shadow-lg">
-                <button 
-                  onClick={() => handleAction(booking.id, 'reject')}
-                  disabled={processingId === booking.id}
-                  className="glass-spotlight px-4 py-2 text-sm hover:text-rose-500 hover:border-rose-500/50 disabled:opacity-50 transition-colors"
-                >
-                  Decline
-                </button>
-                <button 
-                  onClick={() => handleAction(booking.id, 'confirm')}
-                  disabled={processingId === booking.id}
-                  className="liquid-button px-6 py-2 text-sm min-w-[100px] text-black font-extrabold tracking-wide border border-emerald-500/50 shadow-[0_0_10px_rgba(0,255,0,0.6)]"
-                >
-                  {processingId === booking.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-black" />
-                  ) : (
-                    'Accept'
-                  )}
+            showMessage={true}
+            footer={
+              <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 flex-1">
+                  <button 
+                    onClick={() => handleAction(booking.id, 'reject')}
+                    disabled={processingId === booking.id}
+                    className="flex items-center gap-1.5 px-[12px] py-[5px] rounded-[6px] text-[12px] font-medium border border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20 disabled:opacity-50 transition-colors"
+                  >
+                    <IconX className="w-3.5 h-3.5" stroke={1.5} />
+                    Decline
+                  </button>
+                  <button 
+                    onClick={() => handleAction(booking.id, 'confirm')}
+                    disabled={processingId === booking.id}
+                    className="flex items-center gap-1.5 px-[12px] py-[5px] rounded-[6px] text-[12px] font-medium bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 transition-colors min-w-[80px] justify-center"
+                  >
+                    {processingId === booking.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <IconCheck className="w-3.5 h-3.5" stroke={1.5} />
+                        Accept
+                      </>
+                    )}
+                  </button>
+                </div>
+                <button className="flex items-center gap-1.5 px-[12px] py-[5px] rounded-[6px] text-[12px] font-medium border border-border/60 bg-surface text-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-colors">
+                  <IconMessage className="w-3.5 h-3.5" stroke={1.5} />
+                  Message
                 </button>
               </div>
             }
@@ -99,9 +111,9 @@ export default function LendingTab({ bookings, onBookingUpdated }: LendingTabPro
 
       <BookingSection 
         title="Active Rentals Out" 
-        icon="🟢" 
         count={activeRentals.length}
         isEmpty={activeRentals.length === 0}
+        indicator="green-dot"
       >
         {activeRentals.map(booking => (
           <BookingCard key={booking.id} booking={booking} role="owner" />
