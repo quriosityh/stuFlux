@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,8 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Partial<ListingFormData>>(defaultValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNextPressed, setIsNextPressed] = useState(false);
+  const [publishMoment, setPublishMoment] = useState(false);
 
   const updateFormData = (newData: Partial<ListingFormData>) => {
     setFormData(prev => ({ ...prev, ...newData }));
@@ -31,6 +33,7 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
   const handleSubmit = async (finalData: Partial<ListingFormData>) => {
     const completeData = { ...formData, ...finalData };
     setIsSubmitting(true);
+    setPublishMoment(finalData.status === 'active');
     try {
       console.log('Submitting data:', completeData);
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -39,10 +42,10 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
     } catch (error) {
       console.error('Failed to submit listing:', error);
       setIsSubmitting(false);
+      setPublishMoment(false);
     }
   };
 
-  // Step 4 (Photos+Preview) is full-screen — render it differently
   if (currentStep === 4) {
     return (
       <Step4Photos
@@ -50,29 +53,24 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
         onSubmit={handleSubmit}
         onBack={handleBack}
         isSubmitting={isSubmitting}
+        publishMoment={publishMoment}
       />
     );
   }
 
   return (
-    /* Dark overlay background */
     <div className="min-h-screen relative flex items-start justify-center pt-8 sm:pt-12 pb-16 px-4 bg-[#0B0B13] overflow-hidden">
-      {/* Background ambient glow matching the image */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-accent/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Centered modal card */}
       <div
         className="w-full relative z-10 bg-[#0D0D16]/90 backdrop-blur-xl border border-[#2A2A35] rounded-[2rem] shadow-2xl flex flex-col overflow-hidden"
         style={{ maxWidth: '820px' }}
       >
-
-        {/* ── Step Indicator inside card ── */}
         <div className="px-4 sm:px-8 pt-6 sm:pt-10 pb-2">
           <StepIndicator currentStep={currentStep} totalSteps={4} />
         </div>
 
-        {/* ── Scrollable form body ── */}
         <div className="px-4 sm:px-10 pb-6 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ maxHeight: 'calc(100vh - 280px)' }}>
           {currentStep === 1 && (
             <Step1Basics
@@ -102,15 +100,24 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
           )}
         </div>
 
-        {/* ── Card Footer ── */}
         <CardFooter
           currentStep={currentStep}
           onBack={handleBack}
           onNext={() => {
-            // Trigger the step's own handleNext which validates + calls onNext
+            const btn = document.getElementById('card-next-btn');
             const triggerBtn = document.getElementById('step-next-trigger');
-            if (triggerBtn) triggerBtn.click();
+            if (btn) {
+              btn.classList.add('btn-press');
+              window.setTimeout(() => {
+                btn.classList.remove('btn-press');
+                if (triggerBtn) triggerBtn.click();
+              }, 220);
+            } else if (triggerBtn) {
+              triggerBtn.click();
+            }
           }}
+          isPressed={isNextPressed}
+          setIsPressed={setIsNextPressed}
         />
       </div>
     </div>
@@ -121,11 +128,17 @@ function CardFooter({
   currentStep,
   onBack,
   onNext,
+  isPressed,
+  setIsPressed,
 }: {
   currentStep: number;
   onBack: () => void;
   onNext: () => void;
+  isPressed: boolean;
+  setIsPressed: (pressed: boolean) => void;
 }) {
+  const nextLabel = currentStep === 1 ? 'Next: Logistics →' : currentStep === 2 ? 'Next: Photos →' : 'Review & Publish →';
+
   return (
     <div className="flex items-center justify-between px-4 sm:px-10 py-5 sm:py-6 bg-[#0D0D16] border-t border-[#2A2A35] rounded-b-[2rem]">
       <button
@@ -139,9 +152,13 @@ function CardFooter({
       <button
         id="card-next-btn"
         onClick={onNext}
-        className="liquid-button px-6 sm:px-8 py-2.5 sm:py-3 font-bold text-xs sm:text-sm text-black"
+        onPointerDown={() => setIsPressed(true)}
+        onPointerUp={() => setIsPressed(false)}
+        onPointerCancel={() => setIsPressed(false)}
+        onBlur={() => setIsPressed(false)}
+        className={`liquid-button px-6 sm:px-8 py-2.5 sm:py-3 font-bold text-xs sm:text-sm text-black transition-transform duration-150 transform-gpu ${isPressed ? 'scale-95' : 'scale-100'}`}
       >
-        {currentStep === 3 ? 'Next: Photos →' : 'Next Step →'}
+        {nextLabel}
       </button>
     </div>
   );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ListingFormData } from './types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { BadgeInfo, Boxes, CheckCircle2, Layers3, Plus, Sparkles, X } from 'lucide-react';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
@@ -15,127 +16,245 @@ type Step1Props = {
 };
 
 const MOCK_CATEGORIES = [
-  { id: 1, name: 'Electronics', icon: '💻' },
-  { id: 2, name: 'Furniture', icon: '🛋️' },
-  { id: 3, name: 'Gaming', icon: '🎮' },
-  { id: 4, name: 'Fashion & Accessories', icon: '👗' },
-  { id: 5, name: 'Events & Party', icon: '🎉' },
-  { id: 6, name: 'Others', icon: '📦' },
+  { id: 1, name: 'Electronics', icon: '💻', description: 'Cameras, laptops, audio gear, and tech rentals.' },
+  { id: 2, name: 'Furniture', icon: '🛋️', description: 'Home, office, and staging pieces with presence.' },
+  { id: 3, name: 'Gaming', icon: '🎮', description: 'Consoles, controllers, and immersive play setups.' },
+  { id: 4, name: 'Fashion & Accessories', icon: '👗', description: 'Wearables, bags, and styling pieces for the moment.' },
+  { id: 5, name: 'Events & Party', icon: '🎉', description: 'Decor, sound, and event-ready essentials.' },
+  { id: 6, name: 'Others', icon: '📦', description: 'Anything else that deserves a clean listing.' },
 ];
+
+const CONDITIONS = ['New', 'Like new', 'Used', 'Damaged'] as const;
 
 export function Step1Basics({ data, updateData, onNext, hideFooter }: Step1Props) {
   const [title, setTitle] = useState(data.title || '');
   const [description, setDescription] = useState(data.description || '');
   const [categoryId, setCategoryId] = useState<number | undefined>(data.category_id);
   const [dailyRate, setDailyRate] = useState<string>(data.daily_rate ? String(data.daily_rate) : '');
+  const [condition, setCondition] = useState<ListingFormData['condition']>(data.condition);
+  const [specs, setSpecs] = useState<Record<string, string>>(data.specs || {});
+  const [newSpecKey, setNewSpecKey] = useState('');
+  const [newSpecValue, setNewSpecValue] = useState('');
+  const [isAddingSpec, setIsAddingSpec] = useState(false);
 
   const isValid = title.trim().length > 0 && description.trim().length > 0 && categoryId && dailyRate !== '' && Number(dailyRate) > 0;
 
+  const handleAddSpec = () => {
+    if (newSpecKey.trim() && newSpecValue.trim()) {
+      setSpecs({ ...specs, [newSpecKey.trim()]: newSpecValue.trim() });
+      setNewSpecKey('');
+      setNewSpecValue('');
+      setIsAddingSpec(false);
+    }
+  };
+
+  const handleRemoveSpec = (keyToRemove: string) => {
+    const next = { ...specs };
+    delete next[keyToRemove];
+    setSpecs(next);
+  };
+
   const handleNext = () => {
     if (isValid) {
-      updateData({ title, description, category_id: categoryId, daily_rate: Number(dailyRate) });
+      updateData({ title, description, category_id: categoryId, daily_rate: Number(dailyRate), condition, specs });
       onNext();
     }
   };
 
+  const conditionDescriptions: Record<string, string> = {
+    New: 'Unused and untouched.',
+    'Like new': 'Near-perfect condition.',
+    Used: 'Clean and well cared for.',
+    Damaged: 'Visible wear, still usable.',
+  };
+
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-2">
-      <div className="flex flex-col items-center text-center space-y-2 mt-2 mb-8">
-        <div className="text-accent font-semibold text-[10px] sm:text-xs tracking-widest uppercase">Step 1 of 4</div>
-        <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-white">Create Your Listing</h2>
-        <p className="text-white/50 text-xs sm:text-sm max-w-sm">Enter the basic information for your item. You will be able to add photos and availability later.</p>
+    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-2">
+      <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 text-center pt-2">
+        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/45">
+          <Sparkles className="h-3.5 w-3.5 text-accent" />
+          Step 1 of 4
+        </div>
+        <h2 className="font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">Start with the headline</h2>
+        <p className="max-w-2xl text-sm font-light text-white/45 sm:text-base">Make the item feel real before it feels like a form. Keep the title bold, category obvious, and the rest calm.</p>
       </div>
 
-      <div className="space-y-6">
-        {/* Title */}
-        <div className="space-y-2">
-          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Listing Title</label>
-          <div className="bg-[#161622] border border-[#2A2A35] hover:border-[#3A3A4A] rounded-xl relative focus-within:!border-accent focus-within:ring-1 focus-within:ring-accent/50 transition-all duration-300 overflow-hidden group">
+      <div className="space-y-8">
+        <div className="space-y-3">
+          <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Listing title</label>
+          <div className="rounded-[1.75rem] border border-white/10 bg-[#14141E] px-4 py-4 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.8)] transition-all duration-300 focus-within:border-accent/70 focus-within:shadow-[0_0_0_1px_rgba(57,255,20,0.2),0_20px_60px_-30px_rgba(0,0,0,0.8)]">
             <input
               type="text"
-              placeholder="e.g. Sony A7III Camera with Lens"
+              placeholder="What are you renting out?"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={100}
-              className="w-full bg-transparent border-none outline-none px-4 py-3.5 pr-16 text-foreground placeholder:text-foreground/30 focus:ring-0"
+              className="w-full border-none bg-transparent text-center font-display text-3xl font-bold tracking-tight text-white placeholder:text-white/18 outline-none sm:text-5xl"
             />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-foreground/30 group-focus-within:text-accent transition-colors">
+            <div className="mt-3 flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.3em] text-white/30">
+              <BadgeInfo className="h-3.5 w-3.5 text-accent" />
               {title.length}/100
             </div>
           </div>
         </div>
 
-        {/* Category */}
-        <div className="space-y-2">
-          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Category</label>
-          <div className="flex flex-wrap gap-2">
+        <div className="space-y-3">
+          <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Category</label>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {MOCK_CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setCategoryId(cat.id)}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 border-2',
+                  'group flex w-full items-center gap-4 rounded-[1.5rem] border px-4 py-4 text-left transition-all duration-300 transform-gpu',
                   categoryId === cat.id
-                    ? 'liquid-button !border-transparent !text-black shadow-lg shadow-accent/20 scale-105'
-                    : 'bg-[#161622] border-[#2A2A35] text-white/60 hover:border-[#3A3A4A] hover:text-white'
+                    ? 'border-accent/80 bg-accent/10 shadow-[0_0_0_1px_rgba(57,255,20,0.2),0_18px_40px_-24px_rgba(57,255,20,0.65)] scale-[1.01]'
+                    : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/[0.07] hover:-translate-y-0.5'
                 )}
               >
-                <span>{cat.icon}</span>
-                <span>{cat.name}</span>
+                <div className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-xl transition-all duration-300', categoryId === cat.id ? 'border-accent/40 bg-black/20' : 'border-white/10 bg-black/15')}>
+                  {cat.icon}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-display text-lg font-bold text-white">{cat.name}</span>
+                    {categoryId === cat.id && <CheckCircle2 className="h-4 w-4 text-accent" />}
+                  </div>
+                  <p className="mt-1 text-sm font-light text-white/45">{cat.description}</p>
+                </div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Description */}
-        <div className="space-y-2">
-          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Description</label>
-          <div className="bg-[#161622] border border-[#2A2A35] hover:border-[#3A3A4A] rounded-xl focus-within:!border-accent focus-within:ring-1 focus-within:ring-accent/50 transition-all duration-300 overflow-hidden group">
-            <textarea
-              placeholder="What's included? Condition? Any rules for renters?"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={1000}
-              rows={4}
-              className="w-full bg-transparent border-none outline-none px-4 py-3.5 text-foreground placeholder:text-foreground/30 focus:ring-0 resize-none text-sm leading-relaxed"
-            />
-            <div className="flex justify-end px-4 pb-2 text-xs text-foreground/30 group-focus-within:text-accent transition-colors">
-              {description.length}/1000
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Description</label>
+            <div className="rounded-[1.5rem] border border-white/10 bg-[#14141E] px-4 py-4 transition-all duration-300 focus-within:border-accent/70 focus-within:shadow-[0_0_0_1px_rgba(57,255,20,0.18)]">
+              <textarea
+                placeholder="A quick story, what’s included, and anything renters should know."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                maxLength={1000}
+                rows={5}
+                className="w-full resize-none border-none bg-transparent text-sm leading-relaxed text-white outline-none placeholder:text-white/25"
+              />
+              <div className="mt-2 flex justify-end text-[11px] uppercase tracking-[0.3em] text-white/28">{description.length}/1000</div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Price</label>
+            <div className="rounded-[1.5rem] border border-white/10 bg-[#14141E] px-4 py-4 transition-all duration-300 focus-within:border-accent/70 focus-within:shadow-[0_0_0_1px_rgba(57,255,20,0.18)]">
+              <div className="flex items-center gap-3 rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3">
+                <div className="flex h-10 items-center justify-center rounded-full border border-accent/20 bg-accent/10 px-3 text-xs font-bold tracking-[0.3em] text-accent">PKR</div>
+                <input
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  value={dailyRate}
+                  onChange={(e) => setDailyRate(e.target.value)}
+                  className="flex-1 border-none bg-transparent font-display text-2xl font-bold text-white outline-none placeholder:text-white/20"
+                />
+                <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/35">/ day</span>
+              </div>
+              <p className="mt-3 text-xs font-light text-white/35">Keep it simple. The price should read like a decision, not a calculation.</p>
             </div>
           </div>
         </div>
 
-        {/* Daily Rate */}
-        <div className="space-y-2">
-          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Daily Rate</label>
-          <div className="bg-[#161622] border border-[#2A2A35] hover:border-[#3A3A4A] rounded-xl flex items-stretch w-full md:w-64 overflow-hidden focus-within:!border-accent focus-within:ring-1 focus-within:ring-accent/50 transition-all duration-300">
-            <div className="flex items-center justify-center bg-[#1A1A2A] border-r border-[#2A2A35] px-4 font-bold text-accent text-sm">
-              PKR
+        <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Condition</label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {CONDITIONS.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setCondition(option)}
+                  className={cn(
+                    'rounded-[1.4rem] border px-4 py-4 text-left transition-all duration-300 transform-gpu',
+                    condition === option
+                      ? 'border-emerald-400/60 bg-emerald-400/10 shadow-[0_0_0_1px_rgba(74,222,128,0.2),0_18px_35px_-28px_rgba(74,222,128,0.7)] scale-[1.02]'
+                      : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/[0.07]'
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-display text-base font-bold text-white">{option}</div>
+                      <p className="mt-1 text-xs font-light text-white/45">{conditionDescriptions[option]}</p>
+                    </div>
+                    <div className={cn('h-3.5 w-3.5 rounded-full border transition-all duration-300', condition === option ? 'border-current bg-current' : 'border-white/25 bg-transparent')} />
+                  </div>
+                </button>
+              ))}
             </div>
-            <input
-              type="number"
-              placeholder="0"
-              min="0"
-              value={dailyRate}
-              onChange={(e) => setDailyRate(e.target.value)}
-              className="flex-grow bg-transparent border-none outline-none px-4 py-3.5 text-foreground placeholder:text-foreground/30 font-display text-lg focus:ring-0"
-            />
-            <div className="flex items-center pr-4 text-foreground/40 font-medium text-sm">/ day</div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Specs</label>
+              {!isAddingSpec && (
+                <button onClick={() => setIsAddingSpec(true)} className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-accent transition-colors hover:opacity-80">
+                  <Layers3 className="h-3.5 w-3.5" /> Add spec
+                </button>
+              )}
+            </div>
+
+            <div className="rounded-[1.5rem] border border-white/10 bg-[#14141E] p-4">
+              <div className="flex flex-wrap gap-2 min-h-[42px]">
+                {Object.entries(specs).map(([key, value]) => (
+                  <div key={key} className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
+                    <span className="text-white/45">{key}:</span>
+                    <span className="font-semibold">{value}</span>
+                    <button onClick={() => handleRemoveSpec(key)} className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-white/5 text-white/45 transition-colors hover:bg-red-500/15 hover:text-red-300">
+                      <span className="text-[11px] leading-none">×</span>
+                    </button>
+                  </div>
+                ))}
+                {Object.keys(specs).length === 0 && !isAddingSpec && (
+                  <p className="text-sm font-light italic text-white/28">Brand, year, size, model, anything that makes the listing feel specific.</p>
+                )}
+              </div>
+
+              {isAddingSpec && (
+                <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                  <input
+                    type="text"
+                    placeholder="Label"
+                    value={newSpecKey}
+                    onChange={(e) => setNewSpecKey(e.target.value)}
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-accent/70"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Value"
+                    value={newSpecValue}
+                    onChange={(e) => setNewSpecValue(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddSpec()}
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-accent/70"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => setIsAddingSpec(false)} className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-white/70 transition-colors hover:bg-white/5">Cancel</button>
+                    <button onClick={handleAddSpec} disabled={!newSpecKey.trim() || !newSpecValue.trim()} className="rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40 liquid-button active:scale-95 transform-gpu">
+                      Add
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Hidden trigger button — clicked by card footer */}
       <button id="step-next-trigger" onClick={handleNext} className="hidden" />
 
-      {/* Inline footer only when not inside modal card */}
       {!hideFooter && (
         <div className="mt-4 flex justify-end">
           <button
             onClick={handleNext}
             disabled={!isValid}
             className={cn(
-              'px-8 py-3 rounded-full font-bold transition-all duration-300',
+              'px-8 py-3 rounded-full font-bold transition-all duration-300 active:scale-95 transform-gpu',
               isValid ? 'liquid-button' : 'glass-spotlight opacity-50 cursor-not-allowed'
             )}
           >

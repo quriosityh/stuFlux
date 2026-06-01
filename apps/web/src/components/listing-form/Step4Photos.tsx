@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ListingFormData } from './types';
 import { StepIndicator } from './StepIndicator';
 import { clsx } from 'clsx';
@@ -16,6 +16,9 @@ type Step4Props = {
   onSubmit: (finalData: Partial<ListingFormData>) => void;
   onBack: () => void;
   isSubmitting: boolean;
+  published?: boolean;
+  publishedId?: string | undefined;
+  onPublishComplete?: (id?: string) => void;
 };
 
 const CATEGORY_MAP: Record<number, string> = {
@@ -27,7 +30,7 @@ const CATEGORY_MAP: Record<number, string> = {
   6: 'Others',
 };
 
-export function Step4Photos({ data, onSubmit, onBack, isSubmitting }: Step4Props) {
+export function Step4Photos({ data, onSubmit, onBack, isSubmitting, published = false, publishedId, onPublishComplete }: Step4Props) {
   const [photos, setPhotos] = useState<string[]>(data.photo_urls || []);
   const [activePhoto, setActivePhoto] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
@@ -52,9 +55,20 @@ export function Step4Photos({ data, onSubmit, onBack, isSubmitting }: Step4Props
     });
   };
 
-  const handleSubmit = () => onSubmit({ photo_urls: photos });
+  const handleSubmit = (status: ListingFormData['status']) => onSubmit({ photo_urls: photos, status });
+  const handleSaveDraft = () => handleSubmit('draft');
+  const handlePublishNow = () => handleSubmit('active');
 
   const categoryName = data.category_id ? CATEGORY_MAP[data.category_id] : null;
+
+  useEffect(() => {
+    if (published) {
+      const t = setTimeout(() => {
+        onPublishComplete && onPublishComplete(publishedId);
+      }, 1800);
+      return () => clearTimeout(t);
+    }
+  }, [published, publishedId, onPublishComplete]);
 
   if (showPreview) {
     return <PreviewMode data={data} photos={photos} categoryName={categoryName} onBack={() => setShowPreview(false)} onSubmit={handleSubmit} isSubmitting={isSubmitting} />;
@@ -65,6 +79,53 @@ export function Step4Photos({ data, onSubmit, onBack, isSubmitting }: Step4Props
       {/* Background ambient glow matching the image */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-accent/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
+
+      {published && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4 backdrop-blur-xl">
+          <div className="relative w-full max-w-xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#101019]/95 p-6 shadow-[0_30px_80px_-25px_rgba(57,255,20,0.5)] sm:p-8">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(57,255,20,0.14),transparent_45%)]" />
+            <div className="relative space-y-5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.35em] text-emerald-300">
+                Your item is live
+              </div>
+              <div className="space-y-2">
+                <h2 className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">Published successfully</h2>
+                <p className="max-w-lg text-sm font-light text-white/55">A clean handoff moment before we open your listing. No confetti, just a sharp finish.</p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
+                <div className="aspect-[4/5] overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/5">
+                  {photos[0] ? (
+                    <img src={photos[0]} alt="Published preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-white/30">No cover photo</div>
+                  )}
+                </div>
+                <div className="flex flex-col justify-between gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/35">Ready for renters</p>
+                    <h3 className="mt-2 font-display text-2xl font-bold text-white">{data.title || 'Untitled listing'}</h3>
+                    <p className="mt-2 text-sm text-white/50">PKR {data.daily_rate ? data.daily_rate.toLocaleString() : '—'} per day</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs text-white/60">
+                    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">{categoryName || 'Category set'}</span>
+                    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">{photos.length} photo{photos.length === 1 ? '' : 's'}</span>
+                    <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-emerald-300">Live now</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-white/35">
+                <span>Preparing your listing page</span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Updating preview
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="w-full relative z-10 bg-[#0D0D16]/90 backdrop-blur-xl border border-[#2A2A35] rounded-[2rem] shadow-2xl flex flex-col overflow-hidden" style={{ maxWidth: '820px' }}>
 
@@ -83,8 +144,8 @@ export function Step4Photos({ data, onSubmit, onBack, isSubmitting }: Step4Props
         {/* Body — scrollable like steps 1–3 */}
         <div className="px-4 sm:px-10 py-6 sm:py-8 space-y-6 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ maxHeight: 'calc(100vh - 280px)' }}>
           <div className="flex flex-col items-center text-center space-y-2 mb-8">
-            <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-white">Showcase Your Item</h2>
-            <p className="text-white/50 text-xs sm:text-sm max-w-sm">Add up to 5 clear photos. The first photo is your cover.</p>
+            <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-white">Review &amp; publish</h2>
+            <p className="text-white/50 text-xs sm:text-sm max-w-sm">Make a final pass, then choose whether to save a draft or make it live.</p>
           </div>
 
           {/* Hidden file input — no capture attribute so it works on desktop too */}
@@ -159,23 +220,32 @@ export function Step4Photos({ data, onSubmit, onBack, isSubmitting }: Step4Props
             Preview <span className="hidden sm:inline">Listing </span>→
           </button>
 
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting || photos.length === 0}
-            className={cn(
-              'px-6 sm:px-8 py-2.5 sm:py-3 rounded-full font-bold text-xs sm:text-sm flex items-center gap-2',
-              isSubmitting || photos.length === 0 ? 'opacity-40 cursor-not-allowed bg-white/10 text-white/50' : 'liquid-button text-black'
-            )}
-          >
-            {isSubmitting ? (
-              <span className="animate-pulse">Publishing...</span>
-            ) : (
-              <>
-                <UploadCloud className="w-4 h-4" />
-                {data.status === 'active' ? 'Publish Listing' : 'Save Draft'}
-              </>
-            )}
-          </button>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <button
+              onClick={handleSaveDraft}
+              disabled={isSubmitting || photos.length === 0}
+              className="flex-1 sm:flex-none px-5 sm:px-6 py-2.5 sm:py-3 rounded-full font-semibold text-xs sm:text-sm border border-white/15 text-white/70 hover:text-white hover:border-white/40 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Save Draft
+            </button>
+            <button
+              onClick={handlePublishNow}
+              disabled={isSubmitting || photos.length === 0}
+              className={cn(
+                'flex-1 sm:flex-none px-6 sm:px-8 py-2.5 sm:py-3 rounded-full font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-transform duration-150 transform-gpu active:scale-95',
+                isSubmitting || photos.length === 0 ? 'opacity-40 cursor-not-allowed bg-white/10 text-white/50' : 'liquid-button text-black'
+              )}
+            >
+              {isSubmitting && publishMoment ? (
+                <span className="animate-pulse">Publishing...</span>
+              ) : (
+                <>
+                  <UploadCloud className="w-4 h-4" />
+                  Publish Now
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -196,7 +266,7 @@ function PreviewMode({
   photos: string[];
   categoryName: string | null;
   onBack: () => void;
-  onSubmit: () => void;
+  onSubmit: (status: ListingFormData['status']) => void;
   isSubmitting: boolean;
 }) {
   const [activeIdx, setActiveIdx] = useState(0);
@@ -470,21 +540,21 @@ function PreviewMode({
 
           <div className="flex gap-3 w-full sm:w-auto order-1 sm:order-2">
             <button
-              onClick={() => onSubmit()}
+              onClick={() => onSubmit('draft')}
               disabled={isSubmitting}
               className="flex-1 sm:flex-none px-6 py-3 rounded-full font-semibold text-sm border-2 border-foreground/20 text-foreground/70 hover:border-foreground/50 hover:text-foreground transition-all duration-200 disabled:opacity-50"
             >
-              💾 Save as Draft
+              Save Draft
             </button>
             <button
-              onClick={() => onSubmit()}
+              onClick={() => onSubmit('active')}
               disabled={isSubmitting}
               className={cn(
                 'flex-1 sm:flex-none px-8 py-3 rounded-full font-bold text-sm flex items-center justify-center gap-2',
                 isSubmitting ? 'opacity-50 cursor-not-allowed bg-foreground/10' : 'liquid-button text-black'
               )}
             >
-              {isSubmitting ? <span className="animate-pulse">Publishing...</span> : <><UploadCloud className="w-4 h-4" /> Publish Listing</>}
+              {isSubmitting ? <span className="animate-pulse">Publishing...</span> : <><UploadCloud className="w-4 h-4" /> Publish Now</>}
             </button>
           </div>
         </div>
