@@ -1,0 +1,301 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
+import { Bell, User, Plus, Menu, Search, Moon, Sun } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { SearchBar, ActiveTab } from '../explore/SearchBar';
+
+// Animation configs for slow, obvious transitions
+const transitionConfig = { duration: 0.4, ease: [0.16, 1, 0.3, 1] };
+
+export function NavHeader() {
+  const pathname = usePathname();
+  const isExplorePage = pathname === '/';
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    // Check initial theme from HTML data attribute or OS preference
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
+                  document.documentElement.classList.contains('dark') ||
+                  (document.documentElement.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const initialTheme = isDark ? 'dark' : 'light';
+    setTheme(initialTheme);
+    document.documentElement.setAttribute('data-theme', initialTheme);
+    document.documentElement.classList.toggle('dark', isDark);
+    
+    let lastScrollY = window.scrollY;
+    
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+      
+      // Only close the search dropdown if the user ACTUALLY scrolls (e.g., > 10px) while it's open
+      if (activeTab !== null && Math.abs(window.scrollY - lastScrollY) > 10) {
+        setActiveTab(null);
+      }
+      lastScrollY = window.scrollY;
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Initial check for isScrolled (do not call handleScroll to prevent instant collapse)
+    setIsScrolled(window.scrollY > 50);
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [activeTab]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
+  // Expand if we are at top of explore page OR if a search tab is actively open
+  const isExpanded = (isExplorePage && !isScrolled) || activeTab !== null;
+
+  const navItems = [
+    { name: 'Explore', href: '/' },
+    { name: 'Chats', href: '/messages' },
+    { name: 'Activity', href: '/activity' },
+  ];
+
+  // Check if PDP sticky nav wants to replace us
+  const [hiddenByPDP, setHiddenByPDP] = useState(false);
+
+  useEffect(() => {
+    const checkPDP = () => {
+      setHiddenByPDP(document.body.hasAttribute('data-pdp-nav'));
+    };
+    
+    // Use MutationObserver to watch body attributes
+    const observer = new MutationObserver(checkPDP);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-pdp-nav'] });
+    checkPDP();
+    
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <nav
+      className="!fixed top-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-b border-border/10 transition-all duration-300"
+      style={{ transform: hiddenByPDP ? 'translateY(-100%)' : 'translateY(0)' }}
+    >
+      {/* Background Dimmer when search is forced open while scrolled */}
+      <AnimatePresence>
+        {activeTab !== null && isScrolled && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-background/60 backdrop-blur-sm -z-10 h-screen"
+            onClick={() => setActiveTab(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="w-[95%] max-w-[1600px] mx-auto py-3 relative z-10">
+        {/* ROW 1: Logo, Nav/Pill, Actions */}
+        <div className="flex items-center justify-between min-h-[48px]">
+          {/* LEFT: Logo */}
+          <Link href="/" className="font-syne font-bold text-3xl tracking-tighter flex items-center hover:opacity-80 transition-opacity z-20 w-48 shrink-0">
+            <span className="text-zinc-800 dark:text-gray-300 drop-shadow-sm">Stu</span>
+            <span className="bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] bg-clip-text text-transparent drop-shadow-sm">Flux</span>
+          </Link>
+
+          {/* CENTER: Crossfading Links vs Pill */}
+          <div className="flex-1 flex justify-center items-center relative h-12 z-20">
+            <AnimatePresence initial={false}>
+              {isExpanded ? (
+                /* Expanded Links */
+                <motion.div
+                  key="desktop-links"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={transitionConfig}
+                  className="absolute inset-0 flex items-center justify-center gap-8 font-manrope font-semibold text-sm"
+                >
+                  {navItems.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link 
+                        key={item.name} 
+                        href={item.href}
+                        className={cn(
+                          "relative px-1 py-2 transition-colors glitch-text",
+                          isActive ? "text-[var(--accent)]" : "text-foreground/70 hover:text-foreground"
+                        )}
+                      >
+                        {item.name}
+                        {isActive && (
+                          <motion.div 
+                            layoutId="nav-indicator"
+                            className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent)] rounded-full"
+                          />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </motion.div>
+              ) : (
+                /* Collapsed Search Pill */
+                <motion.div
+                  key="collapsed-pill"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={transitionConfig}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  <div className="flex items-center chrome-card rounded-full shadow-sm hover:shadow-md cursor-pointer border border-border/10 overflow-hidden divide-x divide-border/10">
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isExplorePage) setActiveTab('where');
+                        else window.location.href = '/';
+                      }}
+                      className="px-4 py-2.5 text-sm font-semibold truncate max-w-[120px] hover:bg-surface transition-colors"
+                    >
+                      Anywhere
+                    </span>
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isExplorePage) setActiveTab('when');
+                        else window.location.href = '/';
+                      }}
+                      className="px-4 py-2.5 text-sm font-semibold truncate max-w-[120px] hover:bg-surface transition-colors"
+                    >
+                      Anytime
+                    </span>
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isExplorePage) setActiveTab('what');
+                        else window.location.href = '/';
+                      }}
+                      className="px-4 py-2.5 text-sm text-foreground/60 truncate max-w-[120px] hover:bg-surface transition-colors"
+                    >
+                      Search gear...
+                    </span>
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isExplorePage) setActiveTab('what');
+                        else window.location.href = '/';
+                      }}
+                      className="pr-2 pl-3 py-2 hover:bg-surface transition-colors"
+                    >
+                      <div className="bg-[var(--accent)] text-black p-1.5 rounded-full">
+                        <Search size={14} strokeWidth={3} />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* RIGHT: Actions */}
+          <div className="flex items-center justify-end gap-3 w-48 z-20 shrink-0">
+            {/* Action Crossfade container */}
+            <div className="relative flex items-center justify-end w-32 h-10 mr-2">
+              <AnimatePresence initial={false}>
+                {isExpanded ? (
+                  <motion.div 
+                    key="actions-expanded"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={transitionConfig}
+                    className="absolute right-0 flex items-center gap-2"
+                  >
+                    <button 
+                      onClick={toggleTheme}
+                      className="p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors relative"
+                    >
+                      {theme === 'dark' ? (
+                        <Sun size={20} className="text-foreground/80" />
+                      ) : (
+                        <Moon size={20} className="text-foreground/80" />
+                      )}
+                    </button>
+                    <button className="p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors relative">
+                      <Bell size={20} className="text-foreground/80" />
+                      <span className="absolute top-2 right-2 w-2 h-2 bg-[var(--accent)] rounded-full border border-background"></span>
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="actions-collapsed"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={transitionConfig}
+                    className="absolute right-0 flex items-center gap-2"
+                  >
+                    <button 
+                      onClick={toggleTheme}
+                      className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 border border-transparent transition-colors"
+                    >
+                      {theme === 'dark' ? (
+                        <Sun size={20} className="text-foreground/80" />
+                      ) : (
+                        <Moon size={20} className="text-foreground/80" />
+                      )}
+                    </button>
+                    <button className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 border border-border/10 transition-colors">
+                      <Menu size={20} className="text-foreground/80" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <Link href="/post" className={cn(
+              "hyper-liquid inline-flex items-center justify-center font-semibold transition-all overflow-hidden whitespace-nowrap gap-2 text-sm px-4 py-2 rounded-full relative z-10"
+            )}>
+              <Plus size={18} strokeWidth={2.5} />
+            </Link>
+
+            <div className="relative group z-10">
+              <button className="w-10 h-10 rounded-full border border-border/20 overflow-hidden hover:ring-2 hover:ring-[var(--accent)] transition-all cursor-pointer bg-gradient-to-br from-background to-surface flex items-center justify-center">
+                <User size={18} className="opacity-70 group-hover:opacity-100 transition-opacity" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        {/* ROW 2: Expanded Search Bar */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              key="search-bar"
+              initial={{ height: 0, opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ height: 100, opacity: 1, y: 0, scale: 1 }}
+              exit={{ height: 0, opacity: 0, y: -30, scale: 0.85 }}
+              transition={transitionConfig}
+              className="w-full flex justify-center mt-2 relative z-10 overflow-visible"
+            >
+              <div className="absolute top-2 w-full flex justify-center origin-top">
+                <SearchBar activeTab={activeTab} setActiveTab={setActiveTab} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </nav>
+  );
+}
