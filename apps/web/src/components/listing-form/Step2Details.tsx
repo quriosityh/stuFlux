@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ListingFormData } from './types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Plus, X } from 'lucide-react';
+import { MapPin, ShieldCheck, Truck } from 'lucide-react';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
@@ -16,175 +16,129 @@ type Step2Props = {
   hideFooter?: boolean;
 };
 
-const CONDITIONS = ['New', 'Like new', 'Used', 'Damaged'] as const;
-
 export function Step2Details({ data, updateData, onNext, onBack, hideFooter }: Step2Props) {
-  const [specs, setSpecs] = useState<Record<string, string>>(data.specs || {});
-  const [status, setStatus] = useState<'draft' | 'active'>(data.status || 'active');
-  const [condition, setCondition] = useState<ListingFormData['condition']>(data.condition);
-  const [newSpecKey, setNewSpecKey] = useState('');
-  const [newSpecValue, setNewSpecValue] = useState('');
-  const [isAddingSpec, setIsAddingSpec] = useState(false);
+  const [city, setCity] = useState(data.city || '');
+  const [address, setAddress] = useState(data.address || '');
+  const [minDays, setMinDays] = useState<string>(data.min_rental_days ? String(data.min_rental_days) : '1');
+  const [maxDays, setMaxDays] = useState<string>(data.max_rental_days ? String(data.max_rental_days) : '30');
+  const [deliveryAvailable, setDeliveryAvailable] = useState(data.delivery_available || false);
+  const [deliveryFee, setDeliveryFee] = useState<string>(data.delivery_fee ? String(data.delivery_fee) : '');
+  const [securityDeposit, setSecurityDeposit] = useState<string>(data.security_deposit ? String(data.security_deposit) : '');
 
-  const handleAddSpec = () => {
-    if (newSpecKey.trim() && newSpecValue.trim()) {
-      setSpecs({ ...specs, [newSpecKey.trim()]: newSpecValue.trim() });
-      setNewSpecKey('');
-      setNewSpecValue('');
-      setIsAddingSpec(false);
+  const isValid = city.trim().length > 0 && Number(minDays) > 0 && Number(maxDays) >= Number(minDays);
+
+  const handleNext = () => {
+    if (isValid) {
+      updateData({
+        city,
+        address,
+        min_rental_days: Number(minDays),
+        max_rental_days: Number(maxDays),
+        delivery_available: deliveryAvailable,
+        delivery_fee: deliveryAvailable ? Number(deliveryFee) : 0,
+        security_deposit: securityDeposit ? Number(securityDeposit) : 0,
+      });
+      onNext();
     }
   };
 
-  const handleRemoveSpec = (keyToRemove: string) => {
-    const newSpecs = { ...specs };
-    delete newSpecs[keyToRemove];
-    setSpecs(newSpecs);
-  };
-
-  const handleNext = () => {
-    updateData({ specs, status, condition });
-    onNext();
-  };
-
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-2">
-      <div className="flex flex-col items-center text-center space-y-2 mt-2 mb-8">
-        <div className="text-accent font-semibold text-[10px] sm:text-xs tracking-widest uppercase">Step 2 of 4</div>
-        <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-white">Item Details</h2>
-        <p className="text-white/50 text-xs sm:text-sm max-w-sm">Add specific details to build trust with renters and make your item stand out.</p>
+    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-2">
+      <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 text-center pt-2">
+        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/45">
+          <MapPin className="h-3.5 w-3.5 text-accent" />
+          Step 2 of 4
+        </div>
+        <h2 className="font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">Make the logistics feel effortless</h2>
+        <p className="max-w-2xl text-sm font-light text-white/45 sm:text-base">Use this step to set where the item lives, how long it can be rented, and whether delivery exists at all.</p>
       </div>
 
-      <div className="space-y-6">
-
-        {/* Item Condition */}
-        <div className="space-y-2">
-          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Item Condition</label>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {CONDITIONS.map(cond => (
-              <button
-                key={cond}
-                onClick={() => setCondition(cond)}
-                className={cn(
-                  'py-3 px-4 rounded-xl font-semibold transition-all duration-200 text-sm border',
-                  condition === cond
-                    ? 'liquid-button !border-transparent !text-black shadow-lg shadow-accent/20 scale-105'
-                    : 'bg-[#161622] border-[#2A2A35] text-white/60 hover:border-[#3A3A4A] hover:text-white'
-                )}
-              >
-                {cond}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Specifications */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">
-              Specifications <span className="normal-case text-white/30 font-normal ml-1">(Optional)</span>
-            </label>
-            {!isAddingSpec && (
-              <button
-                onClick={() => setIsAddingSpec(true)}
-                className="text-accent text-xs font-bold flex items-center gap-1 transition-colors hover:opacity-80"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Spec
-              </button>
-            )}
-          </div>
-
-          {/* Spec Tags */}
-          <div className="flex flex-wrap gap-2 min-h-[36px]">
-            {Object.entries(specs).map(([key, value]) => (
-              <div key={key} className="bg-[#161622] border border-[#2A2A35] px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm text-white">
-                <span className="text-white/50 font-medium">{key}:</span>
-                <span className="font-semibold">{value}</span>
-                <button
-                  onClick={() => handleRemoveSpec(key)}
-                  className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center hover:bg-red-500/20 hover:text-red-400 transition-colors ml-1"
-                >
-                  <X className="w-2.5 h-2.5" />
-                </button>
+      <div className="space-y-8">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Location</label>
+            <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-[#14141E] p-4">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/35">City</p>
+                <input type="text" placeholder="e.g. Lahore" value={city} onChange={(e) => setCity(e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-accent/70" />
               </div>
-            ))}
-            {Object.keys(specs).length === 0 && !isAddingSpec && (
-              <p className="text-white/30 text-xs sm:text-sm italic">e.g. Brand: Sony, Year: 2022, Weight: 650g</p>
-            )}
-          </div>
-
-          {/* Inline Add Form */}
-          {isAddingSpec && (
-            <div className="bg-[#161622] border border-[#2A2A35] rounded-xl p-3 flex flex-col sm:flex-row gap-2 animate-in zoom-in-95 duration-200">
-              <input
-                type="text"
-                placeholder="Label (e.g. Brand)"
-                value={newSpecKey}
-                onChange={(e) => setNewSpecKey(e.target.value)}
-                className="flex-1 bg-[#1A1A2A] border border-[#2A2A35] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent text-white placeholder:text-white/30"
-              />
-              <input
-                type="text"
-                placeholder="Value (e.g. Sony)"
-                value={newSpecValue}
-                onChange={(e) => setNewSpecValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddSpec()}
-                className="flex-1 bg-[#1A1A2A] border border-[#2A2A35] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent text-white placeholder:text-white/30"
-              />
-              <div className="flex gap-2 mt-2 sm:mt-0">
-                <button
-                  onClick={() => setIsAddingSpec(false)}
-                  className="flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm font-semibold bg-white/5 hover:bg-white/10 text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddSpec}
-                  disabled={!newSpecKey.trim() || !newSpecValue.trim()}
-                  className="flex-1 sm:flex-none liquid-button !py-2 !rounded-lg text-sm font-bold disabled:opacity-50 transition-colors"
-                >
-                  Add
-                </button>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/35">Area <span className="text-white/20">(optional)</span></p>
+                <input type="text" placeholder="e.g. Gulberg III" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-accent/70" />
               </div>
             </div>
-          )}
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Duration</label>
+            <div className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-[#14141E] p-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/35">Min days</p>
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 transition-all duration-300 focus-within:border-accent/70">
+                  <input type="number" min="1" value={minDays} onChange={(e) => setMinDays(e.target.value)} className="w-full border-none bg-transparent text-sm text-white outline-none placeholder:text-white/25" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/35">Max days</p>
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 transition-all duration-300 focus-within:border-accent/70">
+                  <input type="number" min={minDays} value={maxDays} onChange={(e) => setMaxDays(e.target.value)} className="w-full border-none bg-transparent text-sm text-white outline-none placeholder:text-white/25" />
+                </div>
+              </div>
+              {Number(maxDays) < Number(minDays) && <p className="text-xs text-red-300 sm:col-span-2">Max days must be at least the minimum days.</p>}
+            </div>
+          </div>
         </div>
 
-        {/* Visibility Status */}
-        <div className="space-y-2">
-          <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/50">Visibility</label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
-              onClick={() => setStatus('draft')}
-              className={cn(
-                'rounded-xl p-4 flex flex-col items-start gap-1 text-left transition-all duration-200 border',
-                status === 'draft'
-                  ? 'border-accent bg-accent/5 shadow-[0_0_15px_rgba(57,255,20,0.15)] text-white'
-                  : 'border-[#2A2A35] bg-[#161622] hover:border-[#3A3A4A] text-white/70'
-              )}
-            >
-              <div className={cn('w-3.5 h-3.5 rounded-full border-2 mb-1 transition-colors', status === 'draft' ? 'border-accent bg-accent' : 'border-[#3A3A4A]')} />
-              <span className="font-bold text-sm">Save as Draft</span>
-              <span className="text-xs text-white/40">Hidden — publish later.</span>
-            </button>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Deposit</label>
+            <div className="rounded-[1.5rem] border border-white/10 bg-[#14141E] p-4">
+              <div className="flex items-center gap-3 rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3 focus-within:border-accent/70">
+                <div className="flex h-10 items-center justify-center rounded-full border border-accent/20 bg-accent/10 px-3 text-xs font-bold tracking-[0.3em] text-accent">PKR</div>
+                <input type="number" min="0" placeholder="0" value={securityDeposit} onChange={(e) => setSecurityDeposit(e.target.value)} className="flex-1 border-none bg-transparent font-display text-xl font-bold text-white outline-none placeholder:text-white/20" />
+              </div>
+              <p className="mt-3 text-xs font-light text-white/35">Optional refundable deposit, shown clearly in the review step.</p>
+            </div>
+          </div>
 
-            <button
-              onClick={() => setStatus('active')}
-              className={cn(
-                'rounded-xl p-4 flex flex-col items-start gap-1 text-left transition-all duration-200 border',
-                status === 'active'
-                  ? 'border-accent bg-accent/5 shadow-[0_0_15px_rgba(57,255,20,0.15)] text-white'
-                  : 'border-[#2A2A35] bg-[#161622] hover:border-[#3A3A4A] text-white/70'
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Delivery</label>
+            <div className="rounded-[1.5rem] border border-white/10 bg-[#14141E] p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="font-display text-base font-bold text-white">Offer delivery to renter?</p>
+                  <p className="text-sm font-light text-white/45">Set a fee if you are willing to drop the item off yourself.</p>
+                </div>
+                <button
+                  onClick={() => setDeliveryAvailable(!deliveryAvailable)}
+                  className="relative h-7 w-14 flex-shrink-0 rounded-full transition-all duration-300"
+                  style={{ backgroundColor: deliveryAvailable ? 'var(--accent)' : 'rgba(255,255,255,0.15)' }}
+                >
+                  <div className={cn('absolute top-1 w-5 h-5 rounded-full bg-white transition-transform duration-300 shadow', deliveryAvailable ? 'translate-x-7' : 'translate-x-1')} />
+                </button>
+              </div>
+
+              {deliveryAvailable && (
+                <div className="mt-4 space-y-2 border-t border-white/10 pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/35">Delivery fee</p>
+                  <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 focus-within:border-accent/70">
+                    <div className="flex h-10 items-center justify-center rounded-full border border-accent/20 bg-accent/10 px-3 text-xs font-bold tracking-[0.3em] text-accent">PKR</div>
+                    <input type="number" min="0" placeholder="0" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} className="flex-1 border-none bg-transparent text-sm text-white outline-none placeholder:text-white/25" />
+                  </div>
+                </div>
               )}
-            >
-              <div className={cn('w-3.5 h-3.5 rounded-full border-2 mb-1 transition-colors', status === 'active' ? 'border-accent bg-accent' : 'border-[#3A3A4A]')} />
-              <span className="font-bold text-sm">Publish Now</span>
-              <span className="text-xs text-white/40">Go live immediately.</span>
-            </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-white/55">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-2"><ShieldCheck className="h-4 w-4 text-accent" /> Clear location</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-2"><Truck className="h-4 w-4 text-accent" /> Delivery optional</span>
           </div>
         </div>
       </div>
 
-      {/* Hidden trigger for card footer */}
       <button id="step-next-trigger" onClick={handleNext} className="hidden" />
 
       {!hideFooter && (
@@ -192,8 +146,8 @@ export function Step2Details({ data, updateData, onNext, onBack, hideFooter }: S
           <button onClick={onBack} className="px-6 py-3 rounded-full font-bold transition-colors hover:text-accent hover:bg-foreground/5">
             ← Back
           </button>
-          <button onClick={handleNext} className="px-8 py-3 rounded-full font-bold liquid-button">
-            Next: Availability
+          <button onClick={handleNext} disabled={!isValid} className={cn('px-8 py-3 rounded-full font-bold transition-all duration-300 active:scale-95 transform-gpu', isValid ? 'liquid-button' : 'glass-spotlight opacity-50 cursor-not-allowed')}>
+            Next: Photos
           </button>
         </div>
       )}
