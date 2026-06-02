@@ -11,7 +11,7 @@ export function MobileNav() {
   const navItems = [
     { name: 'Discover', href: '/', icon: Compass },
     { name: 'DMs', href: '/messages', icon: Send },
-    { name: 'Drop', href: '/post', icon: Plus, isDrop: true },
+    { name: 'Drop', href: '/listings/new', icon: Plus, isDrop: true },
     { name: 'Activity', href: '/activity', icon: Activity },
     { name: 'You', href: '/profile', icon: UserRound },
   ];

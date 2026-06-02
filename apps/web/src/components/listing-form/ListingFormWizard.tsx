@@ -1,13 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ListingFormData } from './types';
 import { StepIndicator } from './StepIndicator';
-import { Step1Basics } from './Step1Basics';
-import { Step2Details } from './Step2Details';
-import { Step3Availability } from './Step3Availability';
-import { Step4Photos } from './Step4Photos';
+
+// Step components (to be implemented)
+import { Step1Photos } from './steps/Step1Photos';
+import { Step2CategoryTitle } from './steps/Step2CategoryTitle';
+import { Step3DescriptionSpecs } from './steps/Step3DescriptionSpecs';
+import { Step4PricingTerms } from './steps/Step4PricingTerms';
+import { Step5Area } from './steps/Step5Area';
+import { Step6Availability } from './steps/Step6Availability';
+import { Step7Review } from './steps/Step7Review';
 
 type ListingFormWizardProps = {
   mode: 'create' | 'edit';
@@ -15,134 +20,148 @@ type ListingFormWizardProps = {
   defaultValues?: Partial<ListingFormData>;
 };
 
+const INITIAL_DATA: ListingFormData = {
+  photo_urls: [],
+  category_id: 0,
+  title: '',
+  description: '',
+  condition: '',
+  specs: {},
+  daily_rate: 0,
+  security_deposit: 0,
+  min_rental_days: 1,
+  max_rental_days: 30,
+  delivery_available: false,
+  delivery_fee: 0,
+  rental_rules: '',
+  area: '',
+  blocked_dates: [],
+  status: 'draft',
+};
+
 export function ListingFormWizard({ mode, listingId, defaultValues = {} }: ListingFormWizardProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<Partial<ListingFormData>>(defaultValues);
+  const [formData, setFormData] = useState<ListingFormData>({ ...INITIAL_DATA, ...defaultValues });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const updateFormData = (newData: Partial<ListingFormData>) => {
     setFormData(prev => ({ ...prev, ...newData }));
   };
 
-  const handleNext = () => setCurrentStep(prev => Math.min(prev + 1, 4));
-  const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+  // Periodic Auto-save (debounced 5 seconds)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // In a real app, this would be a PUT request to /listings/:id
+      // with { ...formData, status: 'draft' }
+      if (formData.photo_urls.length > 0) {
+        console.log('[Auto-save] Draft saved:', formData.title || 'Untitled');
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [formData]);
 
-  const handleSubmit = async (finalData: Partial<ListingFormData>) => {
-    const completeData = { ...formData, ...finalData };
+  const handleNext = () => setCurrentStep(prev => Math.min(prev + 1, 7));
+  const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+  const handleSkip = () => handleNext(); // For optional steps like availability
+
+  const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      console.log('Submitting data:', completeData);
+      console.log('Publishing listing:', { ...formData, status: 'active' });
+      // API call to publish
       await new Promise(resolve => setTimeout(resolve, 1500));
       const mockId = listingId || 'new-listing-123';
-      router.push(`/listings/${mockId}`);
+      router.push(`/listings/${mockId}` as any);
     } catch (error) {
-      console.error('Failed to submit listing:', error);
+      console.error('Failed to publish listing:', error);
       setIsSubmitting(false);
     }
   };
 
-  // Step 4 (Photos+Preview) is full-screen — render it differently
-  if (currentStep === 4) {
+  // Step 7 Review uses full width
+  if (currentStep === 7) {
     return (
-      <Step4Photos
-        data={formData}
-        onSubmit={handleSubmit}
-        onBack={handleBack}
-        isSubmitting={isSubmitting}
-      />
+      <div className="min-h-screen bg-[#0B0B13] pb-24">
+        <div className="max-w-5xl mx-auto px-4 pt-8">
+          <StepIndicator currentStep={currentStep} totalSteps={7} />
+          <div className="mt-8">
+            <Step7Review
+              data={formData}
+              onBack={handleBack}
+              onSubmit={handleSubmit}
+              isSubmitting={isSubmitting}
+            />
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    /* Dark overlay background */
-    <div className="min-h-screen relative flex items-start justify-center pt-8 sm:pt-12 pb-16 px-4 bg-[#0B0B13] overflow-hidden">
-      {/* Background ambient glow matching the image */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-accent/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="min-h-screen bg-[#0B0B13] text-white flex justify-center py-6 sm:py-12 px-4">
+      {/* Container */}
+      <div className="w-full max-w-[1000px] flex flex-col lg:flex-row gap-8 lg:gap-12">
+        
+        {/* Left Side: Progress & Preview (Sticky on desktop) */}
+        <div className="lg:w-1/3 flex flex-col gap-6 lg:sticky lg:top-12 h-fit">
+          <div className="bg-[#0D0D16]/90 backdrop-blur-xl border border-[#2A2A35] rounded-[2rem] p-6 shadow-2xl">
+            <h1 className="text-xl font-bold mb-6 text-white/90">
+              {mode === 'create' ? 'Create a Listing' : 'Edit Listing'}
+            </h1>
+            <StepIndicator currentStep={currentStep} totalSteps={7} />
+          </div>
 
-      {/* Centered modal card */}
-      <div
-        className="w-full relative z-10 bg-[#0D0D16]/90 backdrop-blur-xl border border-[#2A2A35] rounded-[2rem] shadow-2xl flex flex-col overflow-hidden"
-        style={{ maxWidth: '820px' }}
-      >
-
-        {/* ── Step Indicator inside card ── */}
-        <div className="px-4 sm:px-8 pt-6 sm:pt-10 pb-2">
-          <StepIndicator currentStep={currentStep} totalSteps={4} />
+          {/* Live Preview Card */}
+          <div className="hidden lg:block bg-[#0D0D16]/90 backdrop-blur-xl border border-[#2A2A35] rounded-[2rem] p-6 shadow-2xl">
+            <h3 className="text-sm font-semibold text-white/50 mb-4 uppercase tracking-wider">Live Preview</h3>
+            {/* Very basic live preview representation */}
+            <div className="aspect-[4/3] rounded-xl bg-[#1A1A24] mb-4 overflow-hidden relative">
+              {formData.photo_urls.length > 0 ? (
+                <img src={formData.photo_urls[0]} alt="Cover" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white/20">No Photos</div>
+              )}
+            </div>
+            <h2 className="font-bold text-lg text-white truncate">
+              {formData.title || 'Listing Title'}
+            </h2>
+            <div className="text-accent font-semibold mt-1">
+              Rs. {formData.daily_rate || 0} / day
+            </div>
+            {formData.area && (
+              <div className="text-sm text-white/50 mt-2 flex items-center gap-1">
+                📍 {formData.area}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* ── Scrollable form body ── */}
-        <div className="px-4 sm:px-10 pb-6 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-          {currentStep === 1 && (
-            <Step1Basics
-              data={formData}
-              updateData={updateFormData}
-              onNext={handleNext}
-              hideFooter
-            />
-          )}
-          {currentStep === 2 && (
-            <Step2Details
-              data={formData}
-              updateData={updateFormData}
-              onNext={handleNext}
-              onBack={handleBack}
-              hideFooter
-            />
-          )}
-          {currentStep === 3 && (
-            <Step3Availability
-              data={formData}
-              updateData={updateFormData}
-              onNext={handleNext}
-              onBack={handleBack}
-              hideFooter
-            />
-          )}
+        {/* Right Side: Step Content */}
+        <div className="lg:w-2/3 bg-[#0D0D16]/90 backdrop-blur-xl border border-[#2A2A35] rounded-[2rem] shadow-2xl flex flex-col min-h-[500px]">
+          <div className="flex-1 p-6 sm:p-10">
+            {currentStep === 1 && (
+              <Step1Photos data={formData} updateData={updateFormData} onNext={handleNext} />
+            )}
+            {currentStep === 2 && (
+              <Step2CategoryTitle data={formData} updateData={updateFormData} onNext={handleNext} onBack={handleBack} />
+            )}
+            {currentStep === 3 && (
+              <Step3DescriptionSpecs data={formData} updateData={updateFormData} onNext={handleNext} onBack={handleBack} />
+            )}
+            {currentStep === 4 && (
+              <Step4PricingTerms data={formData} updateData={updateFormData} onNext={handleNext} onBack={handleBack} />
+            )}
+            {currentStep === 5 && (
+              <Step5Area data={formData} updateData={updateFormData} onNext={handleNext} onBack={handleBack} />
+            )}
+            {currentStep === 6 && (
+              <Step6Availability data={formData} updateData={updateFormData} onNext={handleNext} onBack={handleBack} onSkip={handleSkip} />
+            )}
+          </div>
         </div>
 
-        {/* ── Card Footer ── */}
-        <CardFooter
-          currentStep={currentStep}
-          onBack={handleBack}
-          onNext={() => {
-            // Trigger the step's own handleNext which validates + calls onNext
-            const triggerBtn = document.getElementById('step-next-trigger');
-            if (triggerBtn) triggerBtn.click();
-          }}
-        />
       </div>
-    </div>
-  );
-}
-
-function CardFooter({
-  currentStep,
-  onBack,
-  onNext,
-}: {
-  currentStep: number;
-  onBack: () => void;
-  onNext: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between px-4 sm:px-10 py-5 sm:py-6 bg-[#0D0D16] border-t border-[#2A2A35] rounded-b-[2rem]">
-      <button
-        onClick={onBack}
-        disabled={currentStep === 1}
-        className="flex items-center gap-2 font-semibold text-xs sm:text-sm text-white/50 hover:text-white transition-all duration-200 disabled:opacity-0 disabled:pointer-events-none"
-      >
-        ← <span className="hidden sm:inline">Back to Previous</span><span className="sm:hidden">Back</span>
-      </button>
-
-      <button
-        id="card-next-btn"
-        onClick={onNext}
-        className="liquid-button px-6 sm:px-8 py-2.5 sm:py-3 font-bold text-xs sm:text-sm text-black"
-      >
-        {currentStep === 3 ? 'Next: Photos →' : 'Next Step →'}
-      </button>
     </div>
   );
 }

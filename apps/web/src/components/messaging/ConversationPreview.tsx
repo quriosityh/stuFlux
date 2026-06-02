@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Conversation } from './types';
+import { PhaseBadge } from './PhaseBadge';
 
 export function ConversationPreview({ 
   conversation, 
@@ -20,18 +21,6 @@ export function ConversationPreview({
     lastMessage, 
     unreadCount 
   } = conversation;
-
-  // Render badge color based on phase
-  const getPhaseBadgeClasses = (phase: string) => {
-    switch(phase) {
-      case 'inquiry': return 'border border-[var(--foreground)] border-opacity-30 text-[var(--foreground)] opacity-50 bg-transparent';
-      case 'pending': return 'bg-amber-500 text-black border-transparent';
-      case 'confirmed': return 'bg-[var(--accent)] text-black border-transparent';
-      case 'ongoing': return 'bg-[var(--accent)] text-black animate-[pulse_3s_ease-in-out_infinite] border-transparent shadow-[0_0_8px_var(--accent)]';
-      case 'completed': return 'border border-[var(--foreground)] border-opacity-20 text-[var(--foreground)] opacity-40 bg-transparent';
-      default: return '';
-    }
-  };
 
   return (
     <button 
@@ -80,9 +69,7 @@ export function ConversationPreview({
             {listingTitle}
           </div>
           <span className="text-[var(--foreground)] opacity-40 text-[10px] flex-shrink-0">•</span>
-          <span className={cn("text-[9px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded-full flex-shrink-0", getPhaseBadgeClasses(phase))}>
-            {phase}
-          </span>
+          <PhaseBadge phase={phase} />
         </div>
 
         {/* Row 3: Last Message on left, Unread Badge on right */}

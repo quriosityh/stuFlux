@@ -1,0 +1,111 @@
+.next/types/validator.ts(42,39): error TS2307: Cannot find module '../../src/app/auth/sign-in/page.js' or its corresponding type declarations.
+.next/types/validator.ts(51,39): error TS2307: Cannot find module '../../src/app/auth/sign-up/page.js' or its corresponding type declarations.
+src/components/activity/BookingCard.tsx(10,8): error TS2307: Cannot find module '@tabler/icons-react' or its corresponding type declarations.
+src/components/activity/EmptyState.tsx(31,9): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinkProps<string>): JSX.Element', gave the following error.
+    Type 'string' is not assignable to type 'UrlObject | RouteImpl<string>'.
+  Overload 2 of 2, '(props: LinkProps<string>): JSX.Element', gave the following error.
+    Type 'string' is not assignable to type 'UrlObject | RouteImpl<string>'.
+src/components/activity/LendingTab.tsx(9,65): error TS2307: Cannot find module '@tabler/icons-react' or its corresponding type declarations.
+src/components/activity/RentingTab.tsx(7,39): error TS2307: Cannot find module '@tabler/icons-react' or its corresponding type declarations.
+src/components/explore/LenderCTA.tsx(26,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinkProps<"/listings/new">): JSX.Element', gave the following error.
+    Type '"/listings/new"' is not assignable to type 'UrlObject | RouteImpl<"/listings/new">'.
+  Overload 2 of 2, '(props: LinkProps<"/listings/new">): JSX.Element', gave the following error.
+    Type '"/listings/new"' is not assignable to type 'UrlObject | RouteImpl<"/listings/new">'.
+src/components/explore/ListingCard.tsx(25,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinkProps<`/listings/${any}`>): JSX.Element', gave the following error.
+    Type '`/listings/${any}`' is not assignable to type 'UrlObject | RouteImpl<`/listings/${any}`>'.
+  Overload 2 of 2, '(props: LinkProps<`/listings/${any}`>): JSX.Element', gave the following error.
+    Type '`/listings/${any}`' is not assignable to type 'UrlObject | RouteImpl<`/listings/${any}`>'.
+src/components/listing-form/ListingFormWizard.tsx(75,19): error TS2345: Argument of type '`/listings/${string}`' is not assignable to parameter of type 'RouteImpl<`/listings/${string}`>'.
+src/components/listing-form/steps/Step5Area.tsx(4,30): error TS2307: Cannot find module '@stuflux/types' or its corresponding type declarations.
+src/components/listing-form/steps/Step5Area.tsx(19,32): error TS7006: Parameter 'area' implicitly has an 'any' type.
+src/components/listing-form/steps/Step5Area.tsx(60,34): error TS7006: Parameter 'area' implicitly has an 'any' type.
+src/components/listing-form/steps/Step7Review.tsx(3,30): error TS2307: Cannot find module '@stuflux/types' or its corresponding type declarations.
+src/components/listing-form/steps/Step7Review.tsx(20,38): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/components/messaging/ContextActions.tsx(17,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinkProps<`/listings/${string}#availability`>): JSX.Element', gave the following error.
+    Type '`/listings/${string}#availability`' is not assignable to type 'UrlObject | RouteImpl<`/listings/${string}#availability`>'.
+  Overload 2 of 2, '(props: LinkProps<`/listings/${string}#availability`>): JSX.Element', gave the following error.
+    Type '`/listings/${string}#availability`' is not assignable to type 'UrlObject | RouteImpl<`/listings/${string}#availability`>'.
+src/components/navigation/DesktopNav.tsx(39,21): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinkProps<string>): JSX.Element', gave the following error.
+    Type 'string' is not assignable to type 'UrlObject | RouteImpl<string>'.
+  Overload 2 of 2, '(props: LinkProps<string>): JSX.Element', gave the following error.
+    Type 'string' is not assignable to type 'UrlObject | RouteImpl<string>'.
+src/components/navigation/DesktopNav.tsx(74,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinkProps<"/profile">): JSX.Element', gave the following error.
+    Type '"/profile"' is not assignable to type 'UrlObject | RouteImpl<"/profile">'.
+  Overload 2 of 2, '(props: LinkProps<"/profile">): JSX.Element', gave the following error.
+    Type '"/profile"' is not assignable to type 'UrlObject | RouteImpl<"/profile">'.
+src/components/navigation/DesktopNav.tsx(75,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinkProps<"/settings">): JSX.Element', gave the following error.
+    Type '"/settings"' is not assignable to type 'UrlObject | RouteImpl<"/settings">'.
+  Overload 2 of 2, '(props: LinkProps<"/settings">): JSX.Element', gave the following error.
+    Type '"/settings"' is not assignable to type 'UrlObject | RouteImpl<"/settings">'.
+src/components/navigation/DesktopNav.tsx(83,19): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinkProps<"/listings/new">): JSX.Element', gave the following error.
+    Type '"/listings/new"' is not assignable to type 'UrlObject | RouteImpl<"/listings/new">'.
+  Overload 2 of 2, '(props: LinkProps<"/listings/new">): JSX.Element', gave the following error.
+    Type '"/listings/new"' is not assignable to type 'UrlObject | RouteImpl<"/listings/new">'.
+src/components/navigation/MobileNav.tsx(58,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinkProps<string>): JSX.Element', gave the following error.
+    Type 'string' is not assignable to type 'UrlObject | RouteImpl<string>'.
+  Overload 2 of 2, '(props: LinkProps<string>): JSX.Element', gave the following error.
+    Type 'string' is not assignable to type 'UrlObject | RouteImpl<string>'.
+src/components/navigation/NavHeader.tsx(126,19): error TS2322: Type '{ duration: number; ease: number[]; }' is not assignable to type 'Transition<any> | undefined'.
+  Type '{ duration: number; ease: number[]; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+    Type '{ duration: number; ease: number[]; }' is not assignable to type 'ValueAnimationTransition<any>'.
+      Types of property 'ease' are incompatible.
+        Type 'number[]' is not assignable to type 'Easing | Easing[] | undefined'.
+          Type 'number[]' is not assignable to type 'EasingFunction | Easing[]'.
+            Type 'number[]' is not assignable to type 'Easing[]'.
+              Type 'number' is not assignable to type 'Easing'.
+src/components/navigation/NavHeader.tsx(134,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinkProps<string>): JSX.Element', gave the following error.
+    Type 'string' is not assignable to type 'UrlObject | RouteImpl<string>'.
+  Overload 2 of 2, '(props: LinkProps<string>): JSX.Element', gave the following error.
+    Type 'string' is not assignable to type 'UrlObject | RouteImpl<string>'.
+src/components/navigation/NavHeader.tsx(158,19): error TS2322: Type '{ duration: number; ease: number[]; }' is not assignable to type 'Transition<any> | undefined'.
+  Type '{ duration: number; ease: number[]; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+    Type '{ duration: number; ease: number[]; }' is not assignable to type 'ValueAnimationTransition<any>'.
+      Types of property 'ease' are incompatible.
+        Type 'number[]' is not assignable to type 'Easing | Easing[] | undefined'.
+          Type 'number[]' is not assignable to type 'EasingFunction | Easing[]'.
+            Type 'number[]' is not assignable to type 'Easing[]'.
+              Type 'number' is not assignable to type 'Easing'.
+src/components/navigation/NavHeader.tsx(221,21): error TS2322: Type '{ duration: number; ease: number[]; }' is not assignable to type 'Transition<any> | undefined'.
+  Type '{ duration: number; ease: number[]; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+    Type '{ duration: number; ease: number[]; }' is not assignable to type 'ValueAnimationTransition<any>'.
+      Types of property 'ease' are incompatible.
+        Type 'number[]' is not assignable to type 'Easing | Easing[] | undefined'.
+          Type 'number[]' is not assignable to type 'EasingFunction | Easing[]'.
+            Type 'number[]' is not assignable to type 'Easing[]'.
+              Type 'number' is not assignable to type 'Easing'.
+src/components/navigation/NavHeader.tsx(245,21): error TS2322: Type '{ duration: number; ease: number[]; }' is not assignable to type 'Transition<any> | undefined'.
+  Type '{ duration: number; ease: number[]; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+    Type '{ duration: number; ease: number[]; }' is not assignable to type 'ValueAnimationTransition<any>'.
+      Types of property 'ease' are incompatible.
+        Type 'number[]' is not assignable to type 'Easing | Easing[] | undefined'.
+          Type 'number[]' is not assignable to type 'EasingFunction | Easing[]'.
+            Type 'number[]' is not assignable to type 'Easing[]'.
+              Type 'number' is not assignable to type 'Easing'.
+src/components/navigation/NavHeader.tsx(266,19): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: LinkProps<"/listings/new">): JSX.Element', gave the following error.
+    Type '"/listings/new"' is not assignable to type 'UrlObject | RouteImpl<"/listings/new">'.
+  Overload 2 of 2, '(props: LinkProps<"/listings/new">): JSX.Element', gave the following error.
+    Type '"/listings/new"' is not assignable to type 'UrlObject | RouteImpl<"/listings/new">'.
+src/components/navigation/NavHeader.tsx(289,15): error TS2322: Type '{ duration: number; ease: number[]; }' is not assignable to type 'Transition<any> | undefined'.
+  Type '{ duration: number; ease: number[]; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+    Type '{ duration: number; ease: number[]; }' is not assignable to type 'ValueAnimationTransition<any>'.
+      Types of property 'ease' are incompatible.
+        Type 'number[]' is not assignable to type 'Easing | Easing[] | undefined'.
+          Type 'number[]' is not assignable to type 'EasingFunction | Easing[]'.
+            Type 'number[]' is not assignable to type 'Easing[]'.
+              Type 'number' is not assignable to type 'Easing'.
+src/components/ui/Typography.tsx(11,38): error TS2503: Cannot find namespace 'JSX'.
+src/components/ui/Typography.tsx(27,8): error TS2604: JSX element type 'Tag' does not have any construct or call signatures.
+src/components/ui/Typography.tsx(27,8): error TS2786: 'Tag' cannot be used as a JSX component.
+  Its type 'string | number | symbol' is not a valid JSX element type.
+    Type 'number' is not assignable to type 'ElementType'.

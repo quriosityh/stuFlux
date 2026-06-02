@@ -80,7 +80,7 @@ export function DesktopNav() {
             </div>
 
             {/* Action CTA mostly right */}
-            <Link href="/post" className="hyper-liquid inline-flex items-center justify-center gap-2 text-sm !py-2 !px-4 whitespace-nowrap ml-2">
+            <Link href="/listings/new" className="hyper-liquid inline-flex items-center justify-center gap-2 text-sm !py-2 !px-4 whitespace-nowrap ml-2">
               <Plus size={16} strokeWidth={2.5} />
               <span>Drop</span>
             </Link>
