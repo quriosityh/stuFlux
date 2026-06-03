@@ -1,32 +1,52 @@
-import { useRef, useState } from 'react';
+'use client';
+
+import { useRef, useState, useEffect } from 'react';
 import { ListingFormData } from './types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Camera, ImageIcon, UploadCloud, X } from 'lucide-react';
+import { Camera, ImageIcon, UploadCloud, X, AlertCircle } from 'lucide-react';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-type Step3Props = {
+type Step1Props = {
   data: Partial<ListingFormData>;
   updateData: (data: Partial<ListingFormData>) => void;
   onNext: () => void;
-  onBack: () => void;
   hideFooter?: boolean;
 };
 
-export function Step3Availability({ data, updateData, onNext, onBack, hideFooter }: Step3Props) {
+export function Step1Photos({ data, updateData, onNext, hideFooter }: Step1Props) {
   const [photos, setPhotos] = useState<string[]>(data.photo_urls || []);
   const [isDragging, setIsDragging] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isValid = photos.length > 0;
 
+  // Let enter key press anywhere trigger submit/next if valid
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        // Prevent default form action or page reload
+        e.preventDefault();
+        handleNext();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [photos]);
+
   const handleNext = () => {
     if (isValid) {
+      setErrorMessage(null);
       updateData({ photo_urls: photos });
       onNext();
+    } else {
+      setErrorMessage('Please upload at least one photo to proceed.');
     }
   };
 
@@ -34,7 +54,11 @@ export function Step3Availability({ data, updateData, onNext, onBack, hideFooter
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
     const newUrls = files.slice(0, 5 - photos.length).map(file => URL.createObjectURL(file));
-    setPhotos(prev => [...prev, ...newUrls]);
+    setPhotos(prev => {
+      const updated = [...prev, ...newUrls];
+      if (updated.length > 0) setErrorMessage(null);
+      return updated;
+    });
     e.target.value = '';
   };
 
@@ -44,11 +68,19 @@ export function Step3Availability({ data, updateData, onNext, onBack, hideFooter
     if (!event.dataTransfer.files.length) return;
     const files = Array.from(event.dataTransfer.files).filter(file => file.type.startsWith('image/'));
     const newUrls = files.slice(0, 5 - photos.length).map(file => URL.createObjectURL(file));
-    setPhotos(prev => [...prev, ...newUrls]);
+    setPhotos(prev => {
+      const updated = [...prev, ...newUrls];
+      if (updated.length > 0) setErrorMessage(null);
+      return updated;
+    });
   };
 
   const removePhoto = (indexToRemove: number) => {
-    setPhotos(prev => prev.filter((_, index) => index !== indexToRemove));
+    setPhotos(prev => {
+      const updated = prev.filter((_, index) => index !== indexToRemove);
+      if (updated.length === 0) setErrorMessage('Please upload at least one photo to proceed.');
+      return updated;
+    });
   };
 
   return (
@@ -56,13 +88,24 @@ export function Step3Availability({ data, updateData, onNext, onBack, hideFooter
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 text-center pt-2">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/45">
           <Camera className="h-3.5 w-3.5 text-accent" />
-          Step 3 of 4
+          Step 1 of 5
         </div>
-        <h2 className="font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">Add photos that sell the feeling</h2>
-        <p className="max-w-2xl text-sm font-light text-white/45 sm:text-base">The upload area should feel like a showcase, not an attachment box. Drag files in or tap to add them.</p>
+        <h2 className="font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">
+          Add photos <span className="text-red-500 font-extrabold ml-1 text-lg sm:text-xl">*</span>
+        </h2>
+        <p className="max-w-2xl text-sm font-light text-white/45 sm:text-base">
+          Renters want to see exactly what they are getting. Drag and drop up to 5 photos.
+        </p>
       </div>
 
       <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+
+      {errorMessage && (
+        <div className="flex items-center gap-2.5 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 animate-in fade-in slide-in-from-top-2 duration-300">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
       <div
         onClick={() => fileInputRef.current?.click()}
@@ -74,7 +117,8 @@ export function Step3Availability({ data, updateData, onNext, onBack, hideFooter
           'group rounded-[2rem] border-2 border-dashed p-5 sm:p-6 transition-all duration-300 transform-gpu cursor-pointer',
           isDragging
             ? 'border-accent bg-accent/10 shadow-[0_0_0_1px_rgba(57,255,20,0.2),0_0_50px_-20px_rgba(57,255,20,0.7)] scale-[1.01]'
-            : 'border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.06]'
+            : 'border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.06]',
+          errorMessage && 'border-red-500/40 bg-red-950/5'
         )}
       >
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -134,12 +178,15 @@ export function Step3Availability({ data, updateData, onNext, onBack, hideFooter
       <button id="step-next-trigger" onClick={handleNext} className="hidden" />
 
       {!hideFooter && (
-        <div className="mt-4 flex justify-between">
-          <button onClick={onBack} className="px-6 py-3 rounded-full font-bold transition-colors hover:text-accent hover:bg-foreground/5">
-            ← Back
-          </button>
-          <button onClick={handleNext} disabled={!isValid} className={cn('px-8 py-3 rounded-full font-bold transition-all duration-300 active:scale-95 transform-gpu', isValid ? 'liquid-button' : 'glass-spotlight opacity-50 cursor-not-allowed')}>
-            Next: Review
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={handleNext}
+            className={cn(
+              'px-8 py-3 rounded-full font-bold transition-all duration-300 active:scale-95 transform-gpu',
+              isValid ? 'liquid-button' : 'glass-spotlight opacity-50 cursor-not-allowed'
+            )}
+          >
+            Next: Item Basics
           </button>
         </div>
       )}

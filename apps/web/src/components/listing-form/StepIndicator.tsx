@@ -11,12 +11,14 @@ type StepIndicatorProps = {
   totalSteps?: number;
 };
 
-export function StepIndicator({ currentStep, totalSteps = 4 }: StepIndicatorProps) {
+export function StepIndicator({ currentStep, totalSteps = 6 }: StepIndicatorProps) {
   const steps = [
-    { id: 1, label: 'Basics' },
-    { id: 2, label: 'Logistics' },
-    { id: 3, label: 'Photos' },
-    { id: 4, label: 'Review & Publish' },
+    { id: 1, label: 'Photos' },
+    { id: 2, label: 'Basics' },
+    { id: 3, label: 'Details' },
+    { id: 4, label: 'Logistics' },
+    { id: 5, label: 'Location' },
+    { id: 6, label: 'Review' },
   ];
 
   const progressPercentage = ((currentStep - 1) / (steps.length - 1)) * 100;
