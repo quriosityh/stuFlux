@@ -1,91 +1,125 @@
-import { Check } from 'lucide-react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from '@/lib/utils';
 
 type StepIndicatorProps = {
   currentStep: number;
   totalSteps?: number;
 };
 
-export function StepIndicator({ currentStep, totalSteps = 7 }: StepIndicatorProps) {
-  // Mobile typically only shows numbers or current/total due to space constraints for 7 steps.
-  // Desktop can show full labels.
-  const steps = [
-    { id: 1, label: 'Photos' },
-    { id: 2, label: 'Category' },
-    { id: 3, label: 'Details' },
-    { id: 4, label: 'Pricing' },
-    { id: 5, label: 'Area' },
-    { id: 6, label: 'Dates' },
-    { id: 7, label: 'Review' },
-  ];
+const STEP_LABELS: Record<number, string> = {
+  1: 'Photos',
+  2: 'Category & Title',
+  3: 'Description',
+  4: 'Pricing',
+  5: 'Area',
+  6: 'Availability',
+  7: 'Review',
+};
 
-  const progressPercentage = ((currentStep - 1) / (steps.length - 1)) * 100;
+export function StepIndicator({ currentStep, totalSteps = 7 }: StepIndicatorProps) {
+  const nextStep = currentStep < totalSteps ? STEP_LABELS[currentStep + 1] : null;
+  const progress = currentStep / totalSteps;
+
+  // SVG ring params
+  const size = 96;
+  const strokeWidth = 5;
+  const radius = (size - strokeWidth * 2) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - progress);
 
   return (
-    <div className="w-full mb-8 px-2 sm:px-4">
-      {/* Mobile view: simple progress bar */}
-      <div className="lg:hidden">
-        <div className="flex justify-between items-end mb-2">
-          <span className="text-sm font-bold text-foreground">Step {currentStep} of {totalSteps}</span>
-          <span className="text-xs font-semibold text-accent uppercase tracking-wider">
-            {steps[currentStep - 1]?.label}
+    <div className="w-full">
+      {/* ── Mobile: slim labelled bar ─────────────────────────── */}
+      <div className="lg:hidden flex flex-col gap-2">
+        <div className="flex items-center justify-between text-xs font-medium">
+          <span className="text-foreground/50 uppercase tracking-widest font-display">
+            Step {currentStep} of {totalSteps}
+          </span>
+          <span className="text-accent font-bold font-display uppercase tracking-wider">
+            {STEP_LABELS[currentStep]}
           </span>
         </div>
-        <div className="h-1.5 w-full bg-border/50 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-accent transition-all duration-500 ease-in-out" 
-            style={{ width: `${(currentStep / totalSteps) * 100}%` }} 
-          />
+        {/* Segmented bar */}
+        <div className="flex gap-1">
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                'h-1 flex-1 rounded-full transition-all duration-500',
+                i < currentStep ? 'bg-accent' : 'bg-border/30'
+              )}
+            />
+          ))}
         </div>
       </div>
 
-      {/* Desktop view: full segmented tracker */}
-      <div className="hidden lg:flex relative items-center mt-12 mb-4">
-        {/* Background track line */}
-        <div className="absolute left-0 right-0 h-[2px] bg-border/50" />
-        
-        {/* Active progress line */}
-        <div 
-          className="absolute left-0 h-[2px] bg-accent transition-all duration-500 ease-in-out" 
-          style={{ width: `${progressPercentage}%` }} 
-        />
+      {/* ── Desktop: circular progress ring ───────────────────── */}
+      <div className="hidden lg:flex flex-col items-center gap-3 py-2">
+        {/* Ring */}
+        <div className="relative" style={{ width: size, height: size }}>
+          <svg
+            width={size}
+            height={size}
+            viewBox={`0 0 ${size} ${size}`}
+            className="-rotate-90"
+            overflow="visible"
+          >
+            {/* Track */}
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke="var(--foreground)"
+              strokeWidth={strokeWidth}
+              opacity={0.1}
+            />
+            {/* Progress arc */}
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={dashOffset}
+              style={{
+                transition: 'stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                filter: 'drop-shadow(0 0 8px var(--accent))',
+              }}
+            />
+          </svg>
 
-        {/* Steps */}
-        <div className="relative flex justify-between w-full z-10">
-          {steps.map((step) => {
-            const isActive = currentStep === step.id;
-            const isCompleted = currentStep > step.id;
+          {/* Centre label */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="font-display text-xl font-bold text-foreground leading-none">
+              {currentStep}
+            </span>
+            <span className="text-[10px] text-foreground/60 font-medium leading-none mt-0.5">
+              of {totalSteps}
+            </span>
+          </div>
+        </div>
 
-            return (
-              <div key={step.id} className="relative flex flex-col items-center justify-center group cursor-default">
-                {/* Label above */}
-                <span className={cn(
-                  "absolute bottom-6 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider transition-colors duration-300",
-                  isActive || isCompleted ? "text-accent" : "text-foreground/40"
-                )}>
-                  {step.label}
-                </span>
-
-                {/* Node */}
-                <div className={cn(
-                  "w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300 bg-background border-[2px]",
-                  isCompleted ? "border-accent bg-accent" : 
-                  isActive ? "border-accent shadow-[0_0_10px_rgba(57,255,20,0.4)]" : 
-                  "border-border/50"
-                )}>
-                  {isActive && <div className="w-2 h-2 rounded-full bg-accent" />}
-                  {isCompleted && <Check className="w-3 h-3 text-black" strokeWidth={4} />}
-                </div>
-              </div>
-            );
-          })}
+        {/* Current step name */}
+        <div className="text-center">
+          <p className="font-display text-sm font-bold text-accent uppercase tracking-widest leading-tight">
+            {STEP_LABELS[currentStep]}
+          </p>
+          {nextStep && (
+            <p className="text-[11px] text-foreground/55 mt-1 font-medium">
+              Next → {nextStep}
+            </p>
+          )}
+          {!nextStep && (
+            <p className="text-[11px] text-accent/60 mt-1 font-medium">
+              Last step 🎉
+            </p>
+          )}
         </div>
       </div>
     </div>
   );
 }
+

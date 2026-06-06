@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
 import { ListingFormData } from '../types';
 
 type Step3DescriptionSpecsProps = {
   data: ListingFormData;
   updateData: (data: Partial<ListingFormData>) => void;
-  onNext: () => void;
-  onBack: () => void;
+  onValidChange?: (valid: boolean) => void;
 };
 
 const CONDITIONS = [
@@ -16,11 +15,15 @@ const CONDITIONS = [
   { id: 'well_used', label: '🔧 Well Used', desc: 'Heavy wear, still usable' },
 ] as const;
 
-export function Step3DescriptionSpecs({ data, updateData, onNext, onBack }: Step3DescriptionSpecsProps) {
+export function Step3DescriptionSpecs({ data, updateData, onValidChange }: Step3DescriptionSpecsProps) {
   const [newSpecKey, setNewSpecKey] = useState('');
   const [newSpecValue, setNewSpecValue] = useState('');
 
   const isValid = data.description.length >= 10 && data.condition !== '';
+
+  useEffect(() => {
+    onValidChange?.(isValid);
+  }, [isValid, onValidChange]);
 
   const handleAddSpec = () => {
     if (!newSpecKey.trim() || !newSpecValue.trim()) return;
@@ -50,7 +53,7 @@ export function Step3DescriptionSpecs({ data, updateData, onNext, onBack }: Step
         {/* Description Input */}
         <div>
           <label className="block text-sm font-semibold text-foreground/80 mb-2 uppercase tracking-wider">
-            Description
+            Description <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <textarea
@@ -68,8 +71,8 @@ export function Step3DescriptionSpecs({ data, updateData, onNext, onBack }: Step
 
         {/* Condition Grid */}
         <div>
-          <label className="block text-sm font-semibold text-foreground/80 mb-4 uppercase tracking-wider">
-            Condition
+          <label className="block text-sm font-semibold text-foreground/80 mb-2 uppercase tracking-wider">
+            Condition <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {CONDITIONS.map((cond) => {
@@ -145,22 +148,6 @@ export function Step3DescriptionSpecs({ data, updateData, onNext, onBack }: Step
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-10 pt-6 border-t border-border/50 flex justify-between">
-        <button
-          onClick={onBack}
-          className="px-6 py-3 font-semibold text-sm text-foreground/50 hover:text-foreground transition-colors"
-        >
-          ← Back
-        </button>
-        <button
-          onClick={onNext}
-          disabled={!isValid}
-          className="hyper-liquid px-8 py-3 font-bold text-sm text-black disabled:opacity-50 disabled:pointer-events-none"
-        >
-          Next Step →
-        </button>
       </div>
     </div>
   );

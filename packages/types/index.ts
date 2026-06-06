@@ -26,7 +26,8 @@ export interface Listing {
 // ---------------------------------------------------------------------------
 
 // Re-export the full LahoreArea type and all utilities from area-search
-export type { LahoreArea } from './area-search';
+import type { LahoreArea } from './area-search';
+export type { LahoreArea };
 export {
   searchAreas,
   getNearbyAreas,
