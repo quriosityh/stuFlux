@@ -14,7 +14,7 @@ const buttonVariants = cva(
         glass: "glass-spotlight",
         glitch: "tactile-glitch rounded-none",
         outline: "border border-border bg-transparent hover:bg-foreground/5 rounded-full",
-        secondary: "bg-foreground/5 text-foreground hover:bg-foreground/10 rounded-full",
+        secondary: "bg-foreground/5 text-foreground border border-transparent hover:border-border/30 hover:bg-transparent rounded-full",
         ghost: "hover:bg-foreground/5 text-foreground rounded-full",
         link: "text-foreground underline-offset-4 hover:underline",
       },

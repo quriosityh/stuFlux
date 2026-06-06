@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { ListingCard } from './ListingCard';
 
@@ -10,6 +11,30 @@ interface CategoryCarouselProps {
   categorySlug: string;
   items: any[]; // We'll refine this type later
 }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, scale: 0.95, y: 15 },
+  show: { 
+    opacity: 1, 
+    scale: 1, 
+    y: 0, 
+    transition: { 
+      type: 'spring', 
+      stiffness: 150, 
+      damping: 20 
+    } 
+  },
+};
 
 export function CategoryCarousel({ title, categorySlug, items }: CategoryCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -29,7 +54,7 @@ export function CategoryCarousel({ title, categorySlug, items }: CategoryCarouse
           href={`/?category=${categorySlug}`} 
           className="group/link flex items-center gap-2"
         >
-          <h2 className="font-syne text-2xl font-bold tracking-tight hover:opacity-80 transition-opacity">
+          <h2 className="font-syne text-3xl md:text-4xl font-extrabold tracking-tighter hover:opacity-80 transition-opacity">
             {title}
           </h2>
           <ArrowRight size={20} className="text-foreground/50 group-hover/link:text-[var(--accent)] group-hover/link:translate-x-1 transition-all" />
@@ -53,18 +78,22 @@ export function CategoryCarousel({ title, categorySlug, items }: CategoryCarouse
       </div>
 
       {/* Carousel */}
-      <div 
+      <motion.div 
         ref={scrollRef}
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: "-50px" }}
         className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-4 px-4 md:mx-0 md:px-0"
       >
         {items.map((item, index) => (
-          <div key={item.id || index} className="snap-start shrink-0 w-[280px] md:w-[320px]">
+          <motion.div key={item.id || index} variants={itemVariants} className="snap-start shrink-0 w-[72vw] md:w-[calc(20%-13px)]">
             <ListingCard item={item} />
-          </div>
+          </motion.div>
         ))}
         
         {/* See All Card */}
-        <div className="snap-start shrink-0 w-[280px] md:w-[320px]">
+        <motion.div variants={itemVariants} className="snap-start shrink-0 w-[72vw] md:w-[calc(20%-13px)]">
           <Link 
             href={`/?category=${categorySlug}`}
             className="w-full h-full min-h-[300px] rounded-2xl border-2 border-dashed border-border/10 flex flex-col items-center justify-center gap-4 hover:border-[var(--accent)]/50 hover:bg-[var(--accent)]/5 transition-all group/card cursor-pointer"
@@ -74,8 +103,8 @@ export function CategoryCarousel({ title, categorySlug, items }: CategoryCarouse
             </div>
             <span className="font-syne font-bold text-lg group-hover/card:text-[var(--accent)] transition-colors">See all</span>
           </Link>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </section>
   );
 }

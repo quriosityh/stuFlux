@@ -1,5 +1,6 @@
 import PDPClient from '@/components/pdp/PDPClient';
-import { ListingFormData, LAHORE_AREAS, Area } from '../types';
+import { ListingFormData } from '../types';
+import { getAreaName, LAHORE_AREAS_DATA } from '@stuflux/types';
 
 type Step7ReviewProps = {
   data: ListingFormData;
@@ -16,7 +17,7 @@ const CATEGORY_MAP: Record<number, string> = {
 
 export function Step7Review({ data, onBack, onSubmit, isSubmitting }: Step7ReviewProps) {
   // Mock the listing object that PDPClient expects
-  const areaName = LAHORE_AREAS.find((a: Area) => a.id === data.area)?.name || 'Lahore';
+  const areaName = getAreaName(data.area, LAHORE_AREAS_DATA) || 'Lahore';
   
   const mockListing = {
     title: data.title || 'Untitled Listing',
@@ -48,8 +49,8 @@ export function Step7Review({ data, onBack, onSubmit, isSubmitting }: Step7Revie
       {/* Top Bar for Review step */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-white">Review your listing</h2>
-          <p className="text-white/50 text-sm">
+          <h2 className="text-2xl font-display font-bold text-foreground">Review your listing</h2>
+          <p className="text-foreground/50 text-sm">
             This is exactly how renters will see your item.
           </p>
         </div>
@@ -57,14 +58,14 @@ export function Step7Review({ data, onBack, onSubmit, isSubmitting }: Step7Revie
           <button
             onClick={onBack}
             disabled={isSubmitting}
-            className="px-6 py-3 font-semibold text-sm text-white/50 hover:text-white transition-colors disabled:opacity-50"
+            className="px-6 py-3 font-semibold text-sm text-foreground/50 hover:text-foreground transition-colors disabled:opacity-50"
           >
             ← Edit Details
           </button>
           <button
             onClick={onSubmit}
             disabled={isSubmitting}
-            className="liquid-button px-8 py-3 font-bold text-sm text-black disabled:opacity-50 flex items-center gap-2"
+            className="hyper-liquid px-8 py-3 font-bold text-sm text-black disabled:opacity-50 flex items-center gap-2"
           >
             {isSubmitting ? 'Publishing...' : '✨ Publish Listing'}
           </button>
@@ -72,7 +73,7 @@ export function Step7Review({ data, onBack, onSubmit, isSubmitting }: Step7Revie
       </div>
 
       {/* The actual PDP preview */}
-      <div className="bg-background rounded-[2rem] overflow-hidden border border-[#2A2A35] shadow-2xl relative">
+      <div className="bg-background rounded-[2rem] overflow-hidden border border-border/50 shadow-2xl relative">
         {/* We disable pointer events so they don't accidentally navigate away or submit bookings while previewing */}
         <div className="pointer-events-none opacity-90">
           <PDPClient listing={mockListing} availability={data.blocked_dates} />

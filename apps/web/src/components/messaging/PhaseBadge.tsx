@@ -7,11 +7,11 @@ export function PhaseBadge({ phase, className }: { phase: ConversationPhase | st
       case 'inquiry':
         return 'border border-[var(--foreground)] border-opacity-30 text-[var(--foreground)] opacity-50 bg-transparent';
       case 'pending':
-        return 'bg-amber-500 text-black border-transparent';
+        return 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border-transparent';
       case 'confirmed':
-        return 'bg-[var(--accent)] text-black border-transparent';
+        return 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 border-transparent';
       case 'ongoing':
-        return 'bg-[var(--accent)] text-black animate-[pulse_3s_ease-in-out_infinite] border-transparent shadow-[0_0_8px_var(--accent)]';
+        return 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 animate-[pulse_3s_ease-in-out_infinite] border-transparent shadow-[0_0_8px_rgba(16,185,129,0.2)]';
       case 'completed':
         return 'border border-[var(--foreground)] border-opacity-20 text-[var(--foreground)] opacity-40 bg-transparent';
       default:

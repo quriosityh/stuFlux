@@ -62,10 +62,10 @@ export function Step1Photos({ data, updateData, onNext }: Step1PhotosProps) {
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+        <h2 className="text-2xl font-display font-bold text-foreground mb-2 flex items-center gap-2">
           <ImageIcon className="w-6 h-6 text-accent" /> Add Photos
         </h2>
-        <p className="text-white/50 text-sm">
+        <p className="text-foreground/50 text-sm">
           Show off your item. Good lighting and multiple angles help build trust. Max 5 photos.
         </p>
       </div>
@@ -80,17 +80,17 @@ export function Step1Photos({ data, updateData, onNext }: Step1PhotosProps) {
             className={`
               relative flex flex-col items-center justify-center w-full min-h-[200px]
               border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-200
-              ${isDragging ? 'border-accent bg-accent/5' : 'border-[#2A2A35] bg-[#1A1A24]/50 hover:bg-[#1A1A24]'}
+              ${isDragging ? 'border-accent bg-accent/5' : 'border-border/50 bg-surface/50 hover:bg-surface/50'}
             `}
           >
             <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
-              <div className={`p-4 rounded-full mb-4 transition-colors ${isDragging ? 'bg-accent/20' : 'bg-[#2A2A35]'}`}>
-                <UploadCloud className={`w-8 h-8 ${isDragging ? 'text-accent' : 'text-white/50'}`} />
+              <div className={`p-4 rounded-full mb-4 transition-colors ${isDragging ? 'bg-accent/20' : 'bg-border/50'}`}>
+                <UploadCloud className={`w-8 h-8 ${isDragging ? 'text-accent' : 'text-foreground/50'}`} />
               </div>
-              <p className="mb-2 text-sm text-white/80 font-medium">
+              <p className="mb-2 text-sm text-foreground/80 font-medium">
                 <span className="text-accent hover:underline">Click to upload</span> or drag and drop
               </p>
-              <p className="text-xs text-white/40">PNG, JPG up to 5MB</p>
+              <p className="text-xs text-foreground/40">PNG, JPG up to 5MB</p>
             </div>
             <input type="file" className="hidden" multiple accept="image/*" onChange={handleFileInput} />
           </label>
@@ -102,7 +102,7 @@ export function Step1Photos({ data, updateData, onNext }: Step1PhotosProps) {
         {data.photo_urls.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
             {data.photo_urls.map((url, i) => (
-              <div key={url} className="relative aspect-square rounded-xl overflow-hidden group border border-[#2A2A35]">
+              <div key={url} className="relative aspect-square rounded-xl overflow-hidden group border border-border/50">
                 <img src={url} alt={`Upload ${i + 1}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
                 
                 {/* Overlay */}
@@ -111,7 +111,7 @@ export function Step1Photos({ data, updateData, onNext }: Step1PhotosProps) {
                 {/* Remove button */}
                 <button
                   onClick={() => removePhoto(i)}
-                  className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-500/80 rounded-full text-white backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100"
+                  className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-500/80 rounded-full text-foreground backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -128,11 +128,11 @@ export function Step1Photos({ data, updateData, onNext }: Step1PhotosProps) {
         )}
       </div>
 
-      <div className="mt-10 pt-6 border-t border-[#2A2A35] flex justify-end">
+      <div className="mt-10 pt-6 border-t border-border/50 flex justify-end">
         <button
           onClick={onNext}
           disabled={!isValid}
-          className="liquid-button px-8 py-3 font-bold text-sm text-black disabled:opacity-50 disabled:pointer-events-none"
+          className="hyper-liquid px-8 py-3 font-bold text-sm text-black disabled:opacity-50 disabled:pointer-events-none"
         >
           Next Step →
         </button>

@@ -7,7 +7,7 @@ export function DiscoveryFeed() {
   const mockItems = Array.from({ length: 8 }).map((_, i) => ({ id: i }));
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-8">
       <CategoryCarousel 
         title="📷 Cameras near you" 
         categorySlug="cameras" 

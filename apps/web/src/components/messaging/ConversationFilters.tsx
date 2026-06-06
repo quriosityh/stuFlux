@@ -17,10 +17,10 @@ export function ConversationFilters({ activeRole, setActiveRole, activePhase, se
           <button 
             key={role}
             onClick={() => setActiveRole(role)}
-            className={`whitespace-nowrap flex-1 max-w-[90px] text-center py-1 rounded-full text-[11px] font-extrabold transition-all ${
+            className={`whitespace-nowrap flex-1 max-w-[90px] text-center py-1 rounded-full text-[11px] font-extrabold transition-all border ${
               activeRole === role 
-                ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm' 
-                : 'glass-spotlight opacity-65 hover:opacity-100 font-medium'
+                ? 'bg-[var(--foreground)] text-[var(--background)] border-transparent shadow-sm' 
+                : 'bg-surface/40 border-border/10 text-foreground/60 hover:text-foreground hover:border-border/30 font-medium'
             }`}
           >
             {role}

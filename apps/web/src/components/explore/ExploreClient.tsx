@@ -28,9 +28,9 @@ export default function ExploreClient() {
       <CategoryStrip />
 
       {/* Main Content Area */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="w-[85%] mx-auto pt-10 pb-20">
         {mode === 'discovery' ? (
-          <div className="space-y-24">
+          <div className="space-y-10">
             {/* 3a. Discovery Mode */}
             <DiscoveryFeed />
             

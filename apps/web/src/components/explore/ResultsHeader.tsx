@@ -9,7 +9,7 @@ interface ResultsHeaderProps {
 export function ResultsHeader({ count }: ResultsHeaderProps) {
   return (
     <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/10">
-      <span className="text-sm font-medium text-foreground/80">
+      <span className="text-xs font-semibold uppercase tracking-wider text-foreground/50">
         {count > 0 ? `${count} items found` : 'No items found'}
       </span>
       
