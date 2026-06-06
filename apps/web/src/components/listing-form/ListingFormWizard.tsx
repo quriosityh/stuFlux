@@ -82,7 +82,7 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
   // Step 7 Review uses full width
   if (currentStep === 7) {
     return (
-      <div className="min-h-screen bg-[#0B0B13] pb-24">
+      <div className="min-h-screen bg-background pb-24">
         <div className="max-w-5xl mx-auto px-4 pt-8">
           <StepIndicator currentStep={currentStep} totalSteps={7} />
           <div className="mt-8">
@@ -99,38 +99,38 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0B13] text-white flex justify-center py-6 sm:py-12 px-4">
+    <div className="min-h-screen bg-background text-foreground flex justify-center py-6 sm:py-12 px-4">
       {/* Container */}
       <div className="w-full max-w-[1000px] flex flex-col lg:flex-row gap-8 lg:gap-12">
         
         {/* Left Side: Progress & Preview (Sticky on desktop) */}
         <div className="lg:w-1/3 flex flex-col gap-6 lg:sticky lg:top-12 h-fit">
-          <div className="bg-[#0D0D16]/90 backdrop-blur-xl border border-[#2A2A35] rounded-[2rem] p-6 shadow-2xl">
-            <h1 className="text-xl font-bold mb-6 text-white/90">
+          <div className="chrome-card rounded-[2rem] p-6 shadow-2xl">
+            <h1 className="text-xl font-display font-bold mb-6 text-foreground/90">
               {mode === 'create' ? 'Create a Listing' : 'Edit Listing'}
             </h1>
             <StepIndicator currentStep={currentStep} totalSteps={7} />
           </div>
 
           {/* Live Preview Card */}
-          <div className="hidden lg:block bg-[#0D0D16]/90 backdrop-blur-xl border border-[#2A2A35] rounded-[2rem] p-6 shadow-2xl">
-            <h3 className="text-sm font-semibold text-white/50 mb-4 uppercase tracking-wider">Live Preview</h3>
+          <div className="hidden lg:block chrome-card rounded-[2rem] p-6 shadow-2xl">
+            <h3 className="text-sm font-display font-semibold text-foreground/50 mb-4 uppercase tracking-wider">Live Preview</h3>
             {/* Very basic live preview representation */}
-            <div className="aspect-[4/3] rounded-xl bg-[#1A1A24] mb-4 overflow-hidden relative">
+            <div className="aspect-[4/3] rounded-xl bg-surface/50 mb-4 overflow-hidden relative">
               {formData.photo_urls.length > 0 ? (
                 <img src={formData.photo_urls[0]} alt="Cover" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-white/20">No Photos</div>
+                <div className="w-full h-full flex items-center justify-center text-foreground/20">No Photos</div>
               )}
             </div>
-            <h2 className="font-bold text-lg text-white truncate">
+            <h2 className="font-bold text-lg text-foreground truncate">
               {formData.title || 'Listing Title'}
             </h2>
             <div className="text-accent font-semibold mt-1">
               Rs. {formData.daily_rate || 0} / day
             </div>
             {formData.area && (
-              <div className="text-sm text-white/50 mt-2 flex items-center gap-1">
+              <div className="text-sm text-foreground/50 mt-2 flex items-center gap-1">
                 📍 {formData.area}
               </div>
             )}
@@ -138,7 +138,7 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
         </div>
 
         {/* Right Side: Step Content */}
-        <div className="lg:w-2/3 bg-[#0D0D16]/90 backdrop-blur-xl border border-[#2A2A35] rounded-[2rem] shadow-2xl flex flex-col min-h-[500px]">
+        <div className="lg:w-2/3 chrome-card rounded-[2rem] shadow-2xl flex flex-col min-h-[500px]">
           <div className="flex-1 p-6 sm:p-10">
             {currentStep === 1 && (
               <Step1Photos data={formData} updateData={updateFormData} onNext={handleNext} />

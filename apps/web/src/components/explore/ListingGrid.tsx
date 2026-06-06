@@ -1,10 +1,34 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { ListingCard } from './ListingCard';
 
 interface ListingGridProps {
   items: any[];
 }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.06,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 150,
+      damping: 18,
+    },
+  },
+};
 
 export function ListingGrid({ items }: ListingGridProps) {
   if (!items || items.length === 0) {
@@ -26,17 +50,22 @@ export function ListingGrid({ items }: ListingGridProps) {
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
+      >
         {items.map((item, index) => (
-          <div key={item.id || index}>
+          <motion.div key={item.id || index} variants={itemVariants}>
             <ListingCard item={item} />
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {/* Load More Trigger (V1: Button) */}
       <div className="mt-12 flex justify-center">
-        <button className="liquid-button px-8 py-3 text-sm font-bold bg-surface border border-border/10 hover:border-[var(--accent)]/50 transition-all">
+        <button className="px-8 py-3 text-sm font-bold bg-surface border border-border/10 hover:border-foreground/30 hover:bg-transparent rounded-full transition-all cursor-pointer">
           Show More
         </button>
       </div>

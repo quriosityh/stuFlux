@@ -1,12 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { searchAreas, LAHORE_AREAS_DATA, LahoreArea } from '@stuflux/types';
 
 export function FilterSidebar() {
   const [isOpenMobile, setIsOpenMobile] = useState(false);
+
+  const [areas, setAreas] = useState<LahoreArea[]>([]);
+  const [areaSearch, setAreaSearch] = useState('');
+  const [includeNearby, setIncludeNearby] = useState(false);
+
+  const filteredAreas = useMemo(() => {
+    if (!areaSearch.trim()) return [];
+    return searchAreas(areaSearch, LAHORE_AREAS_DATA, 5);
+  }, [areaSearch]);
 
   const FilterContent = () => (
     <div className="space-y-8">
@@ -34,15 +44,66 @@ export function FilterSidebar() {
       {/* City/Area */}
       <div>
         <h3 className="text-sm font-bold tracking-wider uppercase text-foreground/60 mb-4">Area</h3>
-        <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-1 bg-surface px-3 py-1.5 rounded-full border border-border/10 text-sm">
-            <span>Johar Town</span>
-            <button className="hover:text-red-400 transition-colors ml-1"><X size={14} /></button>
-          </div>
-          <button className="px-3 py-1.5 rounded-full border border-dashed border-border/20 text-sm text-foreground/50 hover:text-foreground hover:border-border/50 transition-colors">
-            + Add Area
-          </button>
+        
+        {/* Selected Area Chips */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {areas.map(area => (
+            <div key={area.id} className="flex items-center gap-1 bg-accent/10 text-accent px-3 py-1.5 rounded-full border border-accent/20 text-sm">
+              <span>{area.name}</span>
+              <button 
+                onClick={() => setAreas(areas.filter(a => a.id !== area.id))}
+                className="hover:text-red-400 transition-colors ml-1"
+              ><X size={14} /></button>
+            </div>
+          ))}
         </div>
+
+        {/* Area Search Input */}
+        <div className="relative">
+          <input
+            type="text"
+            value={areaSearch}
+            onChange={(e) => setAreaSearch(e.target.value)}
+            placeholder="+ Add area..."
+            className="w-full bg-surface px-4 py-2 rounded-xl border border-border/20 text-sm focus:outline-none focus:border-accent"
+          />
+          {areaSearch && filteredAreas.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-background/85 backdrop-blur-2xl border border-border/20 rounded-xl shadow-xl overflow-hidden z-10">
+              {filteredAreas.map(area => (
+                <button
+                  key={area.id}
+                  onClick={() => {
+                    if (!areas.find(a => a.id === area.id)) {
+                      setAreas([...areas, area]);
+                    }
+                    setAreaSearch('');
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-border/10 transition-colors"
+                >
+                  {area.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Nearby Toggle */}
+        {areas.length > 0 && (
+          <label className="flex items-center gap-2 mt-4 cursor-pointer group">
+            <div className="relative flex items-center justify-center">
+              <input 
+                type="checkbox" 
+                checked={includeNearby}
+                onChange={(e) => setIncludeNearby(e.target.checked)}
+                className="peer appearance-none w-4 h-4 rounded border border-border/20 checked:border-[var(--accent)] transition-all"
+              />
+              <div className="absolute w-2 h-2 rounded-sm bg-[var(--accent)] scale-0 peer-checked:scale-100 transition-transform" />
+            </div>
+            <span className="text-xs text-foreground/70 group-hover:text-foreground transition-colors">
+              Include nearby areas (3km)
+            </span>
+          </label>
+        )}
       </div>
 
       {/* Price Range */}

@@ -18,7 +18,7 @@ export function ListingCard({ item }: ListingCardProps) {
   const city = item?.city || 'Johar Town / LUMS';
   const rating = item?.rating || 4.9;
   const price = item?.price || 2500;
-  const imageUrl = item?.imageUrl || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1000&auto=format&fit=crop';
+  const imageUrl = item?.imageUrl || 'https://images.unsplash.com/photo-1510127034890-ba27508e9f1c?q=80&w=1000&auto=format&fit=crop';
   const isFeatured = item?.isFeatured || Math.random() > 0.7;
 
   return (
@@ -72,7 +72,7 @@ export function ListingCard({ item }: ListingCardProps) {
       {/* Card Content */}
       <div className="space-y-0.5 px-1">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-syne font-semibold text-sm truncate">{title}</h3>
+          <h3 className="font-syne font-bold text-base truncate">{title}</h3>
           <div className="flex items-center gap-1 shrink-0 text-foreground/80">
             <Star size={12} className="fill-current" />
             <span className="text-xs font-medium">{rating}</span>
@@ -84,8 +84,8 @@ export function ListingCard({ item }: ListingCardProps) {
         </div>
         
         <div className="pt-1">
-          <span className="text-sm font-bold text-[var(--accent)]">Rs. {price.toLocaleString()}</span>
-          <span className="text-xs text-foreground/60 font-medium"> / day</span>
+          <span className="text-base font-extrabold text-[var(--accent)]">Rs. {price.toLocaleString()}</span>
+          <span className="text-xs text-foreground/40 font-medium"> / day</span>
         </div>
       </div>
     </Link>

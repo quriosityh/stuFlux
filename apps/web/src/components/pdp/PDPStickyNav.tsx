@@ -105,7 +105,7 @@ export function PDPStickyNav({ dailyRate, showBookingCTA, onBookClick, canBook }
       className="hidden md:block fixed top-0 left-0 right-0 bg-white dark:bg-zinc-900 border-b border-border/10 shadow-sm animate-in slide-in-from-top-2 duration-200"
       style={{ zIndex: 60 }}
     >
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between max-w-7xl">
+      <div className="w-[85%] mx-auto h-16 flex items-center justify-between">
         {/* Section Links */}
         <nav className="hidden md:flex items-center gap-6">
           {navSections.map(({ id, label }) => (

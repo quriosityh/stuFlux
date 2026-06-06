@@ -39,18 +39,18 @@ export function Step6Availability({ data, updateData, onNext, onBack, onSkip }: 
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-2xl font-bold text-white">Block unavailable dates</h2>
-          <span className="text-xs font-semibold bg-[#2A2A35] text-white/70 px-2 py-1 rounded-md uppercase tracking-wider">
+          <h2 className="text-2xl font-display font-bold text-foreground">Block unavailable dates</h2>
+          <span className="text-xs font-semibold bg-border/50 text-foreground/70 px-2 py-1 rounded-md uppercase tracking-wider">
             Optional
           </span>
         </div>
-        <p className="text-white/50 text-sm">
+        <p className="text-foreground/50 text-sm">
           Tap dates when your item isn't available for rent. You can always update this later.
         </p>
       </div>
 
       <div className="flex-1 flex flex-col gap-6">
-        <div className="bg-[#1A1A24] border border-[#2A2A35] rounded-[2rem] overflow-hidden">
+        <div className="bg-surface/50 border border-border/50 rounded-[2rem] overflow-hidden">
           <AvailabilityCalendar 
             blockedDates={data.blocked_dates}
             selectedDates={selectedDates}
@@ -61,19 +61,19 @@ export function Step6Availability({ data, updateData, onNext, onBack, onSkip }: 
         {/* Blocked Dates List */}
         {data.blocked_dates.length > 0 && (
           <div className="mt-2">
-            <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider mb-3">
               Blocked Dates
             </h3>
             <div className="flex flex-wrap gap-2">
               {data.blocked_dates.map((range, idx) => (
-                <div key={idx} className="flex items-center gap-2 bg-[#2A2A35] text-white text-sm font-medium px-3 py-1.5 rounded-lg">
+                <div key={idx} className="flex items-center gap-2 bg-border/50 text-foreground text-sm font-medium px-3 py-1.5 rounded-lg">
                   <CalendarIcon className="w-4 h-4 text-accent" />
                   <span>
                     {format(new Date(range.start_date), 'MMM d')} - {format(new Date(range.end_date), 'MMM d')}
                   </span>
                   <button 
                     onClick={() => removeBlockedRange(idx)}
-                    className="ml-1 p-0.5 text-white/50 hover:text-red-400 transition-colors rounded-md"
+                    className="ml-1 p-0.5 text-foreground/50 hover:text-red-400 transition-colors rounded-md"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -84,23 +84,23 @@ export function Step6Availability({ data, updateData, onNext, onBack, onSkip }: 
         )}
       </div>
 
-      <div className="mt-10 pt-6 border-t border-[#2A2A35] flex items-center justify-between">
+      <div className="mt-10 pt-6 border-t border-border/50 flex items-center justify-between">
         <button
           onClick={onBack}
-          className="px-6 py-3 font-semibold text-sm text-white/50 hover:text-white transition-colors"
+          className="px-6 py-3 font-semibold text-sm text-foreground/50 hover:text-foreground transition-colors"
         >
           ← Back
         </button>
         <div className="flex gap-4">
           <button
             onClick={onSkip}
-            className="px-6 py-3 font-semibold text-sm text-white hover:text-accent transition-colors"
+            className="px-6 py-3 font-semibold text-sm text-foreground hover:text-accent transition-colors"
           >
             Skip for now
           </button>
           <button
             onClick={onNext}
-            className="liquid-button px-8 py-3 font-bold text-sm text-black"
+            className="hyper-liquid px-8 py-3 font-bold text-sm text-black"
           >
             Review Listing →
           </button>

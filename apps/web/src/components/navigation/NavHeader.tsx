@@ -88,7 +88,7 @@ export function NavHeader() {
 
   return (
     <nav
-      className="!fixed top-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-b border-border/10 transition-all duration-300"
+      className="!fixed top-0 left-0 right-0 z-50 bg-zinc-50 dark:bg-zinc-900 border-b border-border/10 shadow-sm transition-all duration-300"
       style={{ transform: hiddenByPDP ? 'translateY(-100%)' : 'translateY(0)' }}
     >
       {/* Background Dimmer when search is forced open while scrolled */}
@@ -158,7 +158,7 @@ export function NavHeader() {
                   transition={transitionConfig}
                   className="absolute inset-0 flex items-center justify-center"
                 >
-                  <div className="flex items-center chrome-card rounded-full shadow-sm hover:shadow-md cursor-pointer border border-border/10 overflow-hidden divide-x divide-border/10">
+                  <div className="flex items-center chrome-card rounded-full shadow-md hover:shadow-lg cursor-pointer border border-border/20 overflow-hidden divide-x divide-border/10">
                     <span 
                       onClick={(e) => {
                         e.stopPropagation();

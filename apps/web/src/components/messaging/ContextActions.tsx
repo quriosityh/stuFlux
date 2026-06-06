@@ -38,14 +38,14 @@ export function ContextActions({ conversation }: { conversation: Conversation })
       )}
 
       {phase === 'confirmed' && (
-        <button className="glass-spotlight w-full py-3 text-sm font-bold border border-[var(--border-color)] rounded-full hover:bg-[var(--surface)] transition-colors">
+        <button className="secondary-button w-full py-3 text-sm font-bold">
           View Booking Details
         </button>
       )}
 
       {phase === 'ongoing' && (
         <div className="flex flex-col gap-2">
-           <button className="glass-spotlight w-full py-3 text-sm font-bold border border-[var(--border-color)] rounded-full hover:bg-[var(--surface)] transition-colors">
+           <button className="secondary-button w-full py-3 text-sm font-bold">
              View Booking Details
            </button>
         </div>
@@ -56,7 +56,7 @@ export function ContextActions({ conversation }: { conversation: Conversation })
           <button className="hyper-liquid w-full py-3 text-sm">
             Leave a Review
           </button>
-          <button className="glass-spotlight w-full py-3 text-sm font-bold">
+          <button className="secondary-button w-full py-3 text-sm font-bold">
             Rent Again
           </button>
         </>

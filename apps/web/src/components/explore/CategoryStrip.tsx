@@ -16,18 +16,47 @@ const CATEGORIES = [
   { id: 'outdoors', label: 'Outdoors', icon: Tent },
 ];
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -10 },
+  show: { 
+    opacity: 1, 
+    x: 0, 
+    transition: { 
+      type: 'spring', 
+      stiffness: 200, 
+      damping: 25 
+    } 
+  },
+};
+
 export function CategoryStrip() {
   const [activeCategory, setActiveCategory] = useState('all');
 
   return (
     <div className="w-full border-b border-border/5 bg-background sticky top-[48px] md:top-[72px] z-40 shadow-sm">
-      <div className="container mx-auto px-4">
-        <div className="flex gap-8 overflow-x-auto scrollbar-hide py-4 snap-x">
+      <div className="w-[85%] mx-auto">
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          className="flex gap-8 overflow-x-auto scrollbar-hide py-4 snap-x"
+        >
           {CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat.id;
             
             return (
-              <button
+              <motion.button
+                variants={itemVariants}
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
                 className={cn(
@@ -46,10 +75,10 @@ export function CategoryStrip() {
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   />
                 )}
-              </button>
+              </motion.button>
             );
           })}
-        </div>
+        </motion.div>
       </div>
     </div>
   );

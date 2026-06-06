@@ -29,18 +29,18 @@ To ensure StuFlux feels like a singular, premium product, both Light and Dark mo
 ## 2. Color Palette & Tokens
 
 ### Light Mode (Icy Daylight Chrome)
-- **Background:** Icy Cool Gray (`#F2F4F7`) to provide contrast against the bright white surfaces.
-- **Surfaces:** Frosted solid plastic (`rgba(255, 255, 255, 0.85)`).
+- **Background:** Pure Pitch White (`#FFFFFF`) to match the extreme contrast pattern of Dark Mode.
+- **Surfaces:** Translucent Cool Gray Glass (`rgba(240, 240, 245, 0.65)`) to stand out against the pure white background.
 - **Text:** Stark Black (`#0A0A0A`) for maximum contrast.
-- **Accents:** Vibrant Holographic Gradients (deep blues, vivid purples, and bright pinks).
-  - *Base Accent:* Deep Vibrant Blue (`#5B7BFE`) for legible standalone text.
-  - *Example Gradient:* `linear-gradient(135deg, #5B7BFE 0%, #A972FF 50%, #FF85E4 100%)`
+- **Accents:** Liquid Cobalt & Cyan.
+  - *Base Accent:* Deep Cobalt Blue (`#005BEA`) for legible standalone text.
+  - *Gradient:* `linear-gradient(135deg, #005BEA 0%, #00C6FF 50%, #005BEA 100%)`
 
 ### Dark Mode (Deep Space Chrome)
 - **Background:** Deep Space Black (`#050505`).
 - **Surfaces:** Dark Chrome/Graphite (`rgba(28, 28, 30, 0.6)`).
 - **Text:** Pure White (`#FFFFFF`) and Silver (`#A1A1AA`).
-- **Accents:** Electric Acid Green (`#39FF14`).
+- **Accents:** Neon Cyan (`#00FFFF`) and Electric Blue (`#0066FF`) to maintain the unified cyber-fluid aura.
 
 ---
 

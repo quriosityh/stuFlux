@@ -15,6 +15,7 @@ interface PhotoGalleryProps {
 
 export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
   const [open, setOpen] = useState(false);
+  const [index, setIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
   const zoomRef = useRef<any>(null);
   const pointerPos = useRef({ x: 0, y: 0 });
@@ -68,7 +69,7 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
               <div 
                 key={photo.id || i} 
                 className="relative w-full h-full shrink-0 snap-center snap-always"
-                onClick={() => setOpen(true)}
+                onClick={() => { setIndex(i); setOpen(true); }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={photo.url} alt={title} className="w-full h-full object-cover" />
@@ -81,7 +82,7 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
         <div className="hidden md:grid grid-cols-2 gap-2 h-[300px] lg:h-[380px] rounded-3xl overflow-hidden relative border border-border/10">
           <div 
             className="relative h-full cursor-pointer group"
-            onClick={() => setOpen(true)}
+            onClick={() => { setIndex(0); setOpen(true); }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img 
@@ -100,7 +101,7 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
                 <div 
                   key={photo.id || i} 
                   className="relative h-full cursor-pointer group overflow-hidden"
-                  onClick={() => setOpen(true)}
+                  onClick={() => { setIndex(i); setOpen(true); }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img 
@@ -116,7 +117,7 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
 
           {photos.length > 5 && (
             <button 
-              onClick={() => setOpen(true)}
+              onClick={() => { setIndex(0); setOpen(true); }}
               className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-md px-4 py-2 rounded-full border border-border/10 font-semibold text-sm flex items-center gap-2 hover:bg-background transition-colors shadow-lg"
             >
               <Grid3X3 className="w-4 h-4" />
@@ -127,6 +128,7 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
       </div>
 
       <Lightbox
+        index={index}
         open={open}
         close={() => setOpen(false)}
         slides={slides}
