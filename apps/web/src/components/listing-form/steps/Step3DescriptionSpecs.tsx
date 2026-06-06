@@ -43,7 +43,7 @@ export function Step3DescriptionSpecs({ data, updateData, onValidChange }: Step3
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="mb-8">
-        <h2 className="text-2xl font-display font-bold text-foreground mb-2">Describe your item</h2>
+        <h2 className="text-2xl lg:text-4xl font-display font-bold text-foreground mb-2 text-center lg:text-left">Describe your item</h2>
         <p className="text-foreground/50 text-sm">
           Tell renters what's included, any quirks, and the condition.
         </p>
@@ -74,7 +74,7 @@ export function Step3DescriptionSpecs({ data, updateData, onValidChange }: Step3
           <label className="block text-sm font-semibold text-foreground/80 mb-2 uppercase tracking-wider">
             Condition <span className="text-red-500">*</span>
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
             {CONDITIONS.map((cond) => {
               const isSelected = data.condition === cond.id;
               return (
@@ -83,8 +83,8 @@ export function Step3DescriptionSpecs({ data, updateData, onValidChange }: Step3
                   onClick={() => updateData({ condition: cond.id })}
                   className={`
                     flex flex-col items-start p-4 rounded-xl border transition-all duration-200 text-left
-                    ${isSelected 
-                      ? 'bg-accent/10 border-accent shadow-[0_0_15px_rgba(57,255,20,0.15)]' 
+                    ${isSelected
+                      ? 'bg-accent/10 border-accent shadow-[0_0_15px_rgba(57,255,20,0.15)]'
                       : 'bg-surface/50 border-border/50 hover:bg-border/50'}
                   `}
                 >
@@ -120,7 +120,7 @@ export function Step3DescriptionSpecs({ data, updateData, onValidChange }: Step3
                 </button>
               </div>
             ))}
-            
+
             <div className="flex gap-3">
               <input
                 type="text"

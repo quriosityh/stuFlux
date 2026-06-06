@@ -29,7 +29,7 @@ export function Step2CategoryTitle({ data, updateData, onValidChange }: Step2Cat
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="mb-8">
-        <h2 className="text-5xl font-extrabold font-display text-foreground text-center mb-4">What are you listing?</h2>
+        <h2 className="text-2xl lg:text-4xl font-extrabold font-display text-foreground text-center lg:text-left mb-4">What are you listing?</h2>
         <p className="text-foreground/50 text-sm text-center">
           Give your item a clear, descriptive title and select its category.
         </p>

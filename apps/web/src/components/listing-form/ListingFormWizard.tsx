@@ -80,6 +80,15 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
     }
   };
 
+  const [canProceed, setCanProceed] = useState(false);
+  const [showTips, setShowTips] = useState(false);
+
+  // Reset canProceed when step changes
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCanProceed(false);
+  }, [currentStep]);
+
   // Step 7 Review uses full width
   if (currentStep === 7) {
     return (
@@ -99,13 +108,6 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
     );
   }
 
-  const [canProceed, setCanProceed] = useState(false);
-
-  // Reset canProceed when step changes
-  useEffect(() => {
-    setCanProceed(false);
-  }, [currentStep]);
-
   // Step rendering
   return (
     <div className="min-h-screen bg-background text-foreground flex justify-center py-8 sm:py-14 px-4">
@@ -115,7 +117,7 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
         {/* Left Side: Sticky nav column */}
         <div className="lg:w-[200px] flex-shrink-0 flex flex-col gap-10 lg:sticky lg:top-14 h-fit">
           <div>
-            <p className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-foreground/40 mb-5">
+            <p className="hidden lg:block text-[10px] font-display font-bold uppercase tracking-[0.2em] text-foreground/40 mb-5">
               {mode === 'create' ? 'New Listing' : 'Edit Listing'}
             </p>
             <StepIndicator currentStep={currentStep} totalSteps={7} />
@@ -126,8 +128,8 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
         </div>
 
         {/* Right Side: Open form surface */}
-        <div className="flex-1 flex flex-col min-h-[500px] border-t lg:border-t-0 lg:border-l border-foreground/10">
-          <div className="flex-1 lg:pl-12 pt-2">
+        <div className="flex-1 flex flex-col min-h-[500px]  lg:border-l border-foreground/10">
+          <div className="flex-1 lg:pl-12 pt-2 pb-24 lg:pb-0">
             {currentStep === 1 && (
               <Step1Photos data={formData} updateData={updateFormData} onValidChange={setCanProceed} />
             )}
@@ -156,7 +158,22 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
             onNext={handleNext}
             onSkip={handleSkip}
             isSubmitting={isSubmitting}
+            onShowTips={STEP_TIPS[currentStep] ? () => setShowTips(true) : undefined}
           />
+
+          {/* Mobile Tips Bottom Sheet */}
+          {showTips && (
+            <>
+              <div
+                className="lg:hidden fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm"
+                onClick={() => setShowTips(false)}
+              />
+              <div className="lg:hidden fixed bottom-0 inset-x-0 z-[70] bg-background rounded-t-3xl p-6 pb-10 animate-in slide-in-from-bottom-4 duration-300 shadow-2xl">
+                <div className="w-10 h-1 bg-border/50 rounded-full mx-auto mb-6" />
+                <MobileTipsSheet currentStep={currentStep} onClose={() => setShowTips(false)} />
+              </div>
+            </>
+          )}
         </div>
 
       </div>
@@ -259,3 +276,43 @@ function StepTips({ currentStep }: { currentStep: number }) {
     </div>
   );
 }
+
+function MobileTipsSheet({ currentStep, onClose }: { currentStep: number; onClose: () => void }) {
+  const tip = STEP_TIPS[currentStep];
+  if (!tip) return null;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <span className="text-3xl block mb-2">{tip.emoji}</span>
+          <p className="font-display text-base font-bold uppercase tracking-wider text-foreground/80 leading-snug">
+            {tip.headline}
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-foreground/30 hover:text-foreground transition-colors p-1 rounded-full"
+        >
+          ✕
+        </button>
+      </div>
+
+      <ul className="flex flex-col gap-3">
+        {tip.tips.map((t, i) => (
+          <li key={i} className="flex gap-2.5 text-sm text-foreground/60 leading-relaxed">
+            <span className="text-accent mt-0.5 flex-shrink-0">•</span>
+            {t}
+          </li>
+        ))}
+      </ul>
+
+      {tip.stat && (
+        <p className="text-xs text-accent font-semibold leading-snug pt-1 border-t border-border/20">
+          ↗ {tip.stat}
+        </p>
+      )}
+    </div>
+  );
+}
+

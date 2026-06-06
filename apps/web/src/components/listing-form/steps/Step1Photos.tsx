@@ -95,15 +95,15 @@ export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProp
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="mb-6">
-        <h2 className="text-2xl font-display font-bold text-foreground mb-2 flex items-center gap-2">
-          <ImageIcon className="w-6 h-6 text-accent" /> Add Photos <span className="text-red-500">*</span>
+        <h2 className="text-2xl lg:text-4xl font-display font-bold text-foreground mb-2 flex items-center justify-center lg:justify-start gap-2 text-center lg:text-left">
+          <ImageIcon className="w-8 h-8 text-accent" /> Add Photos <span className="text-red-500">*</span>
         </h2>
-        <p className="text-foreground/50 text-sm">
+        <p className="text-foreground/50 text-sm text-center lg:text-left">
           Show off your item. Good lighting and multiple angles help build trust. Max 5 photos.
         </p>
       </div>
 
-      <div className="flex-1 flex flex-col gap-4">
+      <div className="flex-3 flex flex-col gap-4">
         {/* Dropzone */}
         {data.photo_urls.length < 5 && (
           <label
@@ -154,7 +154,7 @@ export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProp
                   alt={`Upload ${i + 1}`}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 pointer-events-none"
                 />
-                
+
                 {/* Overlay */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
 
@@ -162,7 +162,7 @@ export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProp
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                   <ZoomIn className="w-6 h-6 text-white drop-shadow" />
                 </div>
-                
+
                 {/* Remove button */}
                 <button
                   type="button"

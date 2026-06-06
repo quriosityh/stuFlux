@@ -101,7 +101,7 @@ export function Step4PricingTerms({ data, updateData, onValidChange }: Step4Pric
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="mb-8">
-        <h2 className="text-2xl font-display font-bold text-foreground mb-1.5">Set your price &amp; terms</h2>
+        <h2 className="text-2xl lg:text-4xl font-display font-bold text-foreground mb-1.5 text-center lg:text-left">Set your price &amp; terms</h2>
         <p className="text-foreground/40 text-sm">Decide how much to charge and any rules for renters.</p>
       </div>
 
@@ -143,24 +143,24 @@ export function Step4PricingTerms({ data, updateData, onValidChange }: Step4Pric
           {/* Duration */}
           <div>
             <FieldLabel>Rental Duration <span className="text-red-500">*</span></FieldLabel>
-            <div className="flex flex-col gap-2.5">
-              <div>
+            <div className="flex flex-row gap-2.5 lg:flex-col">
+            <div className="flex-1">
                 <span className="block text-[10px] text-foreground/30 mb-1.5">Min days</span>
                 <NumberStepper
-                  value={data.min_rental_days}
+                  value={data.min_rental_days ?? 1}
                   onChange={(v) => updateData({ min_rental_days: v })}
                   min={1}
-                  max={data.max_rental_days}
+                  max={data.max_rental_days ?? 30}
                   step={1}
                   suffix="day"
                 />
               </div>
-              <div>
+            <div className="flex-1">
                 <span className="block text-[10px] text-foreground/30 mb-1.5">Max days</span>
                 <NumberStepper
                   value={data.max_rental_days}
                   onChange={(v) => updateData({ max_rental_days: v })}
-                  min={data.min_rental_days}
+                  min={data.min_rental_days ?? 1}
                   step={1}
                   suffix="days"
                 />

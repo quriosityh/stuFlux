@@ -51,7 +51,7 @@ export function AvailabilityCalendar({
 
   // Owner gets 3 months lookahead, renter gets 2
   const lookaheadMonths = mode === 'owner' ? 3 : 2
-  const maxAllowedDate = addMonths(startOfDay(new Date()), lookaheadMonths * 30)
+  const maxAllowedDate = addMonths(startOfMonth(new Date()), lookaheadMonths);
 
   const today = startOfDay(new Date())
 
@@ -204,13 +204,15 @@ export function AvailabilityCalendar({
 
   return (
     <div className="py-8" id="availability-section">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="font-display text-xl font-bold">
-          Select date range
-        </h2>
-        {mode === 'owner' && (
-          <p className="text-foreground/45 text-xs">Tap a blocked date to unblock it</p>
-        )}
+      <div className="mb-6 flex flex-col items-center lg:flex-row lg:items-center justify-between gap-2">
+          <h2 className="font-display text-xl font-bold text-center lg:text-left">
+            Select date range
+          </h2>
+          {mode === 'owner' && (
+            <p className="text-foreground/45 text-xs text-center lg:text-left">
+              Tap a blocked date to unblock it
+            </p>
+          )}
       </div>
 
       <div className="chrome-card relative rounded-3xl p-6">
