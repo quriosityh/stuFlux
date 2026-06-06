@@ -263,7 +263,7 @@ export function NavHeader() {
               </AnimatePresence>
             </div>
 
-            <Link href="/post" className={cn(
+            <Link href="/listings/new" className={cn(
               "hyper-liquid inline-flex items-center justify-center font-semibold transition-all overflow-hidden whitespace-nowrap gap-2 text-sm px-4 py-2 rounded-full relative z-10"
             )}>
               <Plus size={18} strokeWidth={2.5} />

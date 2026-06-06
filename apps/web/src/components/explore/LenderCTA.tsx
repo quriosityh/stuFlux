@@ -23,7 +23,7 @@ export function LenderCTA() {
 
           <div className="relative z-10 shrink-0">
             <Link 
-              href="/post" 
+              href="/listings/new" 
               className="hyper-liquid inline-flex items-center justify-center gap-3 px-8 py-4 text-lg font-bold w-full md:w-auto shadow-[0_0_40px_-10px_var(--accent)]"
             >
               <Sparkles size={20} className="text-black" />

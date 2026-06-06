@@ -1,28 +1,16 @@
 import { cn } from '@/lib/utils';
 import { Conversation } from './types';
+import { PhaseBadge } from './PhaseBadge';
 
 export function ContextBookingDetails({ conversation }: { conversation: Conversation }) {
   const { phase, rentalPeriod, dailyRate } = conversation;
-  
-  const getPhaseBadgeClasses = (phase: string) => {
-    switch(phase) {
-      case 'inquiry': return 'border border-[var(--foreground)] border-opacity-30 text-[var(--foreground)] opacity-50 bg-transparent';
-      case 'pending': return 'bg-amber-500 text-black border-transparent';
-      case 'confirmed': return 'bg-[var(--accent)] text-black border-transparent';
-      case 'ongoing': return 'bg-[var(--accent)] text-black animate-[pulse_3s_ease-in-out_infinite] border-transparent shadow-[0_0_8px_var(--accent)]';
-      case 'completed': return 'border border-[var(--foreground)] border-opacity-20 text-[var(--foreground)] opacity-40 bg-transparent';
-      default: return '';
-    }
-  };
-  
+
   if (phase === 'inquiry') {
     return (
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-center">
           <h3 className="font-syne font-bold text-sm text-[var(--foreground)] opacity-60 uppercase tracking-wider">Booking Details</h3>
-          <span className={cn("text-[9px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded-full flex-shrink-0", getPhaseBadgeClasses(phase))}>
-            {phase}
-          </span>
+          <PhaseBadge phase={phase} />
         </div>
         <p className="text-sm font-medium">Inquiry only — no dates selected yet.</p>
       </div>
@@ -37,9 +25,7 @@ export function ContextBookingDetails({ conversation }: { conversation: Conversa
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center">
         <h3 className="font-syne font-bold text-sm text-[var(--foreground)] opacity-60 uppercase tracking-wider">Booking Details</h3>
-        <span className={cn("text-[9px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded-full flex-shrink-0", getPhaseBadgeClasses(phase))}>
-          {phase}
-        </span>
+        <PhaseBadge phase={phase} />
       </div>
       
       <div className="flex items-center justify-between">
