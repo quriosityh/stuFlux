@@ -1,3 +1,11 @@
+// ============================================================
+// @stuflux/types — shared type exports
+// ============================================================
+
+// ---------------------------------------------------------------------------
+// Core domain types
+// ---------------------------------------------------------------------------
+
 export interface User {
   id: string;
   clerk_id: string;
@@ -13,12 +21,37 @@ export interface Listing {
   city: string;
 }
 
+// ---------------------------------------------------------------------------
+// Area types — sourced from lahore-areas.json (978 entries)
+// ---------------------------------------------------------------------------
+
+// Re-export the full LahoreArea type and all utilities from area-search
+export type { LahoreArea } from './area-search';
+export {
+  searchAreas,
+  getNearbyAreas,
+  getAreaById,
+  getAreaName,
+  POPULAR_AREA_IDS,
+} from './area-search';
+
+import LAHORE_AREAS_DATA_RAW from './lahore-areas.json';
+export const LAHORE_AREAS_DATA = LAHORE_AREAS_DATA_RAW as LahoreArea[];
+
+/**
+ * Legacy Area interface — kept for backward-compatibility.
+ * Prefer LahoreArea for new code.
+ */
 export interface Area {
   id: string;
   name: string;
   description?: string;
 }
 
+/**
+ * @deprecated — Use the full dataset via lahore-areas.json + searchAreas().
+ * This list is only kept as a fallback for components not yet migrated.
+ */
 export const LAHORE_AREAS: Area[] = [
   { id: 'johar-town', name: 'Johar Town / LUMS', description: 'Near LUMS campus' },
   { id: 'gt-road', name: 'GT Road / UET', description: 'Near UET main campus' },
