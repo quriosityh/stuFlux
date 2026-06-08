@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
 import { ListingFormData } from '../types';
 
 type Step3DescriptionSpecsProps = {
   data: ListingFormData;
   updateData: (data: Partial<ListingFormData>) => void;
-  onNext: () => void;
-  onBack: () => void;
+  onValidChange?: (valid: boolean) => void;
 };
 
 const CONDITIONS = [
@@ -16,11 +15,15 @@ const CONDITIONS = [
   { id: 'well_used', label: '🔧 Well Used', desc: 'Heavy wear, still usable' },
 ] as const;
 
-export function Step3DescriptionSpecs({ data, updateData, onNext, onBack }: Step3DescriptionSpecsProps) {
+export function Step3DescriptionSpecs({ data, updateData, onValidChange }: Step3DescriptionSpecsProps) {
   const [newSpecKey, setNewSpecKey] = useState('');
   const [newSpecValue, setNewSpecValue] = useState('');
 
   const isValid = data.description.length >= 10 && data.condition !== '';
+
+  useEffect(() => {
+    onValidChange?.(isValid);
+  }, [isValid, onValidChange]);
 
   const handleAddSpec = () => {
     if (!newSpecKey.trim() || !newSpecValue.trim()) return;
@@ -40,7 +43,7 @@ export function Step3DescriptionSpecs({ data, updateData, onNext, onBack }: Step
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="mb-8">
-        <h2 className="text-2xl font-display font-bold text-foreground mb-2">Describe your item</h2>
+        <h2 className="text-2xl lg:text-4xl font-display font-bold text-foreground mb-2 text-center lg:text-left">Describe your item</h2>
         <p className="text-foreground/50 text-sm">
           Tell renters what's included, any quirks, and the condition.
         </p>
@@ -50,7 +53,7 @@ export function Step3DescriptionSpecs({ data, updateData, onNext, onBack }: Step
         {/* Description Input */}
         <div>
           <label className="block text-sm font-semibold text-foreground/80 mb-2 uppercase tracking-wider">
-            Description
+            Description <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <textarea
@@ -68,10 +71,10 @@ export function Step3DescriptionSpecs({ data, updateData, onNext, onBack }: Step
 
         {/* Condition Grid */}
         <div>
-          <label className="block text-sm font-semibold text-foreground/80 mb-4 uppercase tracking-wider">
-            Condition
+          <label className="block text-sm font-semibold text-foreground/80 mb-2 uppercase tracking-wider">
+            Condition <span className="text-red-500">*</span>
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
             {CONDITIONS.map((cond) => {
               const isSelected = data.condition === cond.id;
               return (
@@ -80,8 +83,8 @@ export function Step3DescriptionSpecs({ data, updateData, onNext, onBack }: Step
                   onClick={() => updateData({ condition: cond.id })}
                   className={`
                     flex flex-col items-start p-4 rounded-xl border transition-all duration-200 text-left
-                    ${isSelected 
-                      ? 'bg-accent/10 border-accent shadow-[0_0_15px_rgba(57,255,20,0.15)]' 
+                    ${isSelected
+                      ? 'bg-accent/10 border-accent shadow-[0_0_15px_rgba(57,255,20,0.15)]'
                       : 'bg-surface/50 border-border/50 hover:bg-border/50'}
                   `}
                 >
@@ -117,7 +120,7 @@ export function Step3DescriptionSpecs({ data, updateData, onNext, onBack }: Step
                 </button>
               </div>
             ))}
-            
+
             <div className="flex gap-3">
               <input
                 type="text"
@@ -145,22 +148,6 @@ export function Step3DescriptionSpecs({ data, updateData, onNext, onBack }: Step
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-10 pt-6 border-t border-border/50 flex justify-between">
-        <button
-          onClick={onBack}
-          className="px-6 py-3 font-semibold text-sm text-foreground/50 hover:text-foreground transition-colors"
-        >
-          ← Back
-        </button>
-        <button
-          onClick={onNext}
-          disabled={!isValid}
-          className="hyper-liquid px-8 py-3 font-bold text-sm text-black disabled:opacity-50 disabled:pointer-events-none"
-        >
-          Next Step →
-        </button>
       </div>
     </div>
   );

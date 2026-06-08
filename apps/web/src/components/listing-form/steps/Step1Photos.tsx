@@ -1,16 +1,18 @@
-import { useCallback, useState } from 'react';
-import { UploadCloud, X, Image as ImageIcon } from 'lucide-react';
+import { useCallback, useState, useEffect } from 'react';
+import { UploadCloud, X, Image as ImageIcon, ZoomIn } from 'lucide-react';
 import { ListingFormData } from '../types';
 
 type Step1PhotosProps = {
   data: ListingFormData;
   updateData: (data: Partial<ListingFormData>) => void;
-  onNext: () => void;
+  onValidChange?: (valid: boolean) => void;
 };
 
-export function Step1Photos({ data, updateData, onNext }: Step1PhotosProps) {
+export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState('');
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -57,20 +59,51 @@ export function Step1Photos({ data, updateData, onNext }: Step1PhotosProps) {
     updateData({ photo_urls: updated });
   };
 
+  // Drag and Drop reordering handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOverItem = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+  };
+
+  const handleDropItem = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+    const reordered = [...data.photo_urls];
+    const [draggedItem] = reordered.splice(draggedIndex, 1);
+    reordered.splice(targetIndex, 0, draggedItem);
+
+    updateData({ photo_urls: reordered });
+    setDraggedIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   const isValid = data.photo_urls.length > 0;
+
+  useEffect(() => {
+    onValidChange?.(isValid);
+  }, [isValid, onValidChange]);
 
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="mb-6">
-        <h2 className="text-2xl font-display font-bold text-foreground mb-2 flex items-center gap-2">
-          <ImageIcon className="w-6 h-6 text-accent" /> Add Photos
+        <h2 className="text-2xl lg:text-4xl font-display font-bold text-foreground mb-2 flex items-center justify-center lg:justify-start gap-2 text-center lg:text-left">
+          <ImageIcon className="w-8 h-8 text-accent" /> Add Photos <span className="text-red-500">*</span>
         </h2>
-        <p className="text-foreground/50 text-sm">
+        <p className="text-foreground/50 text-sm text-center lg:text-left">
           Show off your item. Good lighting and multiple angles help build trust. Max 5 photos.
         </p>
       </div>
 
-      <div className="flex-1 flex flex-col gap-4">
+      <div className="flex-3 flex flex-col gap-4">
         {/* Dropzone */}
         {data.photo_urls.length < 5 && (
           <label
@@ -100,25 +133,51 @@ export function Step1Photos({ data, updateData, onNext }: Step1PhotosProps) {
 
         {/* Photo Grid */}
         {data.photo_urls.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2 max-w-[580px]">
             {data.photo_urls.map((url, i) => (
-              <div key={url} className="relative aspect-square rounded-xl overflow-hidden group border border-border/50">
-                <img src={url} alt={`Upload ${i + 1}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
-                
+              <div
+                key={url}
+                draggable
+                onDragStart={(e) => handleDragStart(e, i)}
+                onDragOver={(e) => handleDragOverItem(e, i)}
+                onDrop={(e) => handleDropItem(e, i)}
+                onDragEnd={handleDragEnd}
+                onClick={() => setPreviewUrl(url)}
+                className={`
+                  relative aspect-square rounded-xl overflow-hidden group border border-border/50
+                  cursor-pointer transition-all duration-200 select-none
+                  ${draggedIndex === i ? 'opacity-40 scale-95 border-accent' : 'opacity-100'}
+                `}
+              >
+                <img
+                  src={url}
+                  alt={`Upload ${i + 1}`}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 pointer-events-none"
+                />
+
                 {/* Overlay */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
+
+                {/* Zoom icon indicator */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                  <ZoomIn className="w-6 h-6 text-white drop-shadow" />
+                </div>
+
                 {/* Remove button */}
                 <button
-                  onClick={() => removePhoto(i)}
-                  className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-500/80 rounded-full text-foreground backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removePhoto(i);
+                  }}
+                  className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-500/80 rounded-full text-foreground backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100 z-10"
                 >
                   <X className="w-4 h-4" />
                 </button>
 
                 {/* Cover badge */}
                 {i === 0 && (
-                  <div className="absolute bottom-2 left-2 px-2 py-1 bg-accent text-black text-[10px] font-bold uppercase tracking-wider rounded-md">
+                  <div className="absolute bottom-2 left-2 px-2 py-1 bg-accent text-black text-[10px] font-bold uppercase tracking-wider rounded-md pointer-events-none">
                     Cover Photo
                   </div>
                 )}
@@ -128,15 +187,29 @@ export function Step1Photos({ data, updateData, onNext }: Step1PhotosProps) {
         )}
       </div>
 
-      <div className="mt-10 pt-6 border-t border-border/50 flex justify-end">
-        <button
-          onClick={onNext}
-          disabled={!isValid}
-          className="hyper-liquid px-8 py-3 font-bold text-sm text-black disabled:opacity-50 disabled:pointer-events-none"
+      {/* Lightbox Modal */}
+      {previewUrl && (
+        <div
+          className="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewUrl(null)}
         >
-          Next Step →
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setPreviewUrl(null)}
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors z-[110]"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="max-w-4xl max-h-[85vh] w-full flex items-center justify-center p-2">
+            <img
+              src={previewUrl}
+              alt="Preview"
+              className="max-w-full max-h-[80vh] object-contain rounded-xl border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

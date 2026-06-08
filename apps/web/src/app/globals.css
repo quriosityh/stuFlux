@@ -2,6 +2,7 @@
 
 /* Enable manual dark mode toggling via data attribute (prevents Next.js class reconciliation conflicts) */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
@@ -12,44 +13,81 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-border: var(--border-color);
-  
+
   --radius-pill: 9999px;
+  --radius-btn: 0.75rem;
 }
 
-:root, :root[data-theme="light"] {
-  /* Light Mode (Icy Daylight Chrome) */
+:root,
+:root[data-theme="light"] {
+  /* Light Mode — Warm Daylight Chrome */
+
+  /* ── Layer 1: Ground ── */
   --background: #FFFFFF;
-  --foreground: #0A0A0A;
-  --surface: rgba(255, 255, 255, 0.7);
-  --border-color: rgba(0, 0, 0, 0.08);
+
+  /* ── Layer 2: Surface ── */
+  /* Pure white glass lifts off the warm ground */
+  --surface: rgba(255, 255, 255, 0.82);
+
+  /* ── Layer 3: Borders & Depth ── */
+  /* Visible but tasteful — same principle as dark's white glow borders */
+  --border-color: rgba(0, 0, 0, 0.14);
+  --input-border: rgba(0, 0, 0, 0.26);
+  --inner-bevel: inset 0 1px 0 rgba(255, 255, 255, 1), inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+  --shadow-color: rgba(0, 0, 0, 0.09);
+  --shadow-ambient: rgba(0, 0, 0, 0.05);
+
+  /* ── Layer 4: Typography ── */
+  --foreground: #0F0F10;
+  /* near-black, slightly warm */
+  --text-muted: #4A4A52;
+  /* clear secondary — reads at a glance */
+  --text-subtle: #8A8A94;
+  /* tertiary / placeholders */
+
+  /* ── Layer 5: Semantic surfaces ── */
+  --tag-bg: rgba(0, 91, 234, 0.08);
+  /* accent-tinted — not grey noise */
+  --tag-fg: #003BAA;
+  /* deep blue for contrast on tinted bg */
+  --nav-bg: rgba(255, 255, 255, 0.75);
+
+  /* ── Accent ── */
   --accent: #005BEA;
   --accent-hover: #00C6FF;
-  --liquid-gradient: linear-gradient(135deg in oklch, var(--accent) 0%, var(--accent-hover) 50%, var(--accent) 100%);
-  --inner-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  --shadow-color: rgba(0, 0, 0, 0.06);
+  --liquid-gradient: linear-gradient(135deg, #005BEA 0%, #00C6FF 50%, #a78bfa 100%);
+
+  /* ── Buttons ── */
+  --btn-shadow: 0 2px 12px 0 rgba(0, 91, 234, 0.28);
+  --btn-shadow-hover: 0 6px 24px 0 rgba(0, 91, 234, 0.38);
+
   --noise-opacity: 0.03;
-  
-  --btn-shadow: 0 2px 8px 0 rgba(0, 91, 234, 0.15);
-  --btn-shadow-hover: 0 4px 12px 0 rgba(0, 198, 255, 0.2);
-  --nav-bg: rgba(255, 255, 255, 0.8);
 }
 
 :root[data-theme="dark"] {
-  /* Dark Mode (Deep Space Chrome) */
+  /* Dark Mode — Deep Space Chrome */
   --background: #050505;
   --foreground: #FFFFFF;
   --surface: rgba(28, 28, 30, 0.6);
   --border-color: rgba(255, 255, 255, 0.1);
-  --accent: #00FFFF;
-  --accent-hover: #0066FF;
-  --liquid-gradient: linear-gradient(135deg in oklch, var(--accent) 0%, var(--accent-hover) 50%, var(--accent) 100%);
+  --input-border: rgba(255, 255, 255, 0.18);
   --inner-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.15);
   --shadow-color: rgba(0, 0, 0, 0.4);
+  --shadow-ambient: rgba(0, 0, 0, 0.25);
   --noise-opacity: 0.15;
+
+  --text-muted: #8E8E93;
+  --text-subtle: #48484A;
+  --tag-bg: rgba(0, 255, 255, 0.1);
+  --tag-fg: #00E5FF;
+  --nav-bg: #18181b;
+
+  --accent: #00FFFF;
+  --accent-hover: #0066FF;
+  --liquid-gradient: linear-gradient(135deg, #00FFFF 0%, #0066FF 60%, #a855f7 100%);
 
   --btn-shadow: 0 2px 8px 0 rgba(0, 255, 255, 0.15);
   --btn-shadow-hover: 0 4px 12px 0 rgba(0, 255, 255, 0.25);
-  --nav-bg: #18181b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,16 +96,24 @@
     --foreground: #FFFFFF;
     --surface: rgba(28, 28, 30, 0.6);
     --border-color: rgba(255, 255, 255, 0.1);
-    --accent: #00FFFF;
-    --accent-hover: #0066FF;
-    --liquid-gradient: linear-gradient(135deg in oklch, var(--accent) 0%, var(--accent-hover) 50%, var(--accent) 100%);
+    --input-border: rgba(255, 255, 255, 0.18);
     --inner-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.15);
     --shadow-color: rgba(0, 0, 0, 0.4);
+    --shadow-ambient: rgba(0, 0, 0, 0.25);
     --noise-opacity: 0.15;
+
+    --text-muted: #8E8E93;
+    --text-subtle: #48484A;
+    --tag-bg: rgba(0, 255, 255, 0.1);
+    --tag-fg: #00E5FF;
+    --nav-bg: #18181b;
+
+    --accent: #00FFFF;
+    --accent-hover: #0066FF;
+    --liquid-gradient: linear-gradient(135deg, #00FFFF 0%, #0066FF 60%, #a855f7 100%);
 
     --btn-shadow: 0 2px 8px 0 rgba(0, 255, 255, 0.15);
     --btn-shadow-hover: 0 4px 12px 0 rgba(0, 255, 255, 0.25);
-    --nav-bg: #18181b;
   }
 }
 
@@ -79,10 +125,14 @@ body {
 /* WOW FACTOR 1: Liquid Chrome Surfaces */
 .chrome-card {
   background-color: var(--surface);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid var(--border-color);
-  box-shadow: 0 8px 32px 0 var(--shadow-color), var(--inner-bevel);
+  /* Two-layer shadow: crisp lift + wide ambient — mirrors dark's depth */
+  box-shadow:
+    0 1px 3px 0 var(--shadow-color),
+    0 8px 32px 0 var(--shadow-ambient),
+    var(--inner-bevel);
   position: relative;
   overflow: hidden;
 }
@@ -91,10 +141,11 @@ body {
 
 /* WOW FACTOR 2: Liquid Button */
 .liquid-button {
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-btn);
   background: var(--liquid-gradient);
   background-size: 200% 200%;
-  color: #000000; /* Always dark text for high contrast on accents */
+  color: #000000;
+  /* Always dark text for high contrast on accents */
   font-weight: 700;
   border: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -128,7 +179,13 @@ body {
 }
 
 /* Force headings to use Space Grotesk */
-h1, h2, h3, h4, h5, h6, .font-display {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-display {
   font-family: var(--font-display);
 }
 
@@ -136,7 +193,7 @@ h1, h2, h3, h4, h5, h6, .font-display {
 .hyper-liquid {
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-btn);
   background: linear-gradient(110deg in oklab, var(--accent) 0%, var(--accent-hover) 28%, color-mix(in srgb, var(--accent-hover) 15%, white) 50%, var(--accent-hover) 72%, var(--accent) 100%);
   background-size: 300% 100%;
   background-position: 0% 50%;
@@ -145,7 +202,7 @@ h1, h2, h3, h4, h5, h6, .font-display {
   border: none;
   transition: background-position 0.6s ease-out, box-shadow 0.4s ease, transform 0.3s ease;
   box-shadow: 0 0 5px 0 color-mix(in oklch, var(--accent) 40%, transparent),
-              inset 0 1px 0 rgba(255,255,255,0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -154,37 +211,39 @@ h1, h2, h3, h4, h5, h6, .font-display {
 
 :root[data-theme="dark"] .hyper-liquid {
   box-shadow: 0 0 5px 0 rgba(0, 255, 255, 0.25),
-              inset 0 1px 0 rgba(255,255,255,0.15);
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .hyper-liquid {
     box-shadow: 0 0 5px 0 rgba(0, 255, 255, 0.25),
-                inset 0 1px 0 rgba(255,255,255,0.15);
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 }
 
 .hyper-liquid:hover {
   background-position: 100% 50%;
-  text-shadow: 0 0 8px rgba(0,0,0,0.3);
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
   transform: scale(1.01);
-  box-shadow: 0 0 15px 0 var(--accent), inset 0 1px 0 rgba(255,255,255,0.7);
+  box-shadow: 0 0 15px 0 var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 :root[data-theme="dark"] .hyper-liquid:hover {
-  text-shadow: 0 0 8px rgba(0,0,0,0.8);
-  box-shadow: 0 0 15px 0 rgba(0, 255, 255, 0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 0 15px 0 rgba(0, 255, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .hyper-liquid:hover {
-     text-shadow: 0 0 8px rgba(0,0,0,0.8);
-     box-shadow: 0 0 15px 0 rgba(0, 255, 255, 0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 15px 0 rgba(0, 255, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   }
 }
 
 .hyper-liquid:active {
   transform: scale(0.98) !important;
   filter: brightness(0.9);
-  box-shadow: 0 0 2px 0 var(--accent), inset 0 2px 6px rgba(0,0,0,0.2) !important;
+  box-shadow: 0 0 2px 0 var(--accent), inset 0 2px 6px rgba(0, 0, 0, 0.2) !important;
   transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
@@ -202,9 +261,9 @@ h1, h2, h3, h4, h5, h6, .font-display {
 }
 
 .glass-spotlight:hover {
-  box-shadow: 0 0 15px 0 color-mix(in oklch, var(--accent) 80%, transparent), 
-              0 0 30px 0 color-mix(in oklch, var(--accent) 40%, transparent),
-              inset 0 0 20px 0 color-mix(in oklch, var(--accent) 20%, transparent);
+  box-shadow: 0 0 15px 0 color-mix(in oklch, var(--accent) 80%, transparent),
+    0 0 30px 0 color-mix(in oklch, var(--accent) 40%, transparent),
+    inset 0 0 20px 0 color-mix(in oklch, var(--accent) 20%, transparent);
   border-color: color-mix(in oklch, var(--accent) 40%, transparent);
 }
 
@@ -212,7 +271,7 @@ h1, h2, h3, h4, h5, h6, .font-display {
   background: color-mix(in oklch, var(--foreground) 5%, transparent);
   color: var(--foreground);
   border: 1px solid transparent;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-btn);
   transition: all 0.3s ease;
   font-weight: 700;
   display: inline-flex;
@@ -240,7 +299,10 @@ h1, h2, h3, h4, h5, h6, .font-display {
 .tactile-glitch::after {
   content: '';
   position: absolute;
-  bottom: 0; left: 50%; width: 0; height: 2px;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
   background: var(--accent);
   transition: all 0.3s ease;
   transform: translateX(-50%);
@@ -256,8 +318,15 @@ h1, h2, h3, h4, h5, h6, .font-display {
 
 /* Subtle amber pulse for urgent warnings */
 @keyframes urgentPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .animate-urgent-pulse {
@@ -271,6 +340,8 @@ h1, h2, h3, h4, h5, h6, .font-display {
 
 /* Hide scrollbar for IE, Edge and Firefox */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
