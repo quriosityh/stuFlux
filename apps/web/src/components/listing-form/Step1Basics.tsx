@@ -69,12 +69,17 @@ export function Step1Basics({ data, updateData, onNext, hideFooter }: Step1Props
   };
 
   return (
+<<<<<<< HEAD
     <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-2">
+=======
+    <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-2">
+>>>>>>> 557ee652f0ba7c34363f6b288f3b190ac0865b6c
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 text-center pt-2">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/45">
           <Sparkles className="h-3.5 w-3.5 text-accent" />
           Step 1 of 4
         </div>
+<<<<<<< HEAD
         <h2 className="font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">Start with the headline</h2>
         <p className="max-w-2xl text-sm font-light text-white/45 sm:text-base">Make the item feel real before it feels like a form. Keep the title bold, category obvious, and the rest calm.</p>
       </div>
@@ -93,12 +98,51 @@ export function Step1Basics({ data, updateData, onNext, hideFooter }: Step1Props
             />
             <div className="mt-3 flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.3em] text-white/30">
               <BadgeInfo className="h-3.5 w-3.5 text-accent" />
+=======
+        <h2 className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">The Basics</h2>
+        <p className="max-w-2xl text-sm font-light text-white/45 sm:text-base">
+          A great listing starts with a clear title, a detailed description, and the right category.
+        </p>
+      </div>
+
+      <div className="space-y-10">
+        <div className="space-y-3">
+          <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Listing title</label>
+          <div className="rounded-[1.5rem] border border-white/10 bg-[#14141E] px-4 py-3 shadow-sm transition-all duration-300 focus-within:border-accent/70 focus-within:ring-1 focus-within:ring-accent/50">
+            <input
+              type="text"
+              placeholder="e.g. Professional DJ Set with Turntables"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={100}
+              className="w-full border-none bg-transparent text-center font-display text-2xl font-bold tracking-tight text-white placeholder:text-white/18 outline-none sm:text-3xl"
+            />
+            <div className="mt-2 text-center text-[11px] uppercase tracking-[0.3em] text-white/30">
+>>>>>>> 557ee652f0ba7c34363f6b288f3b190ac0865b6c
               {title.length}/100
             </div>
           </div>
         </div>
 
         <div className="space-y-3">
+<<<<<<< HEAD
+=======
+          <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Description</label>
+          <div className="rounded-[1.5rem] border border-white/10 bg-[#14141E] px-4 py-4 transition-all duration-300 focus-within:border-accent/70 focus-within:ring-1 focus-within:ring-accent/50">
+            <textarea
+              placeholder="A quick story, what’s included, and anything renters should know."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={1000}
+              rows={6}
+              className="w-full resize-none border-none bg-transparent text-sm leading-relaxed text-white outline-none placeholder:text-white/25"
+            />
+            <div className="mt-2 flex justify-end text-[11px] uppercase tracking-[0.3em] text-white/28">{description.length}/1000</div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+>>>>>>> 557ee652f0ba7c34363f6b288f3b190ac0865b6c
           <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Category</label>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {MOCK_CATEGORIES.map((cat) => (
@@ -127,6 +171,7 @@ export function Step1Basics({ data, updateData, onNext, hideFooter }: Step1Props
           </div>
         </div>
 
+<<<<<<< HEAD
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-3">
             <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Description</label>
@@ -148,21 +193,59 @@ export function Step1Basics({ data, updateData, onNext, hideFooter }: Step1Props
             <div className="rounded-[1.5rem] border border-white/10 bg-[#14141E] px-4 py-4 transition-all duration-300 focus-within:border-accent/70 focus-within:shadow-[0_0_0_1px_rgba(57,255,20,0.18)]">
               <div className="flex items-center gap-3 rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3">
                 <div className="flex h-10 items-center justify-center rounded-full border border-accent/20 bg-accent/10 px-3 text-xs font-bold tracking-[0.3em] text-accent">PKR</div>
+=======
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Price per day</label>
+            <div className="rounded-[1.5rem] border border-white/10 bg-[#14141E] p-3 transition-all duration-300 focus-within:border-accent/70 focus-within:ring-1 focus-within:ring-accent/50">
+              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <div className="flex h-9 items-center justify-center rounded-md border border-accent/20 bg-accent/10 px-3 text-xs font-bold tracking-widest text-accent">PKR</div>
+>>>>>>> 557ee652f0ba7c34363f6b288f3b190ac0865b6c
                 <input
                   type="number"
                   placeholder="0"
                   min="0"
                   value={dailyRate}
                   onChange={(e) => setDailyRate(e.target.value)}
+<<<<<<< HEAD
                   className="flex-1 border-none bg-transparent font-display text-2xl font-bold text-white outline-none placeholder:text-white/20"
                 />
                 <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/35">/ day</span>
               </div>
               <p className="mt-3 text-xs font-light text-white/35">Keep it simple. The price should read like a decision, not a calculation.</p>
+=======
+                  className="w-full border-none bg-transparent font-display text-2xl font-bold text-white outline-none placeholder:text-white/20"
+                />
+                <span className="text-xs font-semibold uppercase tracking-widest text-white/35">/day</span>
+              </div>
+              <p className="mt-2 px-2 text-xs font-light text-white/35">Set a competitive daily rate.</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Condition</label>
+            <div className="grid h-full grid-cols-2 gap-3">
+              {CONDITIONS.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setCondition(option)}
+                  className={cn(
+                    'flex flex-col items-center justify-center rounded-2xl border text-center transition-all duration-300 transform-gpu',
+                    condition === option
+                      ? 'border-emerald-400/60 bg-emerald-400/10 shadow-sm scale-[1.03]'
+                      : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/[0.07]'
+                  )}
+                >
+                  <div className="font-display text-base font-bold text-white">{option}</div>
+                  <p className="mt-1 text-xs font-light text-white/45">{conditionDescriptions[option]}</p>
+                </button>
+              ))}
+>>>>>>> 557ee652f0ba7c34363f6b288f3b190ac0865b6c
             </div>
           </div>
         </div>
 
+<<<<<<< HEAD
         <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-3">
             <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Condition</label>
@@ -242,6 +325,61 @@ export function Step1Basics({ data, updateData, onNext, hideFooter }: Step1Props
                 </div>
               )}
             </div>
+=======
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/45">Specifications (Optional)</label>
+            {!isAddingSpec && (
+              <button onClick={() => setIsAddingSpec(true)} className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-accent transition-colors hover:opacity-80">
+                <Plus className="h-3.5 w-3.5" /> Add Spec
+              </button>
+            )}
+          </div>
+
+          <div className="rounded-[1.5rem] border border-white/10 bg-[#14141E] p-4 min-h-[80px]">
+            <div className="flex flex-wrap gap-3">
+              {Object.entries(specs).map(([key, value]) => (
+                <div key={key} className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white">
+                  <span className="text-white/45">{key}:</span>
+                  <span className="font-semibold">{value}</span>
+                  <button onClick={() => handleRemoveSpec(key)} className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-white/5 text-white/45 transition-colors hover:bg-red-500/15 hover:text-red-300">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              {Object.keys(specs).length === 0 && !isAddingSpec && (
+                <div className="flex items-center justify-center w-full h-full text-sm font-light italic text-white/28">
+                  e.g. Brand: Sony, Model: A7 III, Color: Black
+                </div>
+              )}
+            </div>
+
+            {isAddingSpec && (
+              <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                <input
+                  type="text"
+                  placeholder="Label (e.g. Brand)"
+                  value={newSpecKey}
+                  onChange={(e) => setNewSpecKey(e.target.value)}
+                  className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-white/25 focus:border-accent/70"
+                />
+                <input
+                  type="text"
+                  placeholder="Value (e.g. Sony)"
+                  value={newSpecValue}
+                  onChange={(e) => setNewSpecValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddSpec()}
+                  className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-white/25 focus:border-accent/70"
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => setIsAddingSpec(false)} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold text-white/70 transition-colors hover:bg-white/5">Cancel</button>
+                  <button onClick={handleAddSpec} disabled={!newSpecKey.trim() || !newSpecValue.trim()} className="rounded-xl px-3 py-2 text-sm font-bold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40 liquid-button active:scale-95 transform-gpu">
+                    Add
+                  </button>
+                </div>
+              </div>
+            )}
+>>>>>>> 557ee652f0ba7c34363f6b288f3b190ac0865b6c
           </div>
         </div>
       </div>

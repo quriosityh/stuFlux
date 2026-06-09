@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Bell, User, Plus, Menu, Search, Moon, Sun } from 'lucide-react';
+import { Bell, User, Plus, Menu, Search, Moon, Sun, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchBar, ActiveTab } from '../explore/SearchBar';
 
@@ -165,9 +165,10 @@ export function NavHeader() {
                         if (isExplorePage) setActiveTab('where');
                         else window.location.href = '/';
                       }}
-                      className="px-4 py-2.5 text-sm font-semibold truncate max-w-[120px] hover:bg-surface transition-colors"
+                      className="px-4 py-2.5 text-sm font-semibold truncate max-w-[120px] hover:bg-surface transition-colors flex items-center gap-1"
                     >
                       Anywhere
+                      <ChevronDown size={14} className="opacity-60 shrink-0" />
                     </span>
                     <span 
                       onClick={(e) => {
@@ -175,9 +176,10 @@ export function NavHeader() {
                         if (isExplorePage) setActiveTab('when');
                         else window.location.href = '/';
                       }}
-                      className="px-4 py-2.5 text-sm font-semibold truncate max-w-[120px] hover:bg-surface transition-colors"
+                      className="px-4 py-2.5 text-sm font-semibold truncate max-w-[120px] hover:bg-surface transition-colors flex items-center gap-1"
                     >
                       Anytime
+                      <ChevronDown size={14} className="opacity-60 shrink-0" />
                     </span>
                     <span 
                       onClick={(e) => {

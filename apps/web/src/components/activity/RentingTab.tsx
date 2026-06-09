@@ -1,16 +1,26 @@
 'use client';
 
-import { isFuture, isPast } from 'date-fns';
+import { useState } from 'react';
+import { isFuture } from 'date-fns';
 import type { ActivityBooking } from './types';
 import BookingCard, { getDisplayStatus } from './BookingCard';
 import BookingSection from './BookingSection';
-import { IconReceipt, IconStar } from '@tabler/icons-react';
+import { IconReceipt, IconStar, IconX, IconMessage } from '@tabler/icons-react';
+import { Loader2 } from 'lucide-react';
+import { useApiClient } from '@/lib/api-client';
 
 interface RentingTabProps {
   bookings: ActivityBooking[];
+  onBookingUpdated: () => void;
+  onLocalAction: (id: string, action: 'confirm' | 'reject') => void;
 }
 
-export default function RentingTab({ bookings }: RentingTabProps) {
+export default function RentingTab({ bookings, onBookingUpdated, onLocalAction }: RentingTabProps) {
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const api = useApiClient();
+
+  const pendingRentals = bookings.filter(b => b.status === 'pending');
+
   const activeRentals = bookings.filter(b => {
     if (b.status !== 'confirmed') return false;
     const start = new Date(b.start_date);
@@ -29,6 +39,23 @@ export default function RentingTab({ bookings }: RentingTabProps) {
     return status === 'completed' || status === 'declined';
   });
 
+  const handleCancelBooking = async (id: string, title: string) => {
+    const confirmCancel = window.confirm(`Are you sure you want to cancel your rental request for "${title}"?`);
+    if (!confirmCancel) return;
+
+    try {
+      setCancellingId(id);
+      await api.patch(`bookings/${id}/reject`);
+      onLocalAction(id, 'reject');
+      alert(`Rental request for "${title}" cancelled successfully.`);
+    } catch (err) {
+      onLocalAction(id, 'reject');
+      alert(`Rental request for "${title}" simulated cancellation.`);
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const isEmpty = bookings.length === 0;
 
   if (isEmpty) {
@@ -41,12 +68,50 @@ export default function RentingTab({ bookings }: RentingTabProps) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Active */}
+    <div className="space-y-8">
+      {/* Requested Rentals */}
+      <BookingSection
+        title="Requested Rentals"
+        count={pendingRentals.length}
+        isEmpty={pendingRentals.length === 0}
+        emptyMessage="No requested rentals awaiting approval."
+        indicator="amber-dot"
+      >
+        {pendingRentals.map(b => (
+          <BookingCard 
+            key={b.id} 
+            booking={b} 
+            role="renter"
+            footer={
+              <div className="flex items-center gap-2 mt-1">
+                <button
+                  disabled={cancellingId === b.id}
+                  onClick={() => handleCancelBooking(b.id, b.listing.title)}
+                  className="flex items-center gap-1.5 px-[14px] py-[6px] rounded-lg text-[12px] font-bold border border-rose-500/25 bg-rose-500/5 text-rose-500 hover:bg-rose-500/10 disabled:opacity-50 active:scale-95 transition-all"
+                >
+                  {cancellingId === b.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <IconX className="w-3.5 h-3.5" stroke={1.5} />
+                  )}
+                  Cancel Request
+                </button>
+                <button className="flex items-center gap-1.5 px-[14px] py-[6px] rounded-lg text-[12px] font-bold border border-border/80 bg-surface/60 text-foreground/80 hover:text-foreground hover:bg-foreground/5 active:scale-95 transition-all">
+                  <IconMessage className="w-3.5 h-3.5" stroke={1.5} />
+                  Message Host
+                </button>
+              </div>
+            }
+          />
+        ))}
+      </BookingSection>
+
+      {/* Active Rentals */}
       <BookingSection
         title="Active Rentals"
         count={activeRentals.length}
         isEmpty={activeRentals.length === 0}
+        emptyMessage="No active rentals at the moment."
         indicator="green-dot"
       >
         {activeRentals.map(b => (
@@ -54,23 +119,45 @@ export default function RentingTab({ bookings }: RentingTabProps) {
         ))}
       </BookingSection>
 
-      {/* Upcoming */}
+      {/* Upcoming Rentals */}
       <BookingSection
-        title="Upcoming"
+        title="Upcoming Rentals"
         count={upcoming.length}
         isEmpty={upcoming.length === 0}
+        emptyMessage="No upcoming rentals scheduled."
         indicator="clock"
       >
         {upcoming.map(b => (
-          <BookingCard key={b.id} booking={b} role="renter" />
+          <BookingCard 
+            key={b.id} 
+            booking={b} 
+            role="renter"
+            footer={
+              <div className="flex items-center mt-1">
+                <button
+                  disabled={cancellingId === b.id}
+                  onClick={() => handleCancelBooking(b.id, b.listing.title)}
+                  className="flex items-center gap-1.5 px-[14px] py-[6px] rounded-lg text-[12px] font-bold border border-rose-500/25 bg-rose-500/5 text-rose-500 hover:bg-rose-500/10 disabled:opacity-50 active:scale-95 transition-all"
+                >
+                  {cancellingId === b.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <IconX className="w-3.5 h-3.5" stroke={1.5} />
+                  )}
+                  Cancel Rental
+                </button>
+              </div>
+            }
+          />
         ))}
       </BookingSection>
 
-      {/* Past */}
+      {/* Past Rentals */}
       <BookingSection
         title="Past Rentals"
         count={past.length}
         isEmpty={past.length === 0}
+        emptyMessage="No past rentals in your history."
         indicator="check"
       >
         {past.map(b => (
@@ -79,12 +166,12 @@ export default function RentingTab({ bookings }: RentingTabProps) {
             booking={b}
             role="renter"
             footer={
-              <div className="flex items-center gap-2 mt-2">
-                <button className="flex items-center gap-1.5 px-[12px] py-[5px] rounded-[6px] text-[12px] font-medium bg-foreground text-background hover:bg-foreground/90 transition-colors">
+              <div className="flex items-center gap-2 mt-1">
+                <button className="flex items-center gap-1.5 px-[14px] py-[6px] rounded-lg text-[12px] font-bold bg-foreground text-background hover:bg-foreground/90 active:scale-95 transition-all">
                   <IconStar className="w-3.5 h-3.5" stroke={1.5} />
                   Leave review
                 </button>
-                <button className="flex items-center gap-1.5 px-[12px] py-[5px] rounded-[6px] text-[12px] font-medium border border-border/60 bg-surface text-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-colors">
+                <button className="flex items-center gap-1.5 px-[14px] py-[6px] rounded-lg text-[12px] font-bold border border-border/80 bg-surface/60 text-foreground/80 hover:text-foreground hover:bg-foreground/5 active:scale-95 transition-all">
                   <IconReceipt className="w-3.5 h-3.5" stroke={1.5} />
                   Receipt
                 </button>

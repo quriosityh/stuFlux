@@ -14,4 +14,5 @@ export interface ListingFormData {
   delivery_fee: number;
   security_deposit: number;
   photo_urls: string[];
+  rules?: string;
 }
