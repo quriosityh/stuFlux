@@ -51,7 +51,7 @@ export const bookingsRepository = {
     return row ?? null;
   },
 
-  async findForUser(userId: string, role: 'renter' | 'owner', status?: BookingStatus, listingId?: string) {
+  async findForUser(userId: string, role: 'renter' | 'owner', status?: BookingStatus, listingId?: string, limit = 50) {
     const conditions = [role === 'renter' ? eq(bookings.renter_id, userId) : eq(bookings.owner_id, userId)];
     if (status) {
       conditions.push(eq(bookings.status, status));
@@ -59,7 +59,7 @@ export const bookingsRepository = {
     if (listingId) {
       conditions.push(eq(bookings.listing_id, listingId));
     }
-    return db.select().from(bookings).where(and(...conditions)).orderBy(bookings.created_at);
+    return db.select().from(bookings).where(and(...conditions)).orderBy(bookings.created_at).limit(limit);
   },
 
   async updateStatus(id: string, status: BookingStatus, timestampColumn: 'confirmed_at' | 'rejected_at' | 'completed_at') {

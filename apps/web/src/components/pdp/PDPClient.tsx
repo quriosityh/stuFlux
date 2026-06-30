@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { differenceInCalendarDays, format } from 'date-fns';
+import { useApiClient } from '@/lib/api-client';
+import { useAuth } from '@clerk/nextjs';
 import { Breadcrumb } from './Breadcrumb';
 import { TitleActions } from './TitleActions';
 import { PhotoGallery } from './PhotoGallery';
@@ -22,37 +24,53 @@ interface PDPClientProps {
 }
 
 export default function PDPClient({ listing, availability }: PDPClientProps) {
+  const api = useApiClient();
+  const { isSignedIn } = useAuth();
   const [selectedDates, setSelectedDates] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
   const [showNavBookingCTA, setShowNavBookingCTA] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
   const reviewsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Show booking CTA in navbar when the BookingCard starts going behind the nav
     const handleScroll = () => {
       const rightCol = document.getElementById('booking-sidebar');
       const anchor = document.getElementById('booking-card-anchor');
       if (!rightCol || !anchor) return;
-
-      const rightColRect = rightCol.getBoundingClientRect();
       const anchorRect = anchor.getBoundingClientRect();
-      
-      // Show CTA when the card's bottom is at or above the nav (~64px)
-      const cardIsOverlappingNav = anchorRect.bottom <= 64;
-      setShowNavBookingCTA(cardIsOverlappingNav);
+      setShowNavBookingCTA(anchorRect.bottom <= 64);
     };
-
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
-
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   if (!listing) return null;
 
-  const handleBookingRequest = () => {
-    // Handle booking logic here
-    console.log("Booking requested for dates:", selectedDates);
-    alert(`Booking requested for Rs. ${listing.daily_rate}/day from ${selectedDates.start?.toLocaleDateString()} to ${selectedDates.end?.toLocaleDateString()}`);
+  const handleBookingRequest = async () => {
+    if (!isSignedIn) {
+      window.location.href = '/auth/sign-in';
+      return;
+    }
+    if (!selectedDates.start || !selectedDates.end) return;
+    setBookingLoading(true);
+    setBookingError(null);
+    try {
+      await api.post('bookings', {
+        json: {
+          listing_id: listing.id,
+          start_date: format(selectedDates.start, 'yyyy-MM-dd'),
+          end_date: format(selectedDates.end, 'yyyy-MM-dd'),
+        },
+      }).json();
+      setBookingSuccess(true);
+    } catch (e: any) {
+      const msg = e?.response ? await e.response.json().catch(() => null) : null;
+      setBookingError(msg?.message ?? 'Failed to request booking. Please try again.');
+    } finally {
+      setBookingLoading(false);
+    }
   };
 
   const handleBookClick = () => {
@@ -95,7 +113,7 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
           <div className="flex-1 md:w-3/5 lg:w-[60%] w-full min-w-0">
             <ListingMeta 
               title={listing.title}
-              city={listing.city} 
+              city={listing.area ?? listing.city} 
               reviewCount={7}
               rating={3.9}
             />
@@ -125,46 +143,67 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
           {/* RIGHT COLUMN (40%) - Desktop Sticky Sidebar */}
           <div id="booking-sidebar" className="hidden md:block md:w-2/5 lg:w-[40%] w-full relative">
             <div id="booking-card-anchor" className="sticky top-32 max-w-[380px] ml-auto">
-              <BookingCard 
-                dailyRate={listing.daily_rate}
-                securityDeposit={listing.security_deposit}
-                selectedDates={selectedDates}
-                onBookingRequest={handleBookingRequest}
-                isSticky={false} // Container handles stickiness
-              />
+              {bookingSuccess ? (
+                <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/8 p-6 text-center">
+                  <p className="font-bold text-emerald-400 text-lg">Request sent! 🎉</p>
+                  <p className="text-sm text-foreground/60 mt-1">The owner will confirm shortly.</p>
+                </div>
+              ) : (
+                <>
+                  {bookingError && (
+                    <div className="mb-3 rounded-2xl border border-red-400/30 bg-red-400/8 px-4 py-3 text-sm text-red-400">
+                      {bookingError}
+                    </div>
+                  )}
+                  <BookingCard 
+                    dailyRate={listing.daily_rate}
+                    securityDeposit={listing.security_deposit}
+                    selectedDates={selectedDates}
+                    onBookingRequest={handleBookingRequest}
+                    isSticky={false}
+                  />
+                </>
+              )}
             </div>
           </div>
 
           {/* MOBILE BOTTOM BAR */}
           <div className="md:hidden">
-            
-            {/* Fixed Bottom Booking Bar for Mobile */}
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border/10 z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="font-bold font-syne text-xl">Rs. {listing.daily_rate.toLocaleString()}</div>
-                  <div className="text-sm text-foreground/60 font-medium">
-                    {selectedDates.start && selectedDates.end ? (
-                      `For ${differenceInCalendarDays(selectedDates.end, selectedDates.start)} days • ${format(selectedDates.start, 'MMM d')} - ${format(selectedDates.end, 'd')}`
-                    ) : (
-                      'Per day'
+              {bookingSuccess ? (
+                <p className="text-center text-emerald-400 font-bold text-sm py-2">
+                  Request sent! The owner will confirm shortly. 🎉
+                </p>
+              ) : (
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="font-bold font-syne text-xl">Rs. {listing.daily_rate.toLocaleString()}</div>
+                    <div className="text-sm text-foreground/60 font-medium">
+                      {selectedDates.start && selectedDates.end ? (
+                        `For ${differenceInCalendarDays(selectedDates.end, selectedDates.start)} days • ${format(selectedDates.start, 'MMM d')} - ${format(selectedDates.end, 'd')}`
+                      ) : (
+                        'Per day'
+                      )}
+                    </div>
+                    {bookingError && (
+                      <p className="text-xs text-red-400 mt-1">{bookingError}</p>
                     )}
                   </div>
+                  <button 
+                    disabled={bookingLoading}
+                    onClick={() => {
+                      if (!selectedDates.start || !selectedDates.end) {
+                        document.getElementById('availability-section')?.scrollIntoView({ behavior: 'smooth' });
+                      } else {
+                        handleBookingRequest();
+                      }
+                    }}
+                    className="hyper-liquid px-8 py-3 text-sm flex-1 max-w-[200px] disabled:opacity-50"
+                  >
+                    {bookingLoading ? 'Sending…' : (!selectedDates.start || !selectedDates.end ? 'Check Dates' : 'Request')}
+                  </button>
                 </div>
-                <button 
-                  onClick={() => {
-                    // On mobile, if dates aren't selected, scroll to calendar. Else, book.
-                    if (!selectedDates.start || !selectedDates.end) {
-                      document.getElementById('availability-section')?.scrollIntoView({ behavior: 'smooth' });
-                    } else {
-                      handleBookingRequest();
-                    }
-                  }}
-                  className="hyper-liquid px-8 py-3 text-sm flex-1 max-w-[200px]"
-                >
-                  {!selectedDates.start || !selectedDates.end ? 'Check Dates' : 'Request'}
-                </button>
-              </div>
+              )}
             </div>
           </div>
 

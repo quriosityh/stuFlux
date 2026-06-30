@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useApiClient } from '@/lib/api-client';
 import { ListingFormData } from './types';
 import { StepIndicator } from './StepIndicator';
 
@@ -40,42 +41,91 @@ const INITIAL_DATA: ListingFormData = {
   status: 'draft',
 };
 
-export function ListingFormWizard({ mode, listingId, defaultValues = {} }: ListingFormWizardProps) {
+function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: ListingFormWizardProps) {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(1);
+  const searchParams = useSearchParams();
+  const api = useApiClient();
+  const initialStep = Math.min(Math.max(Number(searchParams.get('step')) || 1, 1), 7);
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [formData, setFormData] = useState<ListingFormData>({ ...INITIAL_DATA, ...defaultValues });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const updateFormData = (newData: Partial<ListingFormData>) => {
     setFormData(prev => ({ ...prev, ...newData }));
   };
 
-  // Periodic Auto-save (debounced 5 seconds)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      // In a real app, this would be a PUT request to /listings/:id
-      // with { ...formData, status: 'draft' }
-      if (formData.photo_urls.length > 0) {
-        console.log('[Auto-save] Draft saved:', formData.title || 'Untitled');
-      }
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [formData]);
-
   const handleNext = () => setCurrentStep(prev => Math.min(prev + 1, 7));
   const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1));
-  const handleSkip = () => handleNext(); // For optional steps like availability
+  const handleSkip = () => handleNext();
+
+  // Build the API payload from form data
+  const buildPayload = (status: 'active' | 'draft') => ({
+    title: formData.title,
+    description: formData.description,
+    category_id: formData.category_id,
+    daily_rate: formData.daily_rate,
+    area: formData.area,
+    condition: formData.condition,
+    rental_rules: formData.rental_rules,
+    specs: formData.specs,
+    min_rental_days: formData.min_rental_days,
+    max_rental_days: formData.max_rental_days,
+    delivery_available: formData.delivery_available,
+    delivery_fee: formData.delivery_fee,
+    security_deposit: formData.security_deposit,
+    status,
+    photos: formData.photo_urls.map((url, i) => ({
+      url,
+      is_primary: i === 0,
+      position: i,
+    })),
+  });
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      console.log('Publishing listing:', { ...formData, status: 'active' });
-      // API call to publish
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const mockId = listingId || 'new-listing-123';
-      router.push(`/listings/${mockId}` as any);
-    } catch (error) {
+      let finalId: string;
+
+      if (mode === 'edit' && listingId) {
+        // Edit: PUT existing listing
+        const res = await api
+          .put(`listings/${listingId}`, { json: buildPayload('active') })
+          .json<{ data: { id: string } }>();
+        finalId = res.data.id;
+
+        // Save blocked dates separately if any were set
+        if (formData.blocked_dates.length > 0) {
+          await api
+            .put(`listings/${listingId}/blocked-dates`, {
+              json: { blocked_dates: formData.blocked_dates },
+            })
+            .json();
+        }
+      } else {
+        // Create: POST new listing
+        const res = await api
+          .post('listings', { json: buildPayload('active') })
+          .json<{ data: { id: string } }>();
+        finalId = res.data.id;
+
+        // Save blocked dates for the new listing
+        if (formData.blocked_dates.length > 0) {
+          await api
+            .put(`listings/${finalId}/blocked-dates`, {
+              json: { blocked_dates: formData.blocked_dates },
+            })
+            .json();
+        }
+      }
+
+      router.push(`/listings/${finalId}` as any);
+    } catch (error: any) {
       console.error('Failed to publish listing:', error);
+      setSubmitError(
+        error?.message ?? 'Something went wrong. Please check your details and try again.'
+      );
       setIsSubmitting(false);
     }
   };
@@ -95,6 +145,11 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
       <div className="min-h-screen bg-background pb-24">
         <div className="max-w-5xl mx-auto px-4 pt-8">
           <StepIndicator currentStep={currentStep} totalSteps={7} />
+          {submitError && (
+            <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-400/8 px-5 py-4 text-sm text-red-400">
+              {submitError}
+            </div>
+          )}
           <div className="mt-8">
             <Step7Review
               data={formData}
@@ -131,7 +186,7 @@ export function ListingFormWizard({ mode, listingId, defaultValues = {} }: Listi
         <div className="flex-1 flex flex-col min-h-[500px]  lg:border-l border-foreground/10">
           <div className="flex-1 lg:pl-12 pt-2 pb-24 lg:pb-0">
             {currentStep === 1 && (
-              <Step1Photos data={formData} updateData={updateFormData} onValidChange={setCanProceed} />
+              <Step1Photos data={formData} updateData={updateFormData} onValidChange={setCanProceed} listingId={listingId} />
             )}
             {currentStep === 2 && (
               <Step2CategoryTitle data={formData} updateData={updateFormData} onValidChange={setCanProceed} />
@@ -316,3 +371,10 @@ function MobileTipsSheet({ currentStep, onClose }: { currentStep: number; onClos
   );
 }
 
+export function ListingFormWizard(props: ListingFormWizardProps) {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <ListingFormWizardInner {...props} />
+    </Suspense>
+  );
+}

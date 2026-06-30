@@ -44,6 +44,34 @@ export const listingBlockedDates = pgTable("listing_blocked_dates", {
 });
 ```
 
+### Modify `users` table
+Update the existing `users` table to replace `city` with `area`.
+
+```typescript
+export const users = pgTable("users", {
+    // ... existing fields (id, clerk_user_id, display_name, email, avatar_url, etc.)
+    
+    // REMOVED: city: text("city").notNull(),
+    // NEW:
+    area: text("area").notNull(), // Stores the area ID string from LAHORE_AREAS
+});
+```
+
+### Add `listing_blocked_dates` table
+To support owner-managed availability, create a new table for manual blocked dates.
+
+```typescript
+export const listingBlockedDates = pgTable("listing_blocked_dates", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listing_id: uuid("listing_id")
+        .notNull()
+        .references(() => listings.id, { onDelete: "cascade" }),
+    start_date: date("start_date").notNull(),
+    end_date: date("end_date").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+```
+
 ### Modify `listings` table
 Update the existing listings table to remove `city` and `address`, and add the new fields.
 
@@ -85,5 +113,24 @@ export const listings = pgTable("listings", {
 ### Bookings Module (`apps/api/src/modules/bookings/`)
 
 1. **`GET /bookings/listings/:id/availability`**
-   - Currently, this fetches `confirmed` dates from the `bookings` table.
-   - **Update:** It needs to also fetch dates from `listing_blocked_dates`, combine the two sets of unavailable dates, and return them as a unified list of blocked ranges.
+   - Fetches both confirmed booking dates from the `bookings` table and manually blocked dates from the `listing_blocked_dates` table.
+   - Combines and resolves them into a unified list of blocked ranges sorted chronologically by start date.
+   - Used for the PDP calendar block-out logic and Owner Dashboard calendar view.
+
+2. **`POST /bookings` & `PUT /bookings/:id/confirm`**
+   - Integrates conflict checks against the `listing_blocked_dates` table to prevent booking overlap with manual blocks.
+
+### Users Module (`apps/api/src/modules/users/`)
+
+1. **`GET /me` & `PUT /me`**
+   - Updated `updateProfileSchema` in `validations.ts` to expect `area` (string) instead of `city`.
+   - Updated `ensureUserSynced` in `service.ts` and `upsertFromClerk` / `updateProfile` in `repository.ts` to store and update the Lahore area ID.
+
+---
+
+## 4. Implementation Status
+- **Schema Migrations**: ✅ Completed (updated `db/schema.ts`).
+- **Owner Listing Photo Joins**: ✅ Completed (updated `findByOwner` to include primary photo URLs).
+- **Availability Merging & Overlap Checks**: ✅ Completed (updated `apps/api/src/modules/bookings/service.ts`).
+- **Profile Area Mapping & Clerk Sync**: ✅ Completed (updated user module endpoints and repository).
+

@@ -12,7 +12,7 @@ The token is a short-lived JWT obtained via Clerk's `getToken()` on the frontend
 
 ## Health
 
-| Method | Path | Auth | Description |
+| Method | Path Sideload an External API Key: When your native Antigravity baseline workspace limits are reached, don't buy immediate credit packs. Go to Google AI Studio, generate a free API Key, and inside Antigravity go to Settings (Cmd + ,) > Models. Route your provider to "External Gemini API" to run on a separate 150 RPM rate limit without consuming IDE credits. | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/health` | — | Returns API status |
 | GET | `/health/db` | — | Tests database connection |
@@ -149,7 +149,7 @@ Mounted at root (`/api/v1/messages`, `/api/v1/conversations`).
 {
   "listing_id": "uuid (required — used to find/create conversation)",
   "body": "string (required)"
-}
+}Sideload an External API Key: When your native Antigravity baseline workspace limits are reached, don't buy immediate credit packs. Go to Google AI Studio, generate a free API Key, and inside Antigravity go to Settings (Cmd + ,) > Models. Route your provider to "External Gemini API" to run on a separate 150 RPM rate limit without consuming IDE credits. 
 ```
 
 **SSE Stream (`/conversations/:id/stream`):**

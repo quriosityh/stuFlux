@@ -1,23 +1,28 @@
 import ky from 'ky';
 import { useAuth } from '@clerk/nextjs';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+// ── Server-side: direct connection (no CORS, runs inside Node.js)
+const SERVER_API_URL = process.env.API_BASE_URL || 'http://localhost:4000/api/v1';
 
-// Create base client
+// ── Client-side: route through Next.js proxy (/api/proxy/* → Express)
+//    This keeps browser requests same-origin so CORS never fires.
+const CLIENT_API_URL =
+  typeof window !== 'undefined'
+    ? '/api/proxy'
+    : SERVER_API_URL;
+
+// Base client — used for client-side requests (goes through proxy)
 const apiClient = ky.create({
-  prefixUrl: API_BASE_URL,
-  timeout: 10000,
-  retry: {
-    limit: 2,
-    methods: ['get'],
-  },
+  prefixUrl: CLIENT_API_URL,
+  timeout: 10_000,
+  retry: { limit: 1, methods: ['get'] },
 });
 
-// Hook for authenticated API calls
+// ── Hook for authenticated client-side API calls
 export function useApiClient() {
   const { getToken } = useAuth();
 
-  const authenticatedClient = apiClient.extend({
+  return apiClient.extend({
     hooks: {
       beforeRequest: [
         async (request) => {
@@ -29,13 +34,17 @@ export function useApiClient() {
       ],
     },
   });
-
-  return authenticatedClient;
 }
 
-// Server-side API client (for Server Components)
+// ── Server Component API client (direct to Express, no proxy needed)
 export async function createServerApiClient(token?: string) {
-  return apiClient.extend({
+  const serverClient = ky.create({
+    prefixUrl: SERVER_API_URL,
+    timeout: 10_000,
+    retry: { limit: 1, methods: ['get'] },
+  });
+
+  return serverClient.extend({
     hooks: {
       beforeRequest: [
         async (request) => {

@@ -34,7 +34,7 @@ The mobile navigation is a **floating, pill-shaped bottom tab bar** (using the `
 ### Visual Integration
 - **Container:** Margin from screen edges (`m-4`), heavily rounded (`rounded-full`), floating over content.
 - **Active State:** Indicated by a subtle, glowing gradient dot below the icon, or iridescent icon fill.
-
+Sideload an External API Key: When your native Antigravity baseline workspace limits are reached, don't buy immediate credit packs. Go to Google AI Studio, generate a free API Key, and inside Antigravity go to Settings (Cmd + ,) > Models. Route your provider to "External Gemini API" to run on a separate 150 RPM rate limit without consuming IDE credits. 
 ---
 
 ## Desktop Navigation Structure

@@ -37,9 +37,9 @@ export function Step7Review({ data, onBack, onSubmit, isSubmitting }: Step7Revie
       is_primary: i === 0
     })),
     owner: {
-      first_name: 'You',
-      last_name: '',
-      profile_picture_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=You'
+      display_name: 'You',
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=You',
+      city: areaName,
     }
   };
 

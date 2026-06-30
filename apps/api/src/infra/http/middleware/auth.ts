@@ -9,7 +9,8 @@ const clerkClient = createClerkClient({
 
 export interface AuthenticatedRequest extends Request {
   auth?: {
-    userId: string;
+    userId: string; // Database user UUID
+    clerkUserId: string; // Clerk user ID (e.g. user_...)
     sessionId: string;
     claims: any;
   };
@@ -22,6 +23,8 @@ export const requireAuth = async (
 ) => {
   try {
     const authHeader = req.headers.authorization;
+    // Debug: surface incoming auth header for local troubleshooting
+    console.debug('Incoming Authorization header:', authHeader ? authHeader.slice(0, 128) : authHeader);
     
     if (!authHeader?.startsWith('Bearer ')) {
       throw new AppError('No authorization token provided', 401, 'UNAUTHORIZED');
@@ -34,14 +37,18 @@ export const requireAuth = async (
       secretKey: process.env.CLERK_SECRET_KEY!,
     });
 
+    const user = await ensureUserSynced(payload.sub);
+    if (!user) {
+      throw new AppError('User synchronization failed', 500, 'USER_SYNC_ERROR');
+    }
+
     // Add user info to request
     req.auth = {
-      userId: payload.sub,
+      userId: user.id,
+      clerkUserId: payload.sub,
       sessionId: payload.sid as string,
       claims: payload
     };
-
-    await ensureUserSynced(req.auth.userId);
 
     next();
   } catch (error: any) {
@@ -70,13 +77,16 @@ export const optionalAuth = async (
         secretKey: process.env.CLERK_SECRET_KEY!,
       });
 
-      req.auth = {
-        userId: payload.sub,
-        sessionId: payload.sid as string,
-        claims: payload
-      };
+      const user = await ensureUserSynced(payload.sub);
 
-      await ensureUserSynced(req.auth.userId);
+      if (user) {
+        req.auth = {
+          userId: user.id,
+          clerkUserId: payload.sub,
+          sessionId: payload.sid as string,
+          claims: payload
+        };
+      }
     }
 
     next();

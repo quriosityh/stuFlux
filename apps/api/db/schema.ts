@@ -17,7 +17,7 @@ export const users = pgTable("users", {
     id: uuid("id").defaultRandom().primaryKey(), // UUID with default random generation
     clerk_user_id: text("clerk_user_id").unique().notNull(), // Clerk-provided ID (must be unique)
     display_name: text("display_name").notNull(), // Required display name
-    city: text("city").notNull(), // Required city
+    area: text("area").notNull(), // Required area (Lahore Area ID)
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(), // Auto timestamp
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(), // Auto timestamp
 
@@ -60,8 +60,11 @@ export const listings = pgTable("listings", {
         .notNull()
         .references(() => categories.id),
     daily_rate: integer("daily_rate").notNull(),
-    city: text("city").notNull(),
-    address: text("address"),
+    area: text("area").notNull(), // Stores Lahore Area ID
+    condition: text("condition", { 
+        enum: ["like_new", "good", "fair", "well_used"] 
+    }),
+    rental_rules: text("rental_rules"), // Max 1000 characters
     status: text("status", {
         enum: ["draft", "active", "inactive", "archived"],
     }).default("draft"),
@@ -75,6 +78,17 @@ export const listings = pgTable("listings", {
     view_count: integer("view_count").default(0),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// ====================== LISTING_BLOCKED_DATES ======================
+export const listingBlockedDates = pgTable("listing_blocked_dates", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listing_id: uuid("listing_id")
+        .notNull()
+        .references(() => listings.id, { onDelete: "cascade" }),
+    start_date: date("start_date").notNull(),
+    end_date: date("end_date").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 // ====================== BOOKINGS ======================

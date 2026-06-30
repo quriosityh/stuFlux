@@ -1,34 +1,47 @@
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { createServerApiClient } from '@/lib/api-client';
 import { ListingFormWizard } from '@/components/listing-form/ListingFormWizard';
 
-export default function EditListingPage({ params }: { params: { id: string } }) {
-  // In a real implementation, we would fetch the listing data here via Server Component 
-  // or pass a prop down to a Client Component that fetches it.
-  // For the UI demonstration, we'll pass some mock default values.
-  
-  const mockData = {
-    title: 'Sony A7III with 28-70mm Lens',
-    description: 'Great condition camera, perfect for events and vlogging. Comes with 2 batteries and a 64GB SD card.',
-    category_id: 1,
-    daily_rate: 3500,
-    city: 'Lahore',
-    address: 'DHA Phase 5',
-    status: 'active' as const,
-    specs: {
-      'Brand': 'Sony',
-      'Resolution': '24MP',
-      'Sensor': 'Full Frame'
-    },
-    min_rental_days: 1,
-    max_rental_days: 14,
-    delivery_available: true,
-    delivery_fee: 500,
-    security_deposit: 15000,
-    photo_urls: ['https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1000&auto=format&fit=crop']
-  };
+export default async function EditListingPage({ params }: { params: { id: string } }) {
+  const { userId, getToken } = await auth();
+  if (!userId) redirect('/auth/sign-in' as any);
+
+  const token = await getToken();
+  const api = await createServerApiClient(token ?? undefined);
+
+  let defaultValues = {};
+  try {
+    const res = await api.get(`listings/${params.id}`).json<{ data: any }>();
+    const l = res.data;
+    if (!l) redirect('/' as any);
+
+    defaultValues = {
+      title: l.title ?? '',
+      description: l.description ?? '',
+      category_id: l.category?.id ?? 0,
+      daily_rate: l.daily_rate ?? 0,
+      area: l.area ?? '',
+      condition: l.condition ?? '',
+      rental_rules: l.rental_rules ?? '',
+      specs: l.specs ?? {},
+      min_rental_days: l.min_rental_days ?? 1,
+      max_rental_days: l.max_rental_days ?? 30,
+      delivery_available: l.delivery_available ?? false,
+      delivery_fee: l.delivery_fee ?? 0,
+      security_deposit: l.security_deposit ?? 0,
+      status: l.status ?? 'draft',
+      // Map photos array → photo_urls string array for the wizard
+      photo_urls: (l.photos ?? []).map((p: any) => p.url).filter(Boolean),
+      blocked_dates: [],
+    };
+  } catch {
+    redirect('/profile' as any);
+  }
 
   return (
     <main>
-      <ListingFormWizard mode="edit" listingId={params.id} defaultValues={mockData} />
+      <ListingFormWizard mode="edit" listingId={params.id} defaultValues={defaultValues} />
     </main>
   );
 }

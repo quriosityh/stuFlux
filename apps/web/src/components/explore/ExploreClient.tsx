@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import apiClient from '@/lib/api-client';
 import { CategoryStrip } from './CategoryStrip';
 import { DiscoveryFeed } from './DiscoveryFeed';
 import { HowItWorks } from './HowItWorks';
@@ -10,47 +11,62 @@ import { ListingGrid } from './ListingGrid';
 import { ResultsHeader } from './ResultsHeader';
 
 export default function ExploreClient() {
-  // Global filter state for Explore Page
   const [search, setSearch] = useState('');
-  const [city, setCity] = useState('');
   const [category, setCategory] = useState('all');
-  const [dates, setDates] = useState<{ start: string | null; end: string | null }>({ start: null, end: null });
-  const [priceRange, setPriceRange] = useState({ min: 0, max: 5000 });
-  const [sort, setSort] = useState('newest');
+  const [items, setItems] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  // Derived state: are we in search mode or discovery mode?
-  const isFiltering = search !== '' || city !== '' || category !== 'all' || dates.start !== null || priceRange.min > 0;
+  const isFiltering = search !== '' || category !== 'all';
   const mode = isFiltering ? 'search' : 'discovery';
+
+  const fetchListings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: '24', sort: 'newest' });
+      if (search) params.set('q', search);
+      // category is a slug here; backend uses category_id — map if needed
+      const res = await apiClient
+        .get(`listings?${params.toString()}`)
+        .json<{ data: any[]; meta: { total: number } }>();
+      setItems(res.data ?? []);
+      setTotal(res.meta?.total ?? 0);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, category]);
+
+  useEffect(() => {
+    if (mode === 'search') fetchListings();
+  }, [mode, fetchListings]);
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* 2. Category Strip */}
       <CategoryStrip />
 
-      {/* Main Content Area */}
       <main className="w-[85%] mx-auto pt-10 pb-20">
         {mode === 'discovery' ? (
           <div className="space-y-10">
-            {/* 3a. Discovery Mode */}
             <DiscoveryFeed />
-            
-            {/* 4a. How It Works */}
             <HowItWorks />
-
-            {/* 5a. Lender CTA */}
             <LenderCTA />
           </div>
         ) : (
           <div className="flex flex-col md:flex-row gap-8 relative items-start">
-            {/* 3b. Search Results Mode */}
-            
-            {/* Filter Sidebar (Desktop) */}
             <FilterSidebar />
-
-            {/* Results Grid */}
             <div className="flex-1 w-full min-w-0">
-              <ResultsHeader count={24} />
-              <ListingGrid items={Array.from({ length: 12 }).map((_, i) => ({ id: i }))} />
+              <ResultsHeader count={total} />
+              {loading ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 mt-4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="aspect-[4/3] rounded-2xl bg-surface animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <ListingGrid items={items} />
+              )}
             </div>
           </div>
         )}

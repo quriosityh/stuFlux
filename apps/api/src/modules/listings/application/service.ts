@@ -98,6 +98,25 @@ export const updateListing = async (id: string, payload: unknown, ownerId: strin
   return getListing(updatedId);
 };
 
+export const getListingBlockedDates = async (listingId: string) => {
+  if (!listingId) throw new AppError('Listing id is required', 400, 'LISTING_ID_REQUIRED');
+  return listingsRepository.getBlockedDates(listingId);
+};
+
+export const updateListingBlockedDates = async (
+  listingId: string,
+  blockedDates: Array<{ start_date: string; end_date: string }>,
+  ownerId: string
+) => {
+  if (!listingId) throw new AppError('Listing id is required', 400, 'LISTING_ID_REQUIRED');
+  
+  // Verify ownership
+  const existing = await listingsRepository.findByIdForOwner(listingId, ownerId);
+  if (!existing) throw ErrorUtils.notFound('Listing', listingId);
+
+  return listingsRepository.updateBlockedDates(listingId, blockedDates);
+};
+
 async function enforceOwnerLimit(ownerId: string) {
   const count = await listingsRepository.countByOwner(ownerId);
   if (count >= MAX_LISTINGS_PER_USER) {

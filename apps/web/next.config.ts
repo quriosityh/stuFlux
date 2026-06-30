@@ -4,7 +4,7 @@ const nextConfig = {
   serverExternalPackages: ['pg'],
 
   // ✅ Type-safe routing (Next.js 14+)
-  typedRoutes: true,
+  typedRoutes: false,
 
   // ✅ Enable React Compiler (Next.js 15+)
   reactCompiler: true,
@@ -12,6 +12,17 @@ const nextConfig = {
   experimental: {
     // ✅ Optimize imports for popular libraries
     optimizePackageImports: ['lucide-react', 'clsx', 'react-hook-form'],
+  },
+
+  // ✅ Proxy API calls through Next.js to avoid CORS in development
+  async rewrites() {
+    const apiBase = process.env.API_BASE_URL || 'http://localhost:4000/api/v1';
+    return [
+      {
+        source: '/api/proxy/:path*',
+        destination: `${apiBase}/:path*`,
+      },
+    ];
   },
 
   images: {

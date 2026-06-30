@@ -16,8 +16,9 @@ export const createListingSchema = z.object({
   description: z.string().min(10).max(2000),
   category_id: z.number().int().positive(),
   daily_rate: z.number().int().positive(),
-  city: z.string().min(2).max(100),
-  address: z.string().max(255).optional(),
+  area: z.string().min(2).max(100),
+  condition: z.enum(["like_new", "good", "fair", "well_used"]).optional(),
+  rental_rules: z.string().max(1000).optional(),
   specs: z.record(z.string(), z.any()).default({}),
   min_rental_days: z.number().int().min(1).default(1),
   max_rental_days: z.number().int().min(1).default(30),
@@ -35,14 +36,17 @@ export const updateListingSchema = createListingSchema.partial().extend({
 
 export const listFiltersSchema = z.object({
   q: z.string().max(200).optional(),
-  category_id: z.number().int().positive().optional(),
-  city: z.string().min(2).max(100).optional(),
-  delivery_available: z.boolean().optional(),
-  min_rate: z.number().int().positive().optional(),
-  max_rate: z.number().int().positive().optional(),
+  category_id: z.coerce.number().int().positive().optional(),
+  area: z.string().min(2).max(100).optional(),
+  delivery_available: z.preprocess(
+    (val) => (val === 'true' || val === '1' ? true : val === 'false' || val === '0' ? false : undefined),
+    z.boolean().optional()
+  ),
+  min_rate: z.coerce.number().int().positive().optional(),
+  max_rate: z.coerce.number().int().positive().optional(),
   sort: z.enum(["popular", "newest", "rate_asc", "rate_desc"]).default("popular"),
-  page: z.number().int().min(1).default(1),
-  limit: z.number().int().min(1).max(50).default(20),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
 export type PhotoInput = z.infer<typeof photoSchema>;

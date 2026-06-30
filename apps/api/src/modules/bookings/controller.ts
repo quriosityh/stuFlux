@@ -38,7 +38,8 @@ export const listBookingsHandler = [
     const role = (req.query.role as string) === 'owner' ? 'owner' : 'renter';
     const status = req.query.status as any;
     const listingId = req.query.listing_id as string | undefined;
-    const bookings = await getBookings(req.auth!.userId, role, status, listingId);
+    const limit = req.query.limit ? Math.min(Number(req.query.limit), 200) : 50;
+    const bookings = await getBookings(req.auth!.userId, role, status, listingId, limit);
     res.json({ data: bookings });
   }),
 ];
