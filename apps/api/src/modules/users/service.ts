@@ -2,7 +2,7 @@ import { createClerkClient } from '@clerk/backend';
 import { usersRepository } from './repository.js';
 import type { UpdateProfileInput } from './validations.js';
 
-const DEFAULT_CITY = 'Unknown';
+const DEFAULT_AREA = 'johar-town';
 const DEFAULT_NAME = 'User';
 
 const clerkClient = createClerkClient({
@@ -13,6 +13,9 @@ export const ensureUserSynced = async (clerkUserId: string) => {
   if (!clerkUserId) return null;
 
   const existing = await usersRepository.findByClerkId(clerkUserId);
+  if (existing) {
+    return existing;
+  }
 
   const clerkUser = await clerkClient.users.getUser(clerkUserId);
 
@@ -25,25 +28,23 @@ export const ensureUserSynced = async (clerkUserId: string) => {
 
   const email = clerkUser.emailAddresses[0]?.emailAddress || existing?.email || null;
   const avatar_url = clerkUser.imageUrl || existing?.avatar_url || null;
-  const city = existing?.city || DEFAULT_CITY;
+  const area = (existing as any)?.area || DEFAULT_AREA;
 
   const user = await usersRepository.upsertFromClerk({
     clerk_user_id: clerkUserId,
     display_name: displayName,
     email,
     avatar_url,
-    city,
+    area,
   });
 
   return user;
 };
 
-export const getProfile = async (clerkUserId: string) => {
-  return usersRepository.findByClerkId(clerkUserId);
+export const getProfile = async (dbUserId: string) => {
+  return usersRepository.findById(dbUserId);
 };
 
-export const updateProfile = async (clerkUserId: string, payload: UpdateProfileInput) => {
-  const user = await usersRepository.findByClerkId(clerkUserId);
-  if (!user) return null;
-  return usersRepository.updateProfile(user.id, payload);
+export const updateProfile = async (dbUserId: string, payload: UpdateProfileInput) => {
+  return usersRepository.updateProfile(dbUserId, payload);
 };

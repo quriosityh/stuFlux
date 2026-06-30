@@ -1,18 +1,22 @@
 import { useCallback, useState, useEffect } from 'react';
-import { UploadCloud, X, Image as ImageIcon, ZoomIn } from 'lucide-react';
+import { UploadCloud, X, Image as ImageIcon, ZoomIn, Loader2 } from 'lucide-react';
+import { useApiClient } from '@/lib/api-client';
 import { ListingFormData } from '../types';
 
 type Step1PhotosProps = {
   data: ListingFormData;
   updateData: (data: Partial<ListingFormData>) => void;
   onValidChange?: (valid: boolean) => void;
+  listingId?: string;
 };
 
-export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProps) {
+export function Step1Photos({ data, updateData, onValidChange, listingId }: Step1PhotosProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const api = useApiClient();
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -24,7 +28,7 @@ export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProp
     setIsDragging(false);
   };
 
-  const processFiles = (files: File[]) => {
+  const processFiles = async (files: File[]) => {
     setError('');
     const currentCount = data.photo_urls.length;
     if (currentCount + files.length > 5) {
@@ -32,9 +36,77 @@ export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProp
       return;
     }
 
-    // MOCK UPLOAD: In V1, we simulate Cloudinary upload by creating object URLs
-    const newUrls = files.map(file => URL.createObjectURL(file));
-    updateData({ photo_urls: [...data.photo_urls, ...newUrls] });
+    const MAX_BYTES = 7 * 1024 * 1024; // 7MB
+    for (const file of files) {
+      if (file.size > MAX_BYTES) {
+        setError(`File "${file.name}" is too large. Max size is 7MB.`);
+        return;
+      }
+    }
+
+    setUploadingCount(prev => prev + files.length);
+
+    try {
+      const uploadPromises = files.map(async (file) => {
+        // 1. Get signature from our API
+        const sigResponse = await api.post('uploads/signature', {
+          json: { listingId }
+        }).json<{
+          upload: {
+            timestamp: number;
+            folder: string;
+            signature: string;
+            api_key: string;
+            cloud_name: string;
+          }
+        }>();
+
+        const { timestamp, folder, signature, api_key, cloud_name } = sigResponse.upload;
+
+        // 2. Upload directly to Cloudinary
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('api_key', api_key);
+        formData.append('timestamp', timestamp.toString());
+        formData.append('signature', signature);
+        formData.append('folder', folder);
+
+        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`;
+        const res = await fetch(cloudinaryUrl, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error('Cloudinary error response:', errText);
+          throw new Error('Failed to upload image to Cloudinary.');
+        }
+
+        const cloudData = await res.json();
+        return cloudData;
+      });
+
+      const uploadedAssets = await Promise.all(uploadPromises);
+
+      // 3. Complete upload on our backend to sanitize and validate
+      const completeResponse = await api.post('uploads/complete', {
+        json: {
+          listingId,
+          files: uploadedAssets,
+        }
+      }).json<{
+        files: Array<{ url: string }>
+      }>();
+
+      const newUrls = completeResponse.files.map(f => f.url);
+      updateData({ photo_urls: [...data.photo_urls, ...newUrls] });
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || 'Something went wrong during upload. Please try again.');
+    } finally {
+      setUploadingCount(prev => Math.max(0, prev - files.length));
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -53,8 +125,9 @@ export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProp
 
   const removePhoto = (index: number) => {
     const updated = [...data.photo_urls];
-    // revoke object URL to avoid memory leaks
-    URL.revokeObjectURL(updated[index]);
+    if (updated[index].startsWith('blob:')) {
+      URL.revokeObjectURL(updated[index]);
+    }
     updated.splice(index, 1);
     updateData({ photo_urls: updated });
   };
@@ -86,7 +159,7 @@ export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProp
     setDraggedIndex(null);
   };
 
-  const isValid = data.photo_urls.length > 0;
+  const isValid = data.photo_urls.length > 0 && uploadingCount === 0;
 
   useEffect(() => {
     onValidChange?.(isValid);
@@ -132,7 +205,7 @@ export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProp
         {error && <p className="text-red-400 text-sm font-medium">{error}</p>}
 
         {/* Photo Grid */}
-        {data.photo_urls.length > 0 && (
+        {(data.photo_urls.length > 0 || uploadingCount > 0) && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2 max-w-[580px]">
             {data.photo_urls.map((url, i) => (
               <div
@@ -181,6 +254,17 @@ export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProp
                     Cover Photo
                   </div>
                 )}
+              </div>
+            ))}
+
+            {/* Uploading Placeholders */}
+            {Array.from({ length: uploadingCount }).map((_, idx) => (
+              <div
+                key={`uploading-${idx}`}
+                className="relative aspect-square rounded-xl overflow-hidden border border-border/50 bg-surface/30 flex flex-col items-center justify-center gap-2 select-none"
+              >
+                <Loader2 className="w-8 h-8 text-accent animate-spin" />
+                <span className="text-xs text-foreground/45">Uploading...</span>
               </div>
             ))}
           </div>

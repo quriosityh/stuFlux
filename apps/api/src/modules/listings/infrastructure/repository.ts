@@ -1,5 +1,5 @@
 import { db } from '../../../infra/db/client.js';
-import { listings, listingPhotos, users, categories } from '../../../../db/schema.js';
+import { listings, listingPhotos, users, categories, listingBlockedDates } from '../../../../db/schema.js';
 import {
   and,
   asc,
@@ -35,8 +35,9 @@ export const listingsRepository = {
         id: listings.id,
         title: listings.title,
         description: listings.description,
+        condition: listings.condition,
         daily_rate: listings.daily_rate,
-        city: listings.city,
+        area: listings.area,
         status: listings.status,
         view_count: listings.view_count,
         created_at: listings.created_at,
@@ -49,7 +50,7 @@ export const listingsRepository = {
         owner: {
           id: users.id,
           display_name: users.display_name,
-          city: users.city,
+          area: users.area,
           avatar_url: users.avatar_url,
         },
         photo: {
@@ -88,8 +89,9 @@ export const listingsRepository = {
         title: listings.title,
         description: listings.description,
         daily_rate: listings.daily_rate,
-        city: listings.city,
-        address: listings.address,
+        area: listings.area,
+        condition: listings.condition,
+        rental_rules: listings.rental_rules,
         specs: listings.specs,
         status: listings.status,
         min_rental_days: listings.min_rental_days,
@@ -109,7 +111,7 @@ export const listingsRepository = {
         owner: {
           id: users.id,
           display_name: users.display_name,
-          city: users.city,
+          area: users.area,
           avatar_url: users.avatar_url,
           email: users.email,
         },
@@ -163,7 +165,7 @@ export const listingsRepository = {
         title: listings.title,
         description: listings.description,
         daily_rate: listings.daily_rate,
-        city: listings.city,
+        area: listings.area,
         status: listings.status,
         view_count: listings.view_count,
         created_at: listings.created_at,
@@ -176,12 +178,24 @@ export const listingsRepository = {
         owner: {
           id: users.id,
           display_name: users.display_name,
-          city: users.city,
+          area: users.area,
+        },
+        photo: {
+          url: listingPhotos.url,
+          thumbnail_url: listingPhotos.thumbnail_url,
         },
       })
       .from(listings)
       .leftJoin(categories, eq(categories.id, listings.category_id))
       .leftJoin(users, eq(users.id, listings.owner_id))
+      .leftJoin(
+        listingPhotos,
+        and(
+          eq(listingPhotos.listing_id, listings.id),
+          eq(listingPhotos.is_primary, true),
+          isNull(listingPhotos.deleted_at)
+        )
+      )
       .where(eq(listings.owner_id, ownerId))
       .orderBy(...orderBy)
       .limit(limit)
@@ -205,8 +219,9 @@ export const listingsRepository = {
           description: data.description,
           category_id: data.category_id,
           daily_rate: data.daily_rate,
-          city: data.city,
-          address: data.address,
+          area: data.area,
+          condition: data.condition,
+          rental_rules: data.rental_rules,
           specs: data.specs,
           min_rental_days: data.min_rental_days,
           max_rental_days: data.max_rental_days,
@@ -237,8 +252,9 @@ export const listingsRepository = {
           ...(data.description && { description: data.description }),
           ...(data.category_id && { category_id: data.category_id }),
           ...(data.daily_rate && { daily_rate: data.daily_rate }),
-          ...(data.city && { city: data.city }),
-          ...(data.address !== undefined && { address: data.address }),
+          ...(data.area && { area: data.area }),
+          ...(data.condition !== undefined && { condition: data.condition }),
+          ...(data.rental_rules !== undefined && { rental_rules: data.rental_rules }),
           ...(data.specs && { specs: data.specs }),
           ...(data.min_rental_days && { min_rental_days: data.min_rental_days }),
           ...(data.max_rental_days && { max_rental_days: data.max_rental_days }),
@@ -274,6 +290,46 @@ export const listingsRepository = {
       .set({ view_count: sql`${listings.view_count} + 1` })
       .where(eq(listings.id, id));
   },
+
+  async getBlockedDates(listingId: string) {
+    return db
+      .select({
+        id: listingBlockedDates.id,
+        listing_id: listingBlockedDates.listing_id,
+        start_date: listingBlockedDates.start_date,
+        end_date: listingBlockedDates.end_date,
+      })
+      .from(listingBlockedDates)
+      .where(eq(listingBlockedDates.listing_id, listingId));
+  },
+
+  async updateBlockedDates(listingId: string, blockedDates: Array<{ start_date: string; end_date: string }>) {
+    return db.transaction(async (tx) => {
+      await tx
+        .delete(listingBlockedDates)
+        .where(eq(listingBlockedDates.listing_id, listingId));
+
+      if (blockedDates.length > 0) {
+        await tx.insert(listingBlockedDates).values(
+          blockedDates.map((d) => ({
+            listing_id: listingId,
+            start_date: d.start_date,
+            end_date: d.end_date,
+          }))
+        );
+      }
+
+      return tx
+        .select({
+          id: listingBlockedDates.id,
+          listing_id: listingBlockedDates.listing_id,
+          start_date: listingBlockedDates.start_date,
+          end_date: listingBlockedDates.end_date,
+        })
+        .from(listingBlockedDates)
+        .where(eq(listingBlockedDates.listing_id, listingId));
+    });
+  },
 };
 
 function preparePhotosForInsert(listingId: string, photos: PhotoInput[]) {
@@ -304,7 +360,7 @@ function preparePhotosForInsert(listingId: string, photos: PhotoInput[]) {
  * @param filters - The listing filter criteria to apply
  * @param filters.q - Optional search query string to match against listing titles (case-insensitive partial match)
  * @param filters.category_id - Optional category ID to filter listings by exact match
- * @param filters.city - Optional city name to filter listings by (case-insensitive partial match)
+ * @param filters.area - Optional area name to filter listings by
  * @param filters.delivery_available - Optional boolean flag to filter listings that offer delivery
  * @param filters.min_rate - Optional minimum daily rate threshold (inclusive)
  * @param filters.max_rate - Optional maximum daily rate threshold (inclusive)
@@ -325,10 +381,13 @@ function buildWhere(filters: ListFiltersInput) {
 
   if (filters.q) {
     const like = `%${filters.q}%`;
-    clauses.push(ilike(listings.title, like));
+    // Search title, description, and category name with OR logic
+    clauses.push(
+      sql`(${listings.title} ILIKE ${like} OR ${listings.description} ILIKE ${like} OR ${categories.name} ILIKE ${like})`
+    );
   }
   if (filters.category_id) clauses.push(eq(listings.category_id, filters.category_id));
-  if (filters.city) clauses.push(ilike(listings.city, `%${filters.city}%`));
+  if (filters.area) clauses.push(eq(listings.area, filters.area));
   if (filters.delivery_available !== undefined) clauses.push(eq(listings.delivery_available, filters.delivery_available));
   if (filters.min_rate) clauses.push(gte(listings.daily_rate, filters.min_rate));
   if (filters.max_rate) clauses.push(lte(listings.daily_rate, filters.max_rate));

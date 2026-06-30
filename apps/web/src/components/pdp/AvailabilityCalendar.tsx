@@ -36,6 +36,8 @@ interface AvailabilityCalendarProps {
   onUnblockRange?: (range: BlockedRange) => void // Owner only — fires when a blocked range is clicked
   minRentalDays?: number
   maxRentalDays?: number
+  monthsToShow?: number
+
 }
 
 export function AvailabilityCalendar({
@@ -46,7 +48,8 @@ export function AvailabilityCalendar({
   onUnblockRange,
   minRentalDays = 1,
   maxRentalDays = 30,
-}: AvailabilityCalendarProps) {
+  monthsToShow = 2,
+ }: AvailabilityCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()))
 
   // Owner gets 3 months lookahead, renter gets 2
@@ -202,6 +205,8 @@ export function AvailabilityCalendar({
     )
   }
 
+  
+
   return (
     <div className="py-8" id="availability-section">
       <div className="mb-6 flex flex-col items-center lg:flex-row lg:items-center justify-between gap-2">
@@ -218,8 +223,12 @@ export function AvailabilityCalendar({
       <div className="chrome-card relative rounded-3xl p-6">
         <div className="flex flex-col justify-center gap-8 md:flex-row">
           {renderMonth(currentMonth)}
-          <div className="bg-border/10 hidden w-px md:block" />
-          <div className="hidden md:block">{renderMonth(addMonths(currentMonth, 1))}</div>
+          {monthsToShow >= 2 && (
+            <>
+              <div className="bg-border/10 hidden w-px md:block" />
+              <div className="hidden md:block">{renderMonth(addMonths(currentMonth, 1))}</div>
+            </>
+          )}
         </div>
 
         <button

@@ -130,15 +130,86 @@ Filter state is synced to URL search params (`?search=&category=&city=`) for sha
 
 ---
 
+## Profile Page (`/profile`)
+
+**Status:** ✅ Layout Finalized — 2026-06-09
+
+### Concept
+
+The Profile page acts as both the user's public-facing card and their owner dashboard. It presents high-level stats, active/inactive listings management, and profile settings in a clean, editorial layout.
+
+### Section Map
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  [1] Navigation Bar (DesktopNav / MobileNav)            │
+├─────────────────────────────────────────────────────────┤
+│  [2] HERO CARD                                          │
+│       Avatar · Display Name · Area Badge · Member Since │
+│       Aggregated Stats (Listings, Lent, Rented)         │
+├─────────────────────────────────────────────────────────┤
+│  [3] MY LISTINGS SWITCHER (Tabs: Active / Inactive)     │
+│       Active / Inactive count badges                    │
+├─────────────────────────────────────────────────────────┤
+│  [4] OWNER LISTINGS LIST                                │
+│       Grid of <ListingOwnerCard /> components           │
+│       Quick Actions (Edit, Delete, Availability, Pause) │
+├─────────────────────────────────────────────────────────┤
+│  [5] SETTINGS SECTION                                   │
+│       Edit Profile Form (Name, Lahore Area Combobox)    │
+│       Log Out Trigger                                   │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Section Specifications
+
+#### [2] Hero Card
+- **Layout:** Flex column on mobile, horizontal on desktop. Uses `.chrome-card` container.
+- **Avatar:** Large rounded square icon with gradient backdrop and online status dot indicator.
+- **Aggregated Stats:** Flex row of stat badges: Listings, Lent (Completed bookings as owner), Rented (Completed bookings as renter).
+
+#### [3] My Listings Switcher
+- Smooth pill-shaped tabs filtering listings dynamically between "Active" and "Inactive/Draft".
+
+#### [4] Owner Listings List
+- **ListingOwnerCard Anatomy:**
+  - Thumbnail photo (fallback icon if empty).
+  - Title, category badge, rate/day, and view count metadata.
+  - Action footer:
+    - **Edit:** Link to listing wizard.
+    - **Availability:** Direct link to Step 6 of listing wizard.
+    - **Pause/Resume:** Immediate toggle between active/inactive.
+    - **Delete:** Opens modal confirmation to archive listing.
+
+#### [5] Settings Section
+- **Edit Profile Form:** Dynamic panel editing display name and Lahore area. Combobox autocompletes against Lahore area JSON database.
+- **Log Out:** Clerk logout trigger.
+
+### Component File Map
+
+```
+apps/web/src/
+├── app/
+│   └── profile/
+│       └── page.tsx                     ← Server orchestrator (Clerk auth check & fetch)
+└── components/
+    └── profile/
+        ├── ProfileClient.tsx            ← Layout, state, tabs & actions handler
+        ├── ListingOwnerCard.tsx         ← Individual listing card with actions
+        ├── EditProfileForm.tsx          ← Profile editor + Lahore Area search combobox
+        └── useSignOut.ts                ← Custom sign out hook wrapping Clerk
+```
+
+---
+
 ## Other Pages (TODO)
 
 These pages are not yet designed. Update this document as layouts are finalized.
 
 | Page | Route | Status |
 |------|-------|--------|
-| Listing Detail | `/listings/:id` | 🔲 Not started |
-| Create Listing | `/listings/new` | 🔲 Not started |
-| My Listings | `/my-listings` | 🔲 Not started |
+| Listing Detail | `/listings/:id` | 🔲 In progress |
+| Create/Edit Listing | `/listings/new` or `/listings/:id/edit` | ✅ Completed |
 | Inbox | `/inbox` | 🔲 Not started |
 | Activity (Bookings) | `/activity` | 🔲 Not started |
-| Profile | `/profile` | 🔲 Not started |
+| Profile | `/profile` | ✅ Completed |

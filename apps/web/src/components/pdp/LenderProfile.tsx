@@ -89,7 +89,7 @@ export function LenderProfile({ owner }: LenderProfileProps) {
 
           <div className="text-foreground/80 leading-relaxed font-medium space-y-6 max-w-2xl">
             <p>
-              Hi, I'm {owner?.display_name.split(' ')[0]}! I'm a student based in {owner?.city} and I love sharing my gear with other students. 
+              Hi, I'm {owner?.display_name?.split(' ')[0]}! I'm a student based in {owner?.city} and I love sharing my gear with other students. 
               Always happy to help out and make your rental experience as smooth as possible.
             </p>
             <div className="flex flex-col sm:flex-row gap-5 text-sm">
@@ -107,7 +107,7 @@ export function LenderProfile({ owner }: LenderProfileProps) {
           <div className="pt-4">
             <button className="w-full sm:w-auto hyper-liquid px-8 py-3.5 text-sm font-bold flex items-center justify-center gap-2">
               <MessageCircle className="w-5 h-5" />
-              <span>Message {owner?.display_name.split(' ')[0]}</span>
+              <span>Message {owner?.display_name?.split(' ')[0]}</span>
             </button>
           </div>
 

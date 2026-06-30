@@ -19,9 +19,9 @@ export const usersRepository = {
     display_name: string;
     email?: string | null;
     avatar_url?: string | null;
-    city?: string;
+    area?: string;
   }) {
-    const city = params.city || 'Unknown';
+    const area = params.area || 'johar-town';
     const [row] = await db
       .insert(users)
       .values({
@@ -29,7 +29,7 @@ export const usersRepository = {
         display_name: params.display_name,
         email: params.email || null,
         avatar_url: params.avatar_url || null,
-        city,
+        area,
       })
       .onConflictDoUpdate({
         target: users.clerk_user_id,
@@ -50,7 +50,7 @@ export const usersRepository = {
       .update(users)
       .set({
         ...(payload.display_name !== undefined && { display_name: payload.display_name }),
-        ...(payload.city !== undefined && { city: payload.city }),
+        ...(payload.area !== undefined && { area: payload.area }),
         updated_at: sql`NOW()`,
       })
       .where(eq(users.id, id))

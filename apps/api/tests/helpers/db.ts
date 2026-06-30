@@ -20,10 +20,9 @@ export const createUser = async (overrides: Partial<typeof users.$inferInsert> =
   const [user] = await db
     .insert(users)
     .values({
-      id: overrides.id ?? randomUUID(),
       clerk_user_id: overrides.clerk_user_id ?? `clerk_${randomUUID()}`,
       display_name: overrides.display_name ?? 'Test User',
-      city: overrides.city ?? 'Lahore',
+      area: overrides.area ?? 'johar-town',
       email: overrides.email ?? 'test@example.com',
       avatar_url: overrides.avatar_url ?? null,
     })
@@ -48,14 +47,12 @@ export const createListing = async (ownerId: string, categoryId: number, overrid
   const [listing] = await db
     .insert(listings)
     .values({
-      id: overrides.id ?? randomUUID(),
       owner_id: ownerId,
       title: overrides.title ?? 'Camera',
       description: overrides.description ?? 'A test camera',
       category_id: categoryId,
       daily_rate: overrides.daily_rate ?? 1000,
-      city: overrides.city ?? 'Lahore',
-      address: overrides.address ?? 'Test address',
+      area: overrides.area ?? 'johar-town',
       specs: overrides.specs ?? {},
       status: overrides.status ?? 'active',
     })

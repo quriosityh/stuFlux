@@ -1,16 +1,36 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Calendar, Camera, X } from 'lucide-react';
+import { Search, Calendar, Camera, X, Loader } from 'lucide-react';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { searchAreas, POPULAR_AREA_IDS, getAreaById, LAHORE_AREAS_DATA, LahoreArea } from '@stuflux/types';
+import { AvailabilityCalendar } from '@/components/pdp/AvailabilityCalendar'
+import { useApiClient } from '@/lib/api-client';
 
 export type ActiveTab = 'where' | 'when' | 'what' | null;
 
 interface SearchBarProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
+  selectedArea: LahoreArea | null;
+  setSelectedArea: (a: LahoreArea | null) => void;
+  whatSearch: string;
+  setWhatSearch: (s: string) => void;
+  selectedDates: { start: Date | null; end: Date | null };
+  setSelectedDates: (d: { start: Date | null; end: Date | null }) => void;
+}
+
+interface SearchResult {
+  id: string;
+  title: string;
+  description: string;
+  category: {
+    name: string;
+    icon: string;
+  };
+  condition?: string;
 }
 
 // Shared panel style: heavy frosted glass with inner bevel + deep shadow
@@ -23,13 +43,18 @@ const panelStyle: React.CSSProperties = {
     '0 24px 64px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)',
 };
 
-export function SearchBar({ activeTab, setActiveTab }: SearchBarProps) {
+export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedArea, whatSearch, setWhatSearch, selectedDates, setSelectedDates }: SearchBarProps) {
   const handleTabClick = (tab: ActiveTab) => {
+    const isOpeningWhen = tab === 'when' && activeTab !== 'when';
+    // If we are opening the WHEN panel and there's only a start selected (no end), clear it
+    if (isOpeningWhen && selectedDates.start && !selectedDates.end) {
+      setSelectedDates({ start: null, end: null });
+    }
     setActiveTab(activeTab === tab ? null : tab);
   };
 
+  const api = useApiClient();
   const [areaSearch, setAreaSearch] = useState('');
-  const [selectedArea, setSelectedArea] = useState<LahoreArea | null>(null);
 
   const filteredAreas = useMemo(() => {
     if (!areaSearch.trim()) {
@@ -37,6 +62,59 @@ export function SearchBar({ activeTab, setActiveTab }: SearchBarProps) {
     }
     return searchAreas(areaSearch, LAHORE_AREAS_DATA, 5);
   }, [areaSearch]);
+
+  const handleSelectDates = (dates: { start: Date | null; end: Date | null }) => {
+    setSelectedDates(dates);
+    if (dates.start && dates.end) setActiveTab('what');
+  }
+
+  // WHAT tab search state is lifted to parent
+  const whatInputRef = useRef<HTMLInputElement | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Fetch search results when whatSearch changes
+  useEffect(() => {
+    if (!whatSearch.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await api.get('listings', {
+          searchParams: { q: whatSearch, limit: 8, sort: 'popular' }
+        }).json<{ data: SearchResult[] }>();
+        setSearchResults(response.data || []);
+      } catch (error) {
+        console.error('Search error:', error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300); // Debounce 300ms
+
+    return () => clearTimeout(timer);
+  }, [whatSearch, api]);
+
+  // Ensure the WHAT input has focus when the WHAT tab is opened
+  useEffect(() => {
+    if (activeTab === 'what') {
+      // small timeout to wait for animation/DOM to settle
+      const t = setTimeout(() => {
+        try {
+          whatInputRef.current?.focus();
+          // place cursor at end
+          const el = whatInputRef.current as HTMLInputElement | null;
+          if (el) el.setSelectionRange(el.value.length, el.value.length);
+        } catch (err) {
+          // ignore
+        }
+      }, 80);
+      return () => clearTimeout(t);
+    }
+  }, [activeTab]);
 
   return (
     <div className="relative w-full max-w-4xl z-50">
@@ -118,7 +196,11 @@ export function SearchBar({ activeTab, setActiveTab }: SearchBarProps) {
           )}
         >
           <div className="text-xs font-bold tracking-wider uppercase text-foreground/80 mb-0.5">When</div>
-          <div className="text-sm text-foreground/60 truncate">Add dates</div>
+          <div className="text-sm text-foreground/60 truncate">
+            {selectedDates.start && selectedDates.end
+              ? `${format(selectedDates.start, 'MMM d')} - ${format(selectedDates.end, 'MMM d')}`
+              : 'Add dates'}
+          </div>
           {activeTab !== 'when' && activeTab !== 'what' && (
             <div className="absolute right-0 top-3 bottom-3 w-px bg-border/40 dark:bg-border/60 transition-opacity group-hover:opacity-0" />
           )}
@@ -135,7 +217,31 @@ export function SearchBar({ activeTab, setActiveTab }: SearchBarProps) {
         >
           <div className="flex-1 pr-4">
             <div className="text-xs font-bold tracking-wider uppercase text-foreground/80 mb-0.5">What</div>
-            <div className="text-sm text-foreground/60 truncate">Cameras, tools, etc...</div>
+            {activeTab === 'what' ? (
+              <div className="h-5 flex items-center pr-6 relative w-full">
+                <input
+                  ref={whatInputRef}
+                  autoFocus
+                  type="text"
+                  value={whatSearch}
+                  onChange={(e) => setWhatSearch(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => { e.stopPropagation(); }}
+                  placeholder="Search listings..."
+                  className="bg-transparent text-sm text-foreground placeholder-foreground/40 focus:outline-none w-full min-w-0 pr-6"
+                />
+                {whatSearch && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setWhatSearch(''); }}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center transition-colors"
+                  >
+                    <X size={10} className="text-foreground/70" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="text-sm text-foreground/60 truncate">{whatSearch || 'Cameras, tools, etc...'}</div>
+            )}
           </div>
           <button
             onClick={(e) => {
@@ -245,12 +351,14 @@ export function SearchBar({ activeTab, setActiveTab }: SearchBarProps) {
                   Flexible
                 </button>
               </div>
-              <div
-                className="h-56 flex flex-col items-center justify-center rounded-2xl"
-                style={{ border: '1px dashed rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}
-              >
-                <Calendar size={32} className="text-foreground/15 mb-3" />
-                <p className="text-sm text-foreground/25 font-medium">Calendar Picker (V2)</p>
+              <div className="mx-auto w-full max-w-[680px]">
+                <AvailabilityCalendar
+                  mode="renter"
+                  blockedDates={[]}
+                  selectedDates={selectedDates}
+                  onSelectDates={handleSelectDates}
+                  monthsToShow={1}
+                />
               </div>
               <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                 {['Exact dates', '± 1 day', '± 2 days', '± 1 week'].map(opt => (
@@ -279,27 +387,107 @@ export function SearchBar({ activeTab, setActiveTab }: SearchBarProps) {
             {/* Top subtle highlight line */}
             <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             <div className="p-5">
-              <p className="text-[10px] font-bold tracking-widest uppercase text-foreground/30 mb-4">Quick Searches</p>
-              <div className="flex flex-wrap gap-2">
-                {['Cameras', 'Camping Gear', 'Power Tools', 'Drones', 'Bicycles', 'Projectors'].map(tag => (
-                  <button
-                    key={tag}
-                    className="px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 hover:text-accent"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLElement).style.border = '1px solid rgba(0,255,255,0.25)';
-                      (e.currentTarget as HTMLElement).style.background = 'rgba(0,255,255,0.05)';
-                    }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLElement).style.border = '1px solid rgba(255,255,255,0.08)';
-                      (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)';
-                    }}
-                  >
-                    <Camera size={13} className="opacity-40" />
-                    {tag}
-                  </button>
-                ))}
-              </div>
+              {/* Results only — input lives in the main search bar */}
+
+              {/* Loading State */}
+              {isSearching && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader size={20} className="animate-spin text-accent" />
+                </div>
+              )}
+
+              {/* Search Results */}
+              {!isSearching && whatSearch.trim() && (
+                <div className="space-y-2 max-h-[320px] overflow-y-auto -mx-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10">
+                  {searchResults.length === 0 ? (
+                    <div className="text-sm text-foreground/30 py-6 text-center">No results found</div>
+                  ) : (
+                    searchResults.map((result) => {
+                      // Highlight search term in title
+                      const regex = new RegExp(`(${whatSearch})`, 'gi');
+                      const titleParts = result.title.split(regex);
+                      const descSnippet = result.description.substring(0, 60) + (result.description.length > 60 ? '...' : '');
+
+                      return (
+                        <div
+                          key={result.id}
+                          className="px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150"
+                          style={{ 
+                            border: '1px solid transparent',
+                          }}
+                          onMouseEnter={e => {
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)';
+                            (e.currentTarget as HTMLElement).style.border = '1px solid rgba(0,255,255,0.2)';
+                          }}
+                          onMouseLeave={e => {
+                            (e.currentTarget as HTMLElement).style.background = '';
+                            (e.currentTarget as HTMLElement).style.border = '1px solid transparent';
+                          }}
+                        >
+                          {/* Title with highlighted search term */}
+                          <div className="text-sm font-semibold text-foreground leading-tight mb-1">
+                            {titleParts.map((part, i) => (
+                              <span
+                                key={i}
+                                className={regex.test(part) ? 'text-accent bg-accent/20 px-0.5 rounded' : ''}
+                              >
+                                {part}
+                              </span>
+                            ))}
+                          </div>
+
+                          {/* Description snippet */}
+                          <div className="text-xs text-foreground/50 mb-2 line-clamp-2">{descSnippet}</div>
+
+                          {/* Category & Condition */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                              style={{ background: 'rgba(0,255,255,0.1)', color: 'rgba(0,255,255,0.8)' }}
+                            >
+                              {result.category?.icon} {result.category?.name}
+                            </span>
+                            {result.condition && (
+                              <span className="text-[10px] text-foreground/40 px-2 py-0.5">
+                                • {result.condition}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* Empty state when no search query */}
+              {!whatSearch.trim() && !isSearching && (
+                <div className="text-center py-6">
+                  <p className="text-[10px] font-bold tracking-widest uppercase text-foreground/30 mb-3">
+                    Start typing to search
+                  </p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {['Cameras', 'Tools', 'Drones'].map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => setWhatSearch(tag)}
+                        className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLElement).style.border = '1px solid rgba(0,255,255,0.25)';
+                          (e.currentTarget as HTMLElement).style.background = 'rgba(0,255,255,0.05)';
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLElement).style.border = '1px solid rgba(255,255,255,0.08)';
+                          (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)';
+                        }}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         )}

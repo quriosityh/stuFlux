@@ -32,7 +32,7 @@ export default function BookingStatusBadge({ status }: { status: DisplayStatus }
   };
 
   return (
-    <span 
+    <span
       className={cn(
         'px-2.5 py-1 text-xs font-bold rounded-full border uppercase tracking-wider flex items-center gap-1.5',
         getStatusStyles()

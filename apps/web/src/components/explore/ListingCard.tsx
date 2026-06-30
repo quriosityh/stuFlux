@@ -13,13 +13,18 @@ interface ListingCardProps {
 export function ListingCard({ item }: ListingCardProps) {
   const [isSaved, setIsSaved] = useState(false);
 
-  // Mock data for display
-  const title = item?.title || 'Sony A7IV Camera Body';
-  const city = item?.city || 'Johar Town / LUMS';
-  const rating = item?.rating || 4.9;
-  const price = item?.price || 2500;
-  const imageUrl = item?.imageUrl || 'https://images.unsplash.com/photo-1510127034890-ba27508e9f1c?q=80&w=1000&auto=format&fit=crop';
-  const isFeatured = item?.isFeatured || Math.random() > 0.7;
+  // Map API response fields to display values
+  const title = item?.title || 'Untitled Listing';
+  const area = item?.area || item?.city || '';
+  const price = item?.daily_rate ?? item?.price ?? 0;
+  // Primary photo: try photos array first, then thumbnail, then imageUrl fallback
+  const primaryPhoto = item?.photos?.find((p: any) => p.is_primary)?.url
+    ?? item?.photos?.[0]?.url
+    ?? item?.photo?.thumbnail_url
+    ?? item?.photo?.url
+    ?? item?.imageUrl
+    ?? null;
+  const isFeatured = item?.isFeatured || false;
 
   return (
     <Link href={`/listings/${item?.id || '1'}`} className="group block cursor-pointer">
@@ -30,12 +35,18 @@ export function ListingCard({ item }: ListingCardProps) {
           whileHover={{ scale: 1.05 }}
           transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
-            src={imageUrl} 
-            alt={title}
-            className="w-full h-full object-cover"
-          />
+          {primaryPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={primaryPhoto}
+              alt={title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-[var(--surface)] to-[var(--border-color)]/30 flex items-center justify-center text-foreground/20 text-4xl">
+              📦
+            </div>
+          )}
         </motion.div>
 
         {/* Featured Badge */}
@@ -73,15 +84,13 @@ export function ListingCard({ item }: ListingCardProps) {
       <div className="space-y-0.5 px-1">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-syne font-bold text-base truncate">{title}</h3>
-          <div className="flex items-center gap-1 shrink-0 text-foreground/80">
-            <Star size={12} className="fill-current" />
-            <span className="text-xs font-medium">{rating}</span>
-          </div>
         </div>
         
-        <div className="text-xs text-foreground/50 truncate">
-          📍 {city}
-        </div>
+        {area && (
+          <div className="text-xs text-foreground/50 truncate">
+            📍 {area}
+          </div>
+        )}
         
         <div className="pt-1">
           <span className="text-base font-extrabold text-[var(--accent)]">Rs. {price.toLocaleString()}</span>

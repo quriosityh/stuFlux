@@ -38,6 +38,19 @@ export const createBooking = async (payload: unknown, renterId: string) => {
     throw new AppError('Dates already booked', 400, 'BOOKING_DATES_UNAVAILABLE');
   }
 
+  // Also check if dates overlap with manual blocked dates
+  const blockedDates = await listingsRepository.getBlockedDates(data.listing_id);
+  const requestedStart = data.start_date.getTime();
+  const requestedEnd = data.end_date.getTime();
+  const hasBlockedOverlap = blockedDates.some((range) => {
+    const rangeStart = new Date(range.start_date).getTime();
+    const rangeEnd = new Date(range.end_date).getTime();
+    return rangeStart < requestedEnd && rangeEnd > requestedStart;
+  });
+  if (hasBlockedOverlap) {
+    throw new AppError('Dates are blocked by the owner', 400, 'BOOKING_DATES_BLOCKED');
+  }
+
   const totalAmount = days * listing.daily_rate;
   const booking = await bookingsRepository.create({
     data,
@@ -67,6 +80,19 @@ export const confirmBooking = async (bookingId: string, ownerId: string) => {
     throw new AppError('Dates already booked', 400, 'BOOKING_DATES_UNAVAILABLE');
   }
 
+  // Also check if dates overlap with manual blocked dates
+  const blockedDates = await listingsRepository.getBlockedDates(booking.listing_id);
+  const bookingStart = new Date(booking.start_date).getTime();
+  const bookingEnd = new Date(booking.end_date).getTime();
+  const hasBlockedOverlap = blockedDates.some((range) => {
+    const rangeStart = new Date(range.start_date).getTime();
+    const rangeEnd = new Date(range.end_date).getTime();
+    return rangeStart < bookingEnd && rangeEnd > bookingStart;
+  });
+  if (hasBlockedOverlap) {
+    throw new AppError('Dates are blocked by the owner', 400, 'BOOKING_DATES_BLOCKED');
+  }
+
   const updated = await bookingsRepository.updateStatus(bookingId, 'confirmed', 'confirmed_at');
   if (updated) {
     await bookingsRepository.incrementListingBookingCount(booking.listing_id);
@@ -87,14 +113,33 @@ export const getBookings = async (
   userId: string,
   role: 'renter' | 'owner',
   status?: BookingStatus,
-  listingId?: string
+  listingId?: string,
+  limit = 50
 ) => {
   if (status && !VALID_STATUSES.includes(status)) {
     throw new AppError('Invalid status filter', 400, 'INVALID_STATUS');
   }
-  return bookingsRepository.findForUser(userId, role, status, listingId);
+  return bookingsRepository.findForUser(userId, role, status, listingId, limit);
 };
 
 export const getAvailability = async (listingId: string) => {
-  return bookingsRepository.getAvailability(listingId);
+  const [confirmedBookings, blockedDates] = await Promise.all([
+    bookingsRepository.getAvailability(listingId),
+    listingsRepository.getBlockedDates(listingId),
+  ]);
+
+  const combined = [
+    ...confirmedBookings.map((b) => ({
+      start_date: b.start_date,
+      end_date: b.end_date,
+      status: 'confirmed' as const,
+    })),
+    ...blockedDates.map((d) => ({
+      start_date: d.start_date,
+      end_date: d.end_date,
+      status: 'blocked' as const,
+    })),
+  ];
+
+  return combined.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
 };

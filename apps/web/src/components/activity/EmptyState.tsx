@@ -27,8 +27,8 @@ export default function EmptyState({
       <p className="text-foreground/60 max-w-sm mb-8 text-lg">
         {description}
       </p>
-      <Link 
-        href={actionHref}
+      <Link
+        href={{ pathname: actionHref }}
         className="liquid-button"
       >
         {actionLabel}

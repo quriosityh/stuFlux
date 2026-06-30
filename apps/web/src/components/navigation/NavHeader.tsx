@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Bell, User, Plus, Menu, Search, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchBar, ActiveTab } from '../explore/SearchBar';
+import { LahoreArea, getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
 
 // Animation configs for slow, obvious transitions
 const transitionConfig = { duration: 0.4, ease: [0.16, 1, 0.3, 1] };
@@ -16,9 +17,32 @@ export function NavHeader() {
   const isExplorePage = pathname === '/';
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>(null);
+  const [selectedArea, setSelectedArea] = useState<LahoreArea | null>(null);
+  const [whatSearch, setWhatSearch] = useState('');
+  const [selectedDates, setSelectedDates] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
+    // Load persisted search state from localStorage (if available)
+    try {
+      const rawWhat = localStorage.getItem('search:what');
+      if (rawWhat) setWhatSearch(rawWhat);
+
+      const rawDates = localStorage.getItem('search:dates');
+      if (rawDates) {
+        const parsed = JSON.parse(rawDates);
+        setSelectedDates({ start: parsed.start ? new Date(parsed.start) : null, end: parsed.end ? new Date(parsed.end) : null });
+      }
+
+      const rawAreaId = localStorage.getItem('search:areaId');
+      if (rawAreaId) {
+        const area = getAreaById(Number(rawAreaId), LAHORE_AREAS_DATA);
+        if (area) setSelectedArea(area as LahoreArea);
+      }
+    } catch (err) {
+      // ignore parsing errors
+    }
+
     // Check initial theme from HTML data attribute or OS preference
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
                   document.documentElement.classList.contains('dark') ||
@@ -47,6 +71,18 @@ export function NavHeader() {
     
     return () => window.removeEventListener('scroll', handleScroll);
   }, [activeTab]);
+
+  // Persist search state when it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('search:what', whatSearch || '');
+      localStorage.setItem('search:dates', JSON.stringify({ start: selectedDates.start?.toISOString() || null, end: selectedDates.end?.toISOString() || null }));
+      if (selectedArea) localStorage.setItem('search:areaId', String(selectedArea.id));
+      else localStorage.removeItem('search:areaId');
+    } catch (err) {
+      // ignore
+    }
+  }, [whatSearch, selectedDates, selectedArea]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -158,7 +194,7 @@ export function NavHeader() {
                   transition={transitionConfig}
                   className="absolute inset-0 flex items-center justify-center"
                 >
-                  <div className="flex items-center chrome-card rounded-full shadow-md hover:shadow-lg cursor-pointer border border-border/20 overflow-hidden divide-x divide-border/10">
+                    <div className="flex items-center chrome-card rounded-full shadow-md hover:shadow-lg cursor-pointer border border-border/20 overflow-hidden divide-x divide-border/10">
                     <span 
                       onClick={(e) => {
                         e.stopPropagation();
@@ -167,7 +203,7 @@ export function NavHeader() {
                       }}
                       className="px-4 py-2.5 text-sm font-semibold truncate max-w-[120px] hover:bg-surface transition-colors"
                     >
-                      Anywhere
+                      {selectedArea ? selectedArea.name : 'Anywhere'}
                     </span>
                     <span 
                       onClick={(e) => {
@@ -177,7 +213,7 @@ export function NavHeader() {
                       }}
                       className="px-4 py-2.5 text-sm font-semibold truncate max-w-[120px] hover:bg-surface transition-colors"
                     >
-                      Anytime
+                      {selectedDates.start && selectedDates.end ? `${selectedDates.start.toLocaleDateString()} - ${selectedDates.end.toLocaleDateString()}` : 'Anytime'}
                     </span>
                     <span 
                       onClick={(e) => {
@@ -187,7 +223,7 @@ export function NavHeader() {
                       }}
                       className="px-4 py-2.5 text-sm text-foreground/60 truncate max-w-[120px] hover:bg-surface transition-colors"
                     >
-                      Search gear...
+                      {whatSearch || 'Search gear...'}
                     </span>
                     <div 
                       onClick={(e) => {
@@ -269,11 +305,13 @@ export function NavHeader() {
               <Plus size={18} strokeWidth={2.5} />
             </Link>
 
-            <div className="relative group z-10">
-              <button className="w-10 h-10 rounded-full border border-border/20 overflow-hidden hover:ring-2 hover:ring-[var(--accent)] transition-all cursor-pointer bg-gradient-to-br from-background to-surface flex items-center justify-center">
-                <User size={18} className="opacity-70 group-hover:opacity-100 transition-opacity" />
-              </button>
-            </div>
+            <Link
+              href="/profile"
+              id="nav-profile-link"
+              className="relative group z-10 w-10 h-10 rounded-full border border-border/20 overflow-hidden hover:ring-2 hover:ring-[var(--accent)] transition-all cursor-pointer bg-gradient-to-br from-background to-surface flex items-center justify-center"
+            >
+              <User size={18} className="opacity-70 group-hover:opacity-100 transition-opacity" />
+            </Link>
 
           </div>
         </div>
@@ -290,7 +328,16 @@ export function NavHeader() {
               className="w-full flex justify-center mt-2 relative z-10 overflow-visible"
             >
               <div className="absolute top-2 w-full flex justify-center origin-top">
-                <SearchBar activeTab={activeTab} setActiveTab={setActiveTab} />
+                <SearchBar
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  selectedArea={selectedArea}
+                  setSelectedArea={setSelectedArea}
+                  whatSearch={whatSearch}
+                  setWhatSearch={setWhatSearch}
+                  selectedDates={selectedDates}
+                  setSelectedDates={setSelectedDates}
+                />
               </div>
             </motion.div>
           )}

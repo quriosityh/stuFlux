@@ -23,11 +23,15 @@ const assertListingOwnedByUser = async (listingId: string, userId: string) => {
   if (!listing) throw new AppError('Listing not found for user', 404, 'LISTING_NOT_FOUND');
 };
 
-export const getUploadSignature = async (userId: string, listingId: string) => {
+export const getUploadSignature = async (userId: string, listingId?: string) => {
   if (!userId) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
-  await assertListingOwnedByUser(listingId, userId);
+  if (listingId) {
+    await assertListingOwnedByUser(listingId, userId);
+  }
 
-  const folder = `stuflux/users/${userId}/listings/${listingId}`;
+  const folder = listingId
+    ? `stuflux/users/${userId}/listings/${listingId}`
+    : `stuflux/users/${userId}/temp`;
   const signature = buildUploadSignature(folder);
 
   return {
@@ -37,14 +41,16 @@ export const getUploadSignature = async (userId: string, listingId: string) => {
       resource_type: 'image',
       max_files: MAX_FILES,
       max_file_size: MAX_BYTES,
-      listing_id: listingId,
+      listing_id: listingId || null,
     },
   };
 };
 
-export const completeUpload = async (userId: string, listingId: string, payload: any) => {
+export const completeUpload = async (userId: string, listingId: string | undefined, payload: any) => {
   if (!userId) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
-  await assertListingOwnedByUser(listingId, userId);
+  if (listingId) {
+    await assertListingOwnedByUser(listingId, userId);
+  }
 
   const files: UploadedAsset[] = payload?.files || [];
   if (!Array.isArray(files) || files.length === 0) {
