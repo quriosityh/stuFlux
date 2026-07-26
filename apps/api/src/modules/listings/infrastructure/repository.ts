@@ -392,6 +392,30 @@ function buildWhere(filters: ListFiltersInput) {
   if (filters.min_rate) clauses.push(gte(listings.daily_rate, filters.min_rate));
   if (filters.max_rate) clauses.push(lte(listings.daily_rate, filters.max_rate));
 
+  // Exclude listings unavailable for the requested date range.
+  // A listing is unavailable if it has a confirmed booking OR a manually blocked
+  // date range that overlaps [start_date, end_date].
+  // Overlap condition: existing_start <= requested_end AND existing_end >= requested_start
+  if (filters.start_date && filters.end_date) {
+    clauses.push(
+      sql`NOT EXISTS (
+        SELECT 1 FROM bookings
+        WHERE bookings.listing_id = ${listings.id}
+          AND bookings.status = 'confirmed'
+          AND bookings.start_date <= ${filters.end_date}
+          AND bookings.end_date   >= ${filters.start_date}
+      )`
+    );
+    clauses.push(
+      sql`NOT EXISTS (
+        SELECT 1 FROM listing_blocked_dates
+        WHERE listing_blocked_dates.listing_id = ${listings.id}
+          AND listing_blocked_dates.start_date <= ${filters.end_date}
+          AND listing_blocked_dates.end_date   >= ${filters.start_date}
+      )`
+    );
+  }
+
   return clauses.length === 1 ? clauses[0]! : and(...clauses);
 }
 
@@ -405,6 +429,11 @@ function buildSort(sort: ListFiltersInput['sort']) {
       return [desc(listings.daily_rate), desc(listings.created_at)];
     case 'popular':
     default:
-      return [desc(listings.view_count), desc(listings.created_at)];
+      return [
+        desc(
+          sql`(${listings.booking_count} * 3 + ${listings.view_count}) / (EXTRACT(EPOCH FROM (NOW() - ${listings.created_at})) / 86400 + 2)`
+        ),
+        desc(listings.created_at),
+      ];
   }
 }

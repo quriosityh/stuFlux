@@ -34,6 +34,11 @@ export const updateListingSchema = createListingSchema.partial().extend({
   photos: z.array(photoSchema).min(0).max(5).optional(),
 });
 
+const dateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD')
+  .optional();
+
 export const listFiltersSchema = z.object({
   q: z.string().max(200).optional(),
   category_id: z.coerce.number().int().positive().optional(),
@@ -44,9 +49,28 @@ export const listFiltersSchema = z.object({
   ),
   min_rate: z.coerce.number().int().positive().optional(),
   max_rate: z.coerce.number().int().positive().optional(),
+  start_date: dateString,
+  end_date: dateString,
   sort: z.enum(["popular", "newest", "rate_asc", "rate_desc"]).default("popular"),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
+}).superRefine((data, ctx) => {
+  // Enforce: both dates must be provided together or neither
+  if ((data.start_date && !data.end_date) || (!data.start_date && data.end_date)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'start_date and end_date must both be provided together',
+      path: [data.start_date ? 'end_date' : 'start_date'],
+    });
+  }
+  // Enforce: start must be before end
+  if (data.start_date && data.end_date && data.start_date >= data.end_date) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'start_date must be before end_date',
+      path: ['start_date'],
+    });
+  }
 });
 
 export type PhotoInput = z.infer<typeof photoSchema>;
