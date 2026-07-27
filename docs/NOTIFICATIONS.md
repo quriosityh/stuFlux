@@ -1,7 +1,8 @@
 # StuFlux Notification System — Implementation TODOs
 
 Three-stage implementation plan. Each stage is self-contained and must be completed
-in order. Stages 1 and 2 are backend-only. Stage 3 requires a frontend service worker.
+in order. Stages 1 and 2 are backend-only changes plus a small frontend connection.
+Stage 3 (email) can run in parallel with Stage 2 once Stage 1 is done.
 
 ---
 
@@ -9,26 +10,50 @@ in order. Stages 1 and 2 are backend-only. Stage 3 requires a frontend service w
 
 **Stack:**
 - Backend: Express.js + TypeScript, located at `apps/api/`
-- Auth: Clerk (`requireAuth` middleware resolves `req.auth.userId` — this is the **Clerk user ID string**, NOT the internal UUID. The internal UUID is resolved by joining against the `users` table where `clerk_user_id = req.auth.userId`)
+- Auth middleware: `src/infra/http/middleware/auth.ts` — exports `requireAuth` and `AuthenticatedRequest`
 - ORM: Drizzle ORM with PostgreSQL (Neon). Client at `src/infra/db/client.ts`
 - Module pattern: every module has `controller.ts`, `service.ts`, `repository.ts`, `routes.ts`, `validations.ts`, `index.ts`
-- Module router is registered in `src/modules/index.ts`
-- Frontend: Next.js, located at `apps/web/`
+- Module router registered in `src/modules/index.ts`
+- Frontend: Next.js at `apps/web/`. Rewrites all `/api/proxy/:path*` calls to `http://localhost:4000/api/v1/:path*`
+
+**Critical auth facts (do not guess — read this):**
+- `req.auth.userId` is the **internal database UUID** from the `users` table. It is set by `requireAuth` after calling `ensureUserSynced()`.
+- `req.auth.clerkUserId` is the raw Clerk string (e.g. `user_abc123`).
+- **Never look up a user by `clerk_user_id` inside handlers — `requireAuth` already did it. Use `req.auth!.userId` directly as the internal UUID everywhere.**
+
+**`listing.owner` shape returned by `listingsRepository.findById()`:**
+```ts
+owner: {
+  id: string;           // internal database UUID — use this everywhere
+  display_name: string;
+  area: string;
+  avatar_url: string | null;
+  email: string | null;
+}
+```
+There is no `owner.internalId`. The UUID is `owner.id`.
 
 **Existing SSE infrastructure (per-conversation chat):**
 - `src/infra/events/messageEmitter.ts` — exports `messageEmitter` (EventEmitter), `trackStream`, `untrackStream`, `isUserConnected`, `activeStreams`
-- The conversation stream endpoint is `GET /conversations/:id/stream` in `src/modules/messages/controller.ts`
-- It emits on channel `conversation:{conversationId}`
-- Heartbeat: `:heartbeat\n\n` every 25 seconds to keep the connection alive
-- On client disconnect (`req.on('close', ...)`) the listener is removed and the stream is untracked
+- Existing conversation stream: `GET /conversations/:id/stream` in `src/modules/messages/controller.ts`
+- Emits on channel `conversation:{conversationId}`
+- Heartbeat: `:heartbeat\n\n` every 25 seconds
+- On `req.on('close', ...)`: remove listener, untrack
 
 **Existing booking service trigger points** (where notifications must be emitted):
-- `src/modules/bookings/service.ts` → `createBooking()` — lender must be notified
-- `src/modules/bookings/service.ts` → `confirmBooking()` — renter must be notified
-- `src/modules/bookings/service.ts` → `rejectBooking()` — renter must be notified
+- `src/modules/bookings/service.ts → createBooking()` — lender must be notified (emit to owner)
+- `src/modules/bookings/service.ts → confirmBooking()` — renter must be notified
+- `src/modules/bookings/service.ts → rejectBooking()` — renter must be notified
 
 **Existing message service trigger point:**
-- `src/modules/messages/service.ts` → `sendMessage()` — the recipient of the message must be notified
+- `src/modules/messages/service.ts → sendMessage()` — recipient must be notified
+
+**Known architectural constraint:**
+The `notificationEmitter` (like the existing `messageEmitter`) is an in-process Node.js EventEmitter.
+It works correctly for a **single API process**. If the API is ever horizontally scaled to multiple
+instances, this will not fan out across processes — a separate pub/sub layer (e.g. Redis Pub/Sub)
+would be required. This is an accepted limitation for MVP; document it with a comment in
+`notificationEmitter.ts` so it is not forgotten.
 
 ---
 
@@ -37,192 +62,407 @@ in order. Stages 1 and 2 are backend-only. Stage 3 requires a frontend service w
 **Status: `TODO`**
 
 ### What this does
-Opens a persistent SSE connection per authenticated user on app load. Emits real-time
-notification events to that user from anywhere in the backend (booking events, new messages).
-This is separate from and parallel to the existing per-conversation SSE stream — it does NOT
-replace it.
+Opens one persistent SSE connection per authenticated user when the app loads.
+The backend can emit events to that user from anywhere (booking events, new messages).
+This is parallel to the existing per-conversation SSE — it does NOT replace it.
 
-### How it works
-- Channel key: `user:{internalUserId}` (internal UUID from the `users` table, NOT the Clerk ID)
-- One connection per logged-in user, opened once on app load and kept alive
-- Heartbeat: `:heartbeat\n\n` every 25 seconds
-- On disconnect: remove listener, untrack
+### Channel and routing
+- Channel key: `user:{internalUserId}` where `internalUserId = req.auth!.userId`
+- One logical stream per user. Multiple browser tabs open by the same user each
+  connect separately — presence tracking must use a **reference count** (not a Set with
+  a single sentinel value) so closing one tab does not evict the user's other active streams.
 
-### Notification event payload shape
-
-All events on this stream share this envelope:
+### Notification event payload
+All events share this TypeScript union type (define it in `notificationEmitter.ts`):
 ```ts
-type NotificationEvent =
-  | { type: 'booking_request';   bookingId: string; listingTitle: string; renterName: string;  startDate: string; endDate: string; conversationId: string; }
-  | { type: 'booking_confirmed'; bookingId: string; listingTitle: string; lenderName: string;  startDate: string; endDate: string; conversationId: string; }
-  | { type: 'booking_rejected';  bookingId: string; listingTitle: string;                      startDate: string; endDate: string; }
-  | { type: 'new_message';       conversationId: string; senderName: string; preview: string; }
+export type NotificationEvent =
+  | {
+      type: 'booking_request';
+      bookingId: string;
+      listingTitle: string;
+      renterName: string;
+      startDate: string;   // ISO date string e.g. "2025-07-15"
+      endDate: string;
+      conversationId: string;
+    }
+  | {
+      type: 'booking_confirmed';
+      bookingId: string;
+      listingTitle: string;
+      lenderName: string;
+      startDate: string;
+      endDate: string;
+      conversationId: string;
+    }
+  | {
+      type: 'booking_rejected';
+      bookingId: string;
+      listingTitle: string;
+      startDate: string;
+      endDate: string;
+    }
+  | {
+      type: 'new_message';
+      conversationId: string;
+      senderName: string;
+      preview: string;     // first 60 chars of message body
+    };
 ```
+
+---
 
 ### Files to create
 
 #### `src/infra/events/notificationEmitter.ts` (NEW)
-Mirror the structure of `messageEmitter.ts` exactly. Create:
-- `notificationEmitter` — a new `EventEmitter` instance (separate from `messageEmitter`, do NOT reuse it)
-- `activeUserStreams` — `Map<string, Set<string>>` tracking `Map<internalUserId, Set<'connected'>>` (just a presence flag — one user, one stream)
-- `trackUserStream(userId: string)` — adds userId to the map
-- `untrackUserStream(userId: string)` — removes userId from the map
-- `isUserStreaming(userId: string): boolean` — checks presence
 
-#### `src/modules/notifications/` (NEW MODULE)
-Create the following files:
+```ts
+import { EventEmitter } from 'events';
+import type { NotificationEvent } from './notificationEmitter.js'; // self-referential type export
 
-**`controller.ts`**
-- Export `streamNotificationsHandler` — an array `[requireAuth, asyncHandler(...)]`
-- Inside the handler:
-  1. Get `req.auth!.userId` (this is the Clerk ID string)
-  2. Look up the internal user UUID: query the `users` table where `clerk_user_id = clerkId`. If not found, throw `AppError('User not found', 404, 'USER_NOT_FOUND')`
-  3. Set SSE headers: `Content-Type: text/event-stream`, `Cache-Control: no-cache`, `Connection: keep-alive`. Call `res.flushHeaders()`
-  4. Call `trackUserStream(internalUserId)`
-  5. Start heartbeat interval every 25,000ms writing `:heartbeat\n\n`
-  6. Register listener on `notificationEmitter` for channel `user:{internalUserId}` — writes `data: ${JSON.stringify(payload)}\n\n`
-  7. On `req.on('close', ...)`: clear interval, remove listener, call `untrackUserStream(internalUserId)`
+// NOTE: This is an in-process EventEmitter. It works correctly on a single API
+// instance. For horizontal scaling across multiple processes, replace with a
+// Redis Pub/Sub adapter before deploying multiple API replicas.
+export const notificationEmitter = new EventEmitter();
+notificationEmitter.setMaxListeners(0);
 
-**`routes.ts`**
+// Reference-counted presence: Map<internalUserId, connectionCount>
+// A user may have multiple tabs open — we track how many active SSE connections
+// they have rather than a simple boolean, so closing one tab does not incorrectly
+// mark them as disconnected when another tab remains connected.
+const userConnectionCount = new Map<string, number>();
+
+export const trackUserStream = (userId: string): void => {
+  userConnectionCount.set(userId, (userConnectionCount.get(userId) ?? 0) + 1);
+};
+
+export const untrackUserStream = (userId: string): void => {
+  const current = userConnectionCount.get(userId) ?? 0;
+  if (current <= 1) {
+    userConnectionCount.delete(userId);
+  } else {
+    userConnectionCount.set(userId, current - 1);
+  }
+};
+
+export const isUserStreaming = (userId: string): boolean => {
+  return (userConnectionCount.get(userId) ?? 0) > 0;
+};
+```
+
+---
+
+#### `src/modules/notifications/controller.ts` (NEW)
+
+```ts
+import { Response } from 'express';
+import { asyncHandler } from '../../infra/http/middleware/errorHandler.js';
+import { requireAuth, type AuthenticatedRequest } from '../../infra/http/middleware/auth.js';
+import { notificationEmitter, trackUserStream, untrackUserStream } from '../../infra/events/notificationEmitter.js';
+import type { NotificationEvent } from '../../infra/events/notificationEmitter.js';
+
+export const streamNotificationsHandler = [
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    // req.auth!.userId is already the internal DB UUID — no additional lookup needed.
+    const userId = req.auth!.userId;
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+
+    trackUserStream(userId);
+
+    const heartbeat = setInterval(() => {
+      res.write(':heartbeat\n\n');
+    }, 25000);
+
+    const listener = (payload: NotificationEvent) => {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    };
+
+    notificationEmitter.on(`user:${userId}`, listener);
+
+    req.on('close', () => {
+      clearInterval(heartbeat);
+      notificationEmitter.off(`user:${userId}`, listener);
+      untrackUserStream(userId);
+    });
+  }),
+];
+```
+
+---
+
+#### `src/modules/notifications/routes.ts` (NEW)
+
 ```ts
 import { Router } from 'express';
 import { streamNotificationsHandler } from './controller.js';
+
 const router: Router = Router();
 router.get('/notifications/stream', ...streamNotificationsHandler);
 export default router;
 ```
 
-**`index.ts`**
+#### `src/modules/notifications/index.ts` (NEW)
 ```ts
 export { default } from './routes.js';
 ```
 
 #### Register in `src/modules/index.ts`
-Add:
+Add two lines:
 ```ts
 import notificationsRoutes from './notifications/index.js';
-// ...
+// ...inside the apiV1 router setup:
 apiV1.use('/', notificationsRoutes);
-```
-
-### Wire emission into existing services
-
-#### `src/modules/bookings/service.ts`
-Import `notificationEmitter` at the top.
-
-In `createBooking()`, after the conversation is wired and the system message is posted, emit to the **lender**:
-```ts
-notificationEmitter.emit(`user:${listing.owner.internalId}`, {
-  type: 'booking_request',
-  bookingId: booking.id,
-  listingTitle: listing.title,
-  renterName: /* renter's display_name from users table */,
-  startDate: booking.start_date,
-  endDate: booking.end_date,
-  conversationId: conversation.id,
-});
-```
-> **Note:** `listingsRepository.findById()` already joins the owner. Inspect its return shape to get the owner's internal UUID and display name. For the renter's display name, query `users` where `id = renterId`.
-
-In `confirmBooking()`, emit to the **renter**:
-```ts
-notificationEmitter.emit(`user:${booking.renter_id}`, {
-  type: 'booking_confirmed',
-  bookingId: booking.id,
-  listingTitle: /* fetch from listing */,
-  lenderName: /* fetch from users where id = booking.owner_id */,
-  startDate: booking.start_date,
-  endDate: booking.end_date,
-  conversationId: /* find conversation by booking_id */,
-});
-```
-
-In `rejectBooking()`, emit to the **renter**:
-```ts
-notificationEmitter.emit(`user:${booking.renter_id}`, {
-  type: 'booking_rejected',
-  bookingId: booking.id,
-  listingTitle: /* fetch from listing */,
-  startDate: booking.start_date,
-  endDate: booking.end_date,
-});
-```
-
-#### `src/modules/messages/service.ts`
-In `sendMessage()`, after `messagesRepository.addMessage()` is called, emit to the **recipient** user's global stream in addition to the conversation stream (which already exists). Look up the recipient's internal UUID from the `users` table and emit:
-```ts
-notificationEmitter.emit(`user:${recipientInternalId}`, {
-  type: 'new_message',
-  conversationId: conversation.id,
-  senderName: /* sender's display_name */,
-  preview: data.body.trim().slice(0, 60),
-});
-```
-
-### Frontend connection (Next.js — `apps/web/`)
-In the root layout or a top-level client component that mounts once when the user is authenticated:
-```ts
-const es = new EventSource('/api/notifications/stream', { withCredentials: true });
-es.onmessage = (e) => {
-  const event = JSON.parse(e.data);
-  // dispatch to global state / toast system based on event.type
-};
-// cleanup: es.close() on unmount
 ```
 
 ---
 
-## Stage 2 — Web Push Notifications (Out-of-Tab, Browser-in-Background)
+### Wire emission into existing services
 
-**Status: `TODO` — implement after Stage 1 is complete and working**
+#### `src/modules/bookings/service.ts`
+
+Add import at top:
+```ts
+import { notificationEmitter } from '../../infra/events/notificationEmitter.js';
+```
+
+**In `createBooking()`** — immediately after the system message is posted to the conversation,
+emit to the **lender** (the listing owner). The owner's internal UUID and name are available
+directly on the listing object returned by `listingsRepository.findById()`:
+
+```ts
+// listing.owner.id   = lender's internal UUID
+// listing.owner.display_name = lender's display name
+// renterId is the renter's internal UUID (it's the function parameter)
+// For renterName: query users table where id = renterId, or pass it through from
+//   the user object returned by ensureUserSynced inside requireAuth
+
+notificationEmitter.emit(`user:${listing.owner.id}`, {
+  type: 'booking_request',
+  bookingId: booking.id,
+  listingTitle: listing.title,
+  renterName: /* renter display_name — fetch from db: SELECT display_name FROM users WHERE id = renterId */,
+  startDate: booking.start_date,
+  endDate: booking.end_date,
+  conversationId: conversation!.id,   // conversation is already in scope from the wire-up added earlier
+} satisfies NotificationEvent);
+```
+
+> To get renterName: add a `findDisplayName(userId: string): Promise<string>` helper to `messages/repository.ts`
+> or `users/repository.ts` that does `SELECT display_name FROM users WHERE id = $userId`. Do not make
+> a full profile fetch just for a name.
+
+**In `confirmBooking()`** — emit to the **renter**.
+`booking.renter_id` is the renter's internal UUID. The listing title and lender name must be
+fetched. The `conversationId` requires a lookup by `booking_id` — add `findConversationByBookingId`
+to `messages/repository.ts` (see below):
+
+```ts
+const [listing, conversation] = await Promise.all([
+  listingsRepository.findById(booking.listing_id),
+  messagesRepository.findConversationByBookingId(bookingId),
+]);
+
+notificationEmitter.emit(`user:${booking.renter_id}`, {
+  type: 'booking_confirmed',
+  bookingId: booking.id,
+  listingTitle: listing?.title ?? '',
+  lenderName: listing?.owner.display_name ?? '',
+  startDate: booking.start_date,
+  endDate: booking.end_date,
+  conversationId: conversation?.id ?? '',
+} satisfies NotificationEvent);
+```
+
+**In `rejectBooking()`** — emit to the **renter** (no conversationId needed):
+
+```ts
+const listing = await listingsRepository.findById(booking.listing_id);
+
+notificationEmitter.emit(`user:${booking.renter_id}`, {
+  type: 'booking_rejected',
+  bookingId: booking.id,
+  listingTitle: listing?.title ?? '',
+  startDate: booking.start_date,
+  endDate: booking.end_date,
+} satisfies NotificationEvent);
+```
+
+---
+
+#### New repository method needed: `findConversationByBookingId`
+
+Add to `src/modules/messages/repository.ts`:
+```ts
+findConversationByBookingId: async (bookingId: string) => {
+  return db.query.conversations.findFirst({
+    where: eq(conversations.booking_id, bookingId),
+  });
+},
+```
+
+---
+
+#### `src/modules/messages/service.ts`
+
+In `sendMessage()`, after `messagesRepository.addMessage()` is called, emit to the **recipient's**
+global user stream. The recipient's internal UUID is already in scope as `recipientId`:
+
+```ts
+import { notificationEmitter } from '../../infra/events/notificationEmitter.js';
+
+// After addMessage():
+// senderName: fetch display_name for senderId from users table
+notificationEmitter.emit(`user:${recipientId}`, {
+  type: 'new_message',
+  conversationId: conversation!.id,
+  senderName: /* sender display_name — same findDisplayName helper as above */,
+  preview: data.body.trim().slice(0, 60),
+} satisfies NotificationEvent);
+```
+
+---
+
+### Frontend SSE connection (Next.js — `apps/web/`)
+
+**Problem:** Browser `EventSource` cannot set an `Authorization` header. The API requires
+`Bearer {token}`. The solution is a **Next.js Route Handler** that fetches the Clerk token
+server-side (or via the Clerk `useAuth` hook client-side) and proxies the SSE stream.
+
+**Recommended approach — Next.js Route Handler proxy:**
+
+Create `apps/web/src/app/api/notifications/stream/route.ts`:
+```ts
+import { auth } from '@clerk/nextjs/server';
+import { NextRequest } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest) {
+  const { getToken } = await auth();
+  const token = await getToken();
+  if (!token) return new Response('Unauthorized', { status: 401 });
+
+  const apiUrl = `${process.env.API_BASE_URL ?? 'http://localhost:4000/api/v1'}/notifications/stream`;
+
+  // Proxy the SSE stream: fetch the API endpoint with the Bearer token and pipe
+  // the response body straight back to the browser.
+  const upstream = await fetch(apiUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  return new Response(upstream.body, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+}
+```
+
+**Client component connection** (mount once at the root layout level, only when authenticated):
+```ts
+// Path: apps/web/src/components/NotificationStream.tsx  (client component)
+'use client';
+import { useEffect } from 'react';
+import { useAuth } from '@clerk/nextjs';
+
+export function NotificationStream() {
+  const { isSignedIn } = useAuth();
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+
+    // Connect to the Next.js proxy route — no auth header needed, Clerk session cookie handles it
+    const es = new EventSource('/api/notifications/stream');
+
+    es.onmessage = (e) => {
+      const event = JSON.parse(e.data);
+      // Dispatch to toast / global notification state based on event.type
+      console.log('[notification]', event);
+    };
+
+    es.onerror = () => {
+      // Browser auto-reconnects on error; no manual retry needed
+    };
+
+    return () => es.close();
+  }, [isSignedIn]);
+
+  return null;
+}
+```
+
+Mount `<NotificationStream />` inside the authenticated layout so it opens exactly once
+per session.
+
+---
+
+## Stage 2 — Web Push Notifications (Out-of-Tab, Browser in Background)
+
+**Status: `TODO` — implement after Stage 1 is complete and verified**
 
 ### What this does
-Sends a native OS-level browser notification when the user has the tab closed but the
-browser is still running. Uses the Web Push API with VAPID keys (free, no third party).
+Sends a native OS-level browser push notification when the user's StuFlux tab is closed
+but the browser is still running in the background. Uses the Web Push API with self-generated
+VAPID keys — free, no third-party service required.
 
 ### Prerequisites
-- Stage 1 must be complete
-- The API server must be running HTTPS in production (Neon + Vercel/Railway handle this)
-- Install `web-push` npm package in `apps/api/`: `npm install web-push` and `npm install -D @types/web-push`
-
-### How it works
-1. Generate a VAPID key pair once: `npx web-push generate-vapid-keys`. Store the public and private keys as env vars:
-   - `VAPID_PUBLIC_KEY`
-   - `VAPID_PRIVATE_KEY`
-   - `VAPID_SUBJECT` = `mailto:your@email.com`
-2. The frontend asks the user for notification permission and subscribes via the browser's Push API. The subscription object (contains endpoint URL + keys) is sent to the backend and stored in the DB.
-3. When a notification event fires (same trigger points as Stage 1), the backend calls `webpush.sendNotification(subscription, payload)`.
+- Stage 1 must be working
+- Install `web-push` in `apps/api/`: `npm install web-push @types/web-push`
+- Generate VAPID keys once: `npx web-push generate-vapid-keys`
+- Add to `apps/api/.env`:
+  ```
+  VAPID_PUBLIC_KEY=<your generated public key>
+  VAPID_PRIVATE_KEY=<your generated private key>
+  VAPID_SUBJECT=mailto:your@email.com
+  ```
+- Add to `apps/web/.env.local`:
+  ```
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY=<same public key>
+  ```
+- HTTPS is required in production. Neon + Vercel/Railway handle this automatically.
 
 ### Database schema change
-Add a `push_subscriptions` table to `apps/api/db/schema.ts`:
+Add to `apps/api/db/schema.ts`:
 ```ts
 export const pushSubscriptions = pgTable('push_subscriptions', {
-  id:      uuid('id').defaultRandom().primaryKey(),
-  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  // The full PushSubscription JSON object from the browser
-  endpoint: text('endpoint').notNull(),
+  id:       uuid('id').defaultRandom().primaryKey(),
+  user_id:  uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').notNull().unique(), // unique per device/browser
   p256dh:   text('p256dh').notNull(),
   auth:     text('auth').notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 ```
-Write and run a migration after adding this.
+Write and run a Drizzle migration after adding this.
 
 ### New API endpoints
 
 **`POST /push/subscribe`** (authenticated)
 - Body: `{ endpoint: string, keys: { p256dh: string, auth: string } }`
-- Upsert the subscription for the current user (by internal user id). If the same endpoint already exists, update it. Use `onConflictDoUpdate` on the `endpoint` column (add a unique index on it).
+- Upsert: insert the subscription; on conflict on `endpoint`, update `p256dh` and `auth`.
+  Use `onConflictDoUpdate` targeting the `endpoint` unique constraint.
 - Returns `{ status: 'subscribed' }`
 
 **`DELETE /push/subscribe`** (authenticated)
 - Body: `{ endpoint: string }`
-- Deletes the row matching the endpoint for the current user.
+- Delete the row where `endpoint = body.endpoint AND user_id = req.auth!.userId`.
 
-### Backend push sender utility
+Create this as a new `push` module following the existing module pattern.
+
+### Backend push sender
+
 Create `src/infra/push/sender.ts`:
 ```ts
 import webpush from 'web-push';
+import { db } from '../db/client.js';
+import { pushSubscriptions } from '../../../db/schema.js';
+import { eq } from 'drizzle-orm';
 
 webpush.setVapidDetails(
   process.env.VAPID_SUBJECT!,
@@ -230,39 +470,67 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY!,
 );
 
+export type PushPayload = {
+  type: string;
+  title: string;
+  body: string;
+  url: string;
+};
+
 export async function sendPushToUser(
   internalUserId: string,
-  payload: object,
+  payload: PushPayload,
 ): Promise<void> {
-  // Query all push_subscriptions for this user
-  // For each subscription, call webpush.sendNotification()
-  // If webpush throws a 410 (Gone) or 404 error, the subscription is expired — delete it from the DB
-  // Do NOT throw if sending fails — log the error and continue
+  const subs = await db
+    .select()
+    .from(pushSubscriptions)
+    .where(eq(pushSubscriptions.user_id, internalUserId));
+
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify(payload),
+      );
+    } catch (err: any) {
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        // Subscription expired or invalid — clean it up
+        await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, sub.endpoint));
+      } else {
+        // Other errors: log only, do NOT rethrow — push failure must never break the booking flow
+        console.error('[push] Failed to send to', sub.endpoint, err?.message);
+      }
+    }
+  }
 }
 ```
 
 ### Wire into existing services
-In `bookings/service.ts` and `messages/service.ts`, after emitting to `notificationEmitter`
-(Stage 1), also call `sendPushToUser(recipientInternalId, payload)`. The payload for push
-must be a JSON string — the service worker on the frontend will parse it.
 
-Push payload shape (keep it small — push has size limits ~4KB):
+In `bookings/service.ts`, after the `notificationEmitter.emit()` calls added in Stage 1, also call
+`sendPushToUser()` for the same events. Use the same recipient UUIDs.
+
+Push payload example:
 ```ts
-{ type: string; title: string; body: string; url: string; }
-// Example:
-{ type: 'booking_request', title: 'New Rental Request', body: 'Hassan Ali wants to rent your DSLR Camera', url: '/bookings' }
+sendPushToUser(listing.owner.id, {
+  type: 'booking_request',
+  title: 'New Rental Request',
+  body: `${renterName} wants to rent your ${listing.title}`,
+  url: '/bookings',
+});
 ```
 
-### Frontend service worker (`apps/web/public/sw.js`)
-A minimal service worker that handles the `push` event:
+### Frontend service worker
+
+Create `apps/web/public/sw.js`:
 ```js
 self.addEventListener('push', (event) => {
-  const data = event.data.json();
+  const data = event.data?.json() ?? {};
   event.waitUntil(
-    self.registration.showNotification(data.title, {
+    self.registration.showNotification(data.title ?? 'StuFlux', {
       body: data.body,
       icon: '/icon-192.png',
-      data: { url: data.url },
+      data: { url: data.url ?? '/' },
     })
   );
 });
@@ -273,51 +541,77 @@ self.addEventListener('notificationclick', (event) => {
 });
 ```
 
-Register the service worker and subscribe in a client component:
+### Frontend subscription (client component)
+
 ```ts
-// 1. Register SW
-const reg = await navigator.serviceWorker.register('/sw.js');
-// 2. Subscribe
-const sub = await reg.pushManager.subscribe({
-  userVisibleOnly: true,
-  applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
-});
-// 3. Send subscription to API
-await fetch('/api/push/subscribe', {
-  method: 'POST',
-  body: JSON.stringify(sub),
-  headers: { 'Content-Type': 'application/json' },
-});
+// Standard base64 utility — copy exactly as shown, do not rewrite
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return new Uint8Array([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+  const reg = await navigator.serviceWorker.register('/sw.js');
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') return;
+
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+    ),
+  });
+
+  // Send subscription to the API through the Next.js proxy
+  await fetch('/api/proxy/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint: sub.endpoint,
+      keys: {
+        p256dh: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')!))),
+        auth:   btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')!))),
+      },
+    }),
+  });
+}
 ```
-> `urlBase64ToUint8Array` is a standard utility — copy it from the web-push npm docs.
+
+Call `subscribeToPush()` once after the user logs in (e.g. inside the same client component
+as the SSE stream from Stage 1).
 
 ---
 
-## Stage 3 — Email Notifications via Resend (Truly Offline)
+## Stage 3 — Email Notifications via Resend (Fully Offline)
 
-**Status: `TODO` — implement after Stage 1 is complete. Can be done in parallel with Stage 2.**
+**Status: `TODO` — can be implemented in parallel with Stage 2 once Stage 1 is done**
 
 ### What this does
-Sends a transactional email to the user's registered email address for the two highest-value
-events: a new booking request (to the lender) and a booking confirmation or rejection (to the renter).
-Does NOT send email for new chat messages — that would be too noisy.
+Sends a transactional email for the two highest-value events: a new booking request (lender)
+and a booking confirmation or rejection (renter). Does NOT send email for chat messages — too noisy.
 
-### Service to use
+### Service
 **Resend** — [resend.com](https://resend.com). Free tier: 3,000 emails/month, 100/day.
-No credit card required. Simple REST API, official `resend` npm SDK.
+No credit card required. Official `resend` npm SDK.
 
 ### Setup
-1. Create a free Resend account at resend.com
-2. Verify your sending domain OR use Resend's shared domain for testing (`onboarding@resend.dev`)
-3. Generate an API key from the Resend dashboard
-4. Add to `apps/api/.env`:
-   ```
-   RESEND_API_KEY=re_xxxxxxxxxxxx
-   RESEND_FROM_ADDRESS=notifications@yourdomain.com
-   ```
-5. Install SDK: `npm install resend` in `apps/api/`
+```
+npm install resend   # in apps/api/
+```
+Add to `apps/api/.env`:
+```
+RESEND_API_KEY=re_xxxxxxxxxxxx
+RESEND_FROM_ADDRESS=notifications@yourdomain.com
+APP_URL=https://yourdomain.com
+```
+For local development set `APP_URL=http://localhost:3000`.
 
-### Backend email sender utility
+### Email sender utility
+
 Create `src/infra/email/sender.ts`:
 ```ts
 import { Resend } from 'resend';
@@ -337,105 +631,132 @@ export async function sendEmail(params: {
       html: params.html,
     });
   } catch (err) {
-    // Log error but do NOT throw — email failure must never break the booking flow
-    console.error('[email] Failed to send:', err);
+    // Log only — email failure must NEVER propagate as an API error
+    console.error('[email] Failed to send to', params.to, err);
   }
 }
 ```
 
 ### Email templates
-Write simple inline HTML strings. No template engine needed for MVP. Keep them minimal.
 
-**Booking request email (to lender):**
+Create `src/infra/email/templates.ts`:
 ```ts
-export function bookingRequestEmail(params: {
+const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
+
+export function bookingRequestEmail(p: {
   lenderName: string;
   renterName: string;
   listingTitle: string;
   startDate: string;
   endDate: string;
-  appUrl: string;
 }): { subject: string; html: string } {
   return {
-    subject: `New rental request for "${params.listingTitle}"`,
+    subject: `New rental request for "${p.listingTitle}"`,
     html: `
-      <p>Hi ${params.lenderName},</p>
-      <p><strong>${params.renterName}</strong> has requested to rent your item
-         <strong>${params.listingTitle}</strong> from ${params.startDate} to ${params.endDate}.</p>
-      <p><a href="${params.appUrl}/bookings">Review the request →</a></p>
+      <p>Hi ${p.lenderName},</p>
+      <p><strong>${p.renterName}</strong> has requested to rent your item
+         <strong>${p.listingTitle}</strong> from ${p.startDate} to ${p.endDate}.</p>
+      <p><a href="${appUrl}/bookings">Review the request →</a></p>
       <p>— StuFlux</p>
     `,
   };
 }
-```
 
-**Booking confirmed email (to renter):**
-```ts
-export function bookingConfirmedEmail(params: {
+export function bookingConfirmedEmail(p: {
   renterName: string;
   listingTitle: string;
   lenderName: string;
   startDate: string;
   endDate: string;
-  appUrl: string;
 }): { subject: string; html: string } {
   return {
-    subject: `Your booking for "${params.listingTitle}" is confirmed!`,
+    subject: `Your booking for "${p.listingTitle}" is confirmed!`,
     html: `
-      <p>Hi ${params.renterName},</p>
-      <p>Great news! <strong>${params.lenderName}</strong> has confirmed your rental of
-         <strong>${params.listingTitle}</strong> from ${params.startDate} to ${params.endDate}.</p>
-      <p><a href="${params.appUrl}/bookings">View booking details →</a></p>
+      <p>Hi ${p.renterName},</p>
+      <p><strong>${p.lenderName}</strong> confirmed your rental of
+         <strong>${p.listingTitle}</strong> from ${p.startDate} to ${p.endDate}.</p>
+      <p><a href="${appUrl}/bookings">View booking details →</a></p>
       <p>— StuFlux</p>
     `,
   };
 }
-```
 
-**Booking rejected email (to renter):**
-```ts
-export function bookingRejectedEmail(params: {
+export function bookingRejectedEmail(p: {
   renterName: string;
   listingTitle: string;
   startDate: string;
   endDate: string;
-  appUrl: string;
 }): { subject: string; html: string } {
   return {
-    subject: `Rental request for "${params.listingTitle}" was declined`,
+    subject: `Rental request for "${p.listingTitle}" was declined`,
     html: `
-      <p>Hi ${params.renterName},</p>
-      <p>Unfortunately your rental request for <strong>${params.listingTitle}</strong>
-         (${params.startDate} to ${params.endDate}) was not accepted.</p>
-      <p><a href="${params.appUrl}/explore">Browse other listings →</a></p>
+      <p>Hi ${p.renterName},</p>
+      <p>Your rental request for <strong>${p.listingTitle}</strong>
+         (${p.startDate} – ${p.endDate}) was not accepted.</p>
+      <p><a href="${appUrl}/explore">Browse other listings →</a></p>
       <p>— StuFlux</p>
     `,
   };
 }
 ```
 
-### Wire into existing services
-In `apps/api/src/modules/bookings/service.ts`:
+### Wire into `bookings/service.ts`
 
-- In `createBooking()`: after the notification emitter call (Stage 1), send email to `listing.owner.email` using `bookingRequestEmail()`
-- In `confirmBooking()`: after the notification emitter call, fetch renter's email from `users` table, send using `bookingConfirmedEmail()`
-- In `rejectBooking()`: after the notification emitter call, fetch renter's email from `users` table, send using `bookingRejectedEmail()`
+Import `sendEmail` and the three template functions. After each `notificationEmitter.emit()` call,
+send the corresponding email. The recipient's email address is available on the `listing.owner.email`
+field (already returned by `listingsRepository.findById()`). For the renter's email, you must
+query the `users` table by `renter_id` — add a `findEmailById(userId: string)` helper to
+`users/repository.ts` that returns `{ email, display_name }`.
 
-**Critical:** All email calls must be fire-and-forget (`await` is fine but wrap in try/catch that only logs — never let email failure propagate up as an API error). The `sendEmail` utility already handles this.
-
-### APP_URL env var
-Add to `.env`:
+**`createBooking()`** — email to lender:
+```ts
+if (listing.owner.email) {
+  const tpl = bookingRequestEmail({
+    lenderName: listing.owner.display_name,
+    renterName: /* from findEmailById(renterId) */,
+    listingTitle: listing.title,
+    startDate: booking.start_date,
+    endDate: booking.end_date,
+  });
+  await sendEmail({ to: listing.owner.email, ...tpl });
+}
 ```
-APP_URL=https://yourdomain.com
+
+**`confirmBooking()`** — email to renter:
+```ts
+const renter = await usersRepository.findEmailById(booking.renter_id);
+if (renter?.email) {
+  const tpl = bookingConfirmedEmail({
+    renterName: renter.display_name,
+    listingTitle: listing?.title ?? '',
+    lenderName: listing?.owner.display_name ?? '',
+    startDate: booking.start_date,
+    endDate: booking.end_date,
+  });
+  await sendEmail({ to: renter.email, ...tpl });
+}
 ```
-Use this when constructing the link in email templates. In development use `http://localhost:3000`.
+
+**`rejectBooking()`** — email to renter:
+```ts
+const renter = await usersRepository.findEmailById(booking.renter_id);
+if (renter?.email) {
+  const tpl = bookingRejectedEmail({
+    renterName: renter.display_name,
+    listingTitle: listing?.title ?? '',
+    startDate: booking.start_date,
+    endDate: booking.end_date,
+  });
+  await sendEmail({ to: renter.email, ...tpl });
+}
+```
 
 ---
 
 ## Implementation Order Summary
 
 ```
-Stage 1 (SSE)        → Do first. Unblocks all in-app notification UI.
-Stage 3 (Email)      → Do second. Independent of Stage 2. Resend setup is 15 mins.
-Stage 2 (Web Push)   → Do last. Most complex (service worker + DB table + VAPID setup).
+Stage 1 (SSE global stream)  →  implement first — unblocks in-app notification UI
+Stage 3 (Email / Resend)     →  do second — independent of Stage 2, 30 mins to wire up
+Stage 2 (Web Push)           →  do last — most complex (service worker + DB table + VAPID)
 ```
