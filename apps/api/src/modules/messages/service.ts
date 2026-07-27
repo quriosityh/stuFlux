@@ -3,6 +3,8 @@ import { listingsRepository } from '../listings/infrastructure/repository.js';
 import { messagesRepository } from './repository.js';
 import { sendMessageSchema, listMessagesSchema } from './validations.js';
 import { messageEmitter, isUserConnected } from '../../infra/events/messageEmitter.js';
+import { notificationEmitter, type NotificationEvent } from '../../infra/events/notificationEmitter.js';
+import { usersRepository } from '../users/repository.js';
 
 // ---------------------------------------------------------------------------
 // sendMessage
@@ -70,6 +72,14 @@ export const sendMessage = async (payload: unknown, senderId: string) => {
     delivered_at: deliveredAt ?? message.delivered_at,
   };
   messageEmitter.emit(`conversation:${conversation.id}`, eventPayload);
+
+  const senderName = await usersRepository.findDisplayName(senderId);
+  notificationEmitter.emit(`user:${recipientId}`, {
+    type: 'new_message',
+    conversationId: conversation.id,
+    senderName: senderName ?? 'Someone',
+    preview: data.body.trim().slice(0, 60),
+  } satisfies NotificationEvent);
 
   return { conversation, message: eventPayload };
 };

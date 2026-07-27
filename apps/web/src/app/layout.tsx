@@ -3,6 +3,7 @@ import { ClerkProvider, SignedIn, SignedOut } from '@clerk/nextjs'
 import { Space_Grotesk, Manrope } from 'next/font/google'
 import './globals.css'
 import { Navigation } from '@/components/navigation/Navigation'
+import { NotificationStream } from '@/components/NotificationStream'
 
 const spaceGrotesk = Space_Grotesk({ 
   subsets: ['latin'],
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main className="flex-1 relative z-0 flex flex-col">{children}</main>
           </SignedOut>
           <SignedIn>
+            <NotificationStream />
             <main className="flex-1 relative z-0 flex flex-col">{children}</main>
           </SignedIn>
           <BottomSpacer />

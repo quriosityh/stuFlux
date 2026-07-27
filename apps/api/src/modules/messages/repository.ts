@@ -120,6 +120,12 @@ export const messagesRepository = {
     });
   },
 
+  findConversationByBookingId: async (bookingId: string) => {
+    return db.query.conversations.findFirst({
+      where: eq(conversations.booking_id, bookingId),
+    });
+  },
+
   /**
    * Lists all conversations for a user, enriched with:
    *   - listing title + primary photo
