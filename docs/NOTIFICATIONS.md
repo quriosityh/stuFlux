@@ -117,7 +117,39 @@ export type NotificationEvent =
 
 ```ts
 import { EventEmitter } from 'events';
-import type { NotificationEvent } from './notificationEmitter.js'; // self-referential type export
+
+export type NotificationEvent =
+  | {
+      type: 'booking_request';
+      bookingId: string;
+      listingTitle: string;
+      renterName: string;
+      startDate: string;
+      endDate: string;
+      conversationId: string;
+    }
+  | {
+      type: 'booking_confirmed';
+      bookingId: string;
+      listingTitle: string;
+      lenderName: string;
+      startDate: string;
+      endDate: string;
+      conversationId: string;
+    }
+  | {
+      type: 'booking_rejected';
+      bookingId: string;
+      listingTitle: string;
+      startDate: string;
+      endDate: string;
+    }
+  | {
+      type: 'new_message';
+      conversationId: string;
+      senderName: string;
+      preview: string;
+    };
 
 // NOTE: This is an in-process EventEmitter. It works correctly on a single API
 // instance. For horizontal scaling across multiple processes, replace with a
@@ -352,6 +384,9 @@ export async function GET(req: NextRequest) {
   // the response body straight back to the browser.
   const upstream = await fetch(apiUrl, {
     headers: { Authorization: `Bearer ${token}` },
+    // Abort the API request when EventSource disconnects, so Express runs its
+    // close handler and removes the SSE listener immediately.
+    signal: req.signal,
   });
 
   return new Response(upstream.body, {
@@ -439,7 +474,9 @@ export const pushSubscriptions = pgTable('push_subscriptions', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 ```
-Write and run a Drizzle migration after adding this.
+Write and run a Drizzle migration after adding this. The generated migration directory is
+`apps/api/db/migrations` (per `drizzle.config.ts`); update the existing migration runner,
+which currently points to `./src/db/migrations`, before running it.
 
 ### New API endpoints
 
