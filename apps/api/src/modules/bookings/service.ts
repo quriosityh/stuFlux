@@ -3,6 +3,7 @@ import { AppError } from '../../common/errors.js';
 import { listingsRepository } from '../listings/infrastructure/repository.js';
 import { createBookingSchema } from './validations.js';
 import { bookingsRepository } from './repository.js';
+import { messagesRepository } from '../messages/repository.js';
 import type { BookingStatus } from './types.js';
 
 const VALID_STATUSES: BookingStatus[] = ['pending', 'confirmed', 'rejected', 'completed'];
@@ -62,7 +63,24 @@ export const createBooking = async (payload: unknown, renterId: string) => {
     deliveryFee: listing.delivery_fee || 0,
   });
 
-  return booking;
+  // ── Wire the conversation ────────────────────────────────────────────────
+  // Upgrades an existing inquiry thread or creates a fresh booking thread.
+  // Then posts a system event card so the renter sees the booking in chat.
+  const conversation = await messagesRepository.attachOrCreateConversation(
+    booking.id,
+    booking.listing_id,
+    renterId,
+    listing.owner.id,
+  );
+
+  const startStr  = booking.start_date;
+  const endStr    = booking.end_date;
+  const totalRs   = Math.round(totalAmount / 100).toLocaleString('en-PK');
+  const systemMsg = `📋 Booking request submitted · ${startStr} – ${endStr} · Rs. ${totalRs}`;
+  await messagesRepository.addMessage(conversation!.id, renterId, systemMsg);
+  // ────────────────────────────────────────────────────────────────────────
+
+  return { booking, conversation_id: conversation!.id };
 };
 
 export const confirmBooking = async (bookingId: string, ownerId: string) => {

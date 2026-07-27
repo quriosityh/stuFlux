@@ -4,58 +4,87 @@ import { messagesRepository } from './repository.js';
 import { sendMessageSchema, listMessagesSchema } from './validations.js';
 import { messageEmitter, isUserConnected } from '../../infra/events/messageEmitter.js';
 
+// ---------------------------------------------------------------------------
+// sendMessage
+// ---------------------------------------------------------------------------
+// Two entry paths:
+//
+//   A) conversation_id supplied → existing thread, just append the message.
+//   B) listing_id supplied (no conversation yet) → the renter is initiating
+//      an INQUIRY from the listing page. Ensure an inquiry thread exists
+//      (idempotent) then append the first message.
+// ---------------------------------------------------------------------------
+
 export const sendMessage = async (payload: unknown, senderId: string) => {
   const data = sendMessageSchema.parse(payload);
 
-  let conversation = null;
+  let conversation: Awaited<ReturnType<typeof messagesRepository.findConversationById>>;
   let renterId: string;
   let ownerId: string;
 
   if (data.conversation_id) {
+    // ── Path A: reply to an existing thread ──────────────────────────────
     conversation = await messagesRepository.findConversationById(data.conversation_id);
     if (!conversation) throw new AppError('Conversation not found', 404, 'CONVERSATION_NOT_FOUND');
     if (conversation.renter_id !== senderId && conversation.owner_id !== senderId) {
       throw new AppError('Not allowed', 403, 'FORBIDDEN');
     }
     renterId = conversation.renter_id;
-    ownerId = conversation.owner_id;
+    ownerId  = conversation.owner_id;
   } else {
+    // ── Path B: new inquiry from listing page ────────────────────────────
     const listing = await listingsRepository.findById(data.listing_id!);
-    if (!listing) throw new AppError('Listing not found', 404, 'LISTING_NOT_FOUND');
-    if (!listing.owner) throw new AppError('Listing has no owner', 500, 'LISTING_NO_OWNER');
+    if (!listing)        throw new AppError('Listing not found', 404, 'LISTING_NOT_FOUND');
+    if (!listing.owner)  throw new AppError('Listing has no owner', 500, 'LISTING_NO_OWNER');
     if (listing.owner.id === senderId) {
       throw new AppError('Owners cannot start conversations with themselves', 400, 'CONVERSATION_NOT_ALLOWED');
     }
+
     renterId = senderId;
-    ownerId = listing.owner.id;
-    conversation = await messagesRepository.ensureConversation(data.listing_id!, renterId, ownerId);
+    ownerId  = listing.owner.id;
+
+    // ensureInquiryConversation is idempotent — safe to call on every message
+    // before a booking is created (the partial unique index deduplicates).
+    conversation = await messagesRepository.ensureInquiryConversation(
+      data.listing_id!,
+      renterId,
+      ownerId,
+    );
   }
 
   if (!conversation) throw new AppError('Unable to create conversation', 500, 'CONVERSATION_CREATE_FAILED');
 
   const message = await messagesRepository.addMessage(conversation.id, senderId, data.body.trim());
 
-  // Determine recipient for delivery semantics
+  // Delivery semantics — mark delivered immediately if recipient is connected
   const recipientId = senderId === renterId ? ownerId : renterId;
-
   let deliveredAt: Date | null = null;
   if (isUserConnected(conversation.id, recipientId)) {
     deliveredAt = new Date();
     await messagesRepository.markDelivered(message.id, deliveredAt);
   }
 
-  const eventPayload = { ...message, conversation_id: conversation.id, delivered_at: deliveredAt ?? message.delivered_at };
+  const eventPayload = {
+    ...message,
+    conversation_id: conversation.id,
+    delivered_at: deliveredAt ?? message.delivered_at,
+  };
   messageEmitter.emit(`conversation:${conversation.id}`, eventPayload);
 
-  return {
-    conversation,
-    message: eventPayload,
-  };
+  return { conversation, message: eventPayload };
 };
+
+// ---------------------------------------------------------------------------
+// listConversations
+// ---------------------------------------------------------------------------
 
 export const listConversations = async (userId: string) => {
   return messagesRepository.listConversationsForUser(userId);
 };
+
+// ---------------------------------------------------------------------------
+// listMessages
+// ---------------------------------------------------------------------------
 
 export const listMessages = async (conversationId: string, query: unknown, userId: string) => {
   const convo = await messagesRepository.findConversationById(conversationId);
@@ -69,6 +98,10 @@ export const listMessages = async (conversationId: string, query: unknown, userI
   return msgs;
 };
 
+// ---------------------------------------------------------------------------
+// deleteMessage
+// ---------------------------------------------------------------------------
+
 export const deleteMessage = async (messageId: string, userId: string) => {
   const msg = await messagesRepository.softDeleteMessage(messageId, userId);
   if (!msg) throw new AppError('Message not found or not owned', 404, 'MESSAGE_NOT_FOUND');
@@ -76,13 +109,16 @@ export const deleteMessage = async (messageId: string, userId: string) => {
   return msg;
 };
 
+// ---------------------------------------------------------------------------
+// markConversationSeen
+// ---------------------------------------------------------------------------
+
 export const markConversationSeen = async (conversationId: string, userId: string) => {
   const convo = await messagesRepository.findConversationById(conversationId);
   if (!convo) throw new AppError('Conversation not found', 404, 'CONVERSATION_NOT_FOUND');
   if (convo.renter_id !== userId && convo.owner_id !== userId) {
     throw new AppError('Not allowed', 403, 'FORBIDDEN');
   }
-
   await messagesRepository.markConversationRead(conversationId, userId);
   return { conversation_id: conversationId, status: 'seen' } as const;
 };
