@@ -23,11 +23,11 @@ export function assertPublishable(data: {
   description?: string;
   category_id?: number;
   daily_rate?: number;
-  city?: string;
+  area?: string;
   photos?: PhotoInput[];
 }) {
-  const { title, description, category_id, daily_rate, city, photos } = data;
-  if (!title || !description || !category_id || !daily_rate || !city) {
+  const { title, description, category_id, daily_rate, area, photos } = data;
+  if (!title || !description || !category_id || !daily_rate || !area) {
     throw new AppError('Listing is missing required fields to publish', 400, 'PUBLISH_VALIDATION_FAILED');
   }
   if (!photos || photos.length === 0) {

@@ -6,6 +6,7 @@ import { bookingsRepository } from './repository.js';
 import { messagesRepository } from '../messages/repository.js';
 import { usersRepository } from '../users/repository.js';
 import { notificationEmitter, type NotificationEvent } from '../../infra/events/notificationEmitter.js';
+import { sendPushToUser } from '../../infra/push/sender.js';
 import type { BookingStatus } from './types.js';
 
 const VALID_STATUSES: BookingStatus[] = ['pending', 'confirmed', 'rejected', 'completed'];
@@ -92,6 +93,12 @@ export const createBooking = async (payload: unknown, renterId: string) => {
     endDate: booking.end_date,
     conversationId: conversation!.id,
   } satisfies NotificationEvent);
+  void sendPushToUser(listing.owner.id, {
+    type: 'booking_request',
+    title: 'New Rental Request',
+    body: `${renterName ?? 'A renter'} wants to rent your ${listing.title}`,
+    url: '/bookings',
+  });
 
   return { booking, conversation_id: conversation!.id };
 };
@@ -141,6 +148,12 @@ export const confirmBooking = async (bookingId: string, ownerId: string) => {
       endDate: booking.end_date,
       conversationId: conversation?.id ?? '',
     } satisfies NotificationEvent);
+    void sendPushToUser(booking.renter_id, {
+      type: 'booking_confirmed',
+      title: 'Booking Confirmed',
+      body: `Your booking for ${listing?.title ?? 'this listing'} was confirmed`,
+      url: '/bookings',
+    });
   }
   return updated;
 };
@@ -161,6 +174,12 @@ export const rejectBooking = async (bookingId: string, ownerId: string) => {
       startDate: booking.start_date,
       endDate: booking.end_date,
     } satisfies NotificationEvent);
+    void sendPushToUser(booking.renter_id, {
+      type: 'booking_rejected',
+      title: 'Booking Request Declined',
+      body: `Your booking for ${listing?.title ?? 'this listing'} was declined`,
+      url: '/bookings',
+    });
   }
   return updated;
 };

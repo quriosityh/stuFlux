@@ -38,6 +38,18 @@ export const userVerifications = pgTable("user_verifications", {
     verification_level: text("verification_level").default("unverified"), // Default value
 });
 
+// ====================== PUSH SUBSCRIPTIONS ======================
+export const pushSubscriptions = pgTable("push_subscriptions", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    user_id: uuid("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 // ====================== CATEGORIES ======================
 export const categories = pgTable("categories", {
     id: serial("id").primaryKey(),

@@ -1,7 +1,20 @@
+/**
+ * A photo object as returned by POST /uploads/complete.
+ * This is the shape stored in wizard state and sent to the listings API.
+ */
+export interface PhotoObject {
+  url: string;
+  secure_url?: string;
+  width?: number;
+  height?: number;
+  size_kb?: number;
+  mime_type?: string;
+}
+
 export interface ListingFormData {
   // Step 1: Photos
-  photo_urls: string[];
-  
+  photos: PhotoObject[];
+
   // Step 2: Category + Title
   category_id: number;
   title: string;
@@ -21,7 +34,7 @@ export interface ListingFormData {
   rental_rules: string;
 
   // Step 5: Area
-  area: string; // id of a LahoreArea
+  area: string; // Lahore Area ID
 
   // Step 6: Availability
   blocked_dates: { start_date: string; end_date: string }[];
@@ -29,4 +42,3 @@ export interface ListingFormData {
   // Internal
   status: 'draft' | 'active';
 }
-

@@ -32,9 +32,9 @@ export function Step7Review({ data, onBack, onSubmit, isSubmitting }: Step7Revie
       name: CATEGORY_MAP[data.category_id] || 'Category',
       slug: 'category'
     },
-    photos: data.photo_urls.map((url, i) => ({
-      url,
-      is_primary: i === 0
+    photos: data.photos.map((photo, i) => ({
+      url: photo.url,
+      is_primary: i === 0,
     })),
     owner: {
       display_name: 'You',

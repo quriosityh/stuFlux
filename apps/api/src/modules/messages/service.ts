@@ -5,6 +5,7 @@ import { sendMessageSchema, listMessagesSchema } from './validations.js';
 import { messageEmitter, isUserConnected } from '../../infra/events/messageEmitter.js';
 import { notificationEmitter, type NotificationEvent } from '../../infra/events/notificationEmitter.js';
 import { usersRepository } from '../users/repository.js';
+import { sendPushToUser } from '../../infra/push/sender.js';
 
 // ---------------------------------------------------------------------------
 // sendMessage
@@ -80,6 +81,12 @@ export const sendMessage = async (payload: unknown, senderId: string) => {
     senderName: senderName ?? 'Someone',
     preview: data.body.trim().slice(0, 60),
   } satisfies NotificationEvent);
+  void sendPushToUser(recipientId, {
+    type: 'new_message',
+    title: `New message from ${senderName ?? 'someone'}`,
+    body: data.body.trim().slice(0, 120),
+    url: `/messages?conversation=${conversation.id}`,
+  });
 
   return { conversation, message: eventPayload };
 };

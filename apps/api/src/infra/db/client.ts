@@ -9,6 +9,7 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
+  query_timeout: 15000, // Important for serverless DBs: timeout hanging queries
 });
 
 export const db = drizzle(pool, { schema });

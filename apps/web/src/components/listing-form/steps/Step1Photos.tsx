@@ -1,16 +1,15 @@
 import { useCallback, useState, useEffect } from 'react';
 import { UploadCloud, X, Image as ImageIcon, ZoomIn, Loader2 } from 'lucide-react';
 import { useApiClient } from '@/lib/api-client';
-import { ListingFormData } from '../types';
+import { ListingFormData, PhotoObject } from '../types';
 
 type Step1PhotosProps = {
   data: ListingFormData;
   updateData: (data: Partial<ListingFormData>) => void;
   onValidChange?: (valid: boolean) => void;
-  listingId?: string;
 };
 
-export function Step1Photos({ data, updateData, onValidChange, listingId }: Step1PhotosProps) {
+export function Step1Photos({ data, updateData, onValidChange }: Step1PhotosProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -30,7 +29,7 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
 
   const processFiles = async (files: File[]) => {
     setError('');
-    const currentCount = data.photo_urls.length;
+    const currentCount = data.photos.length;
     if (currentCount + files.length > 5) {
       setError('You can only upload up to 5 photos.');
       return;
@@ -39,7 +38,7 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
     const MAX_BYTES = 7 * 1024 * 1024; // 7MB
     for (const file of files) {
       if (file.size > MAX_BYTES) {
-        setError(`File "${file.name}" is too large. Max size is 7MB.`);
+        setError(`"${file.name}" is too large. Max size is 7MB.`);
         return;
       }
     }
@@ -48,17 +47,15 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
 
     try {
       const uploadPromises = files.map(async (file) => {
-        // 1. Get signature from our API
-        const sigResponse = await api.post('uploads/signature', {
-          json: { listingId }
-        }).json<{
+        // 1. Get a signed token from our API (user-scoped folder, no listing ID needed)
+        const sigResponse = await api.post('uploads/signature').json<{
           upload: {
             timestamp: number;
             folder: string;
             signature: string;
             api_key: string;
             cloud_name: string;
-          }
+          };
         }>();
 
         const { timestamp, folder, signature, api_key, cloud_name } = sigResponse.upload;
@@ -72,35 +69,25 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
         formData.append('folder', folder);
 
         const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`;
-        const res = await fetch(cloudinaryUrl, {
-          method: 'POST',
-          body: formData,
-        });
+        const res = await fetch(cloudinaryUrl, { method: 'POST', body: formData });
 
         if (!res.ok) {
           const errText = await res.text();
-          console.error('Cloudinary error response:', errText);
+          console.error('Cloudinary error:', errText);
           throw new Error('Failed to upload image to Cloudinary.');
         }
 
-        const cloudData = await res.json();
-        return cloudData;
+        return res.json();
       });
 
       const uploadedAssets = await Promise.all(uploadPromises);
 
-      // 3. Complete upload on our backend to sanitize and validate
+      // 3. Validate & sanitize on our backend — returns full photo objects
       const completeResponse = await api.post('uploads/complete', {
-        json: {
-          listingId,
-          files: uploadedAssets,
-        }
-      }).json<{
-        files: Array<{ url: string }>
-      }>();
+        json: { files: uploadedAssets },
+      }).json<{ files: PhotoObject[] }>();
 
-      const newUrls = completeResponse.files.map(f => f.url);
-      updateData({ photo_urls: [...data.photo_urls, ...newUrls] });
+      updateData({ photos: [...data.photos, ...completeResponse.files] });
     } catch (err: any) {
       console.error(err);
       setError(err?.message || 'Something went wrong during upload. Please try again.');
@@ -124,22 +111,19 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
   };
 
   const removePhoto = (index: number) => {
-    const updated = [...data.photo_urls];
-    if (updated[index].startsWith('blob:')) {
-      URL.revokeObjectURL(updated[index]);
-    }
+    const updated = [...data.photos];
     updated.splice(index, 1);
-    updateData({ photo_urls: updated });
+    updateData({ photos: updated });
   };
 
-  // Drag and Drop reordering handlers
+  // Drag-and-drop reordering
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index.toString());
   };
 
-  const handleDragOverItem = (e: React.DragEvent, index: number) => {
+  const handleDragOverItem = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
@@ -147,11 +131,11 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === targetIndex) return;
 
-    const reordered = [...data.photo_urls];
+    const reordered = [...data.photos];
     const [draggedItem] = reordered.splice(draggedIndex, 1);
     reordered.splice(targetIndex, 0, draggedItem);
 
-    updateData({ photo_urls: reordered });
+    updateData({ photos: reordered });
     setDraggedIndex(null);
   };
 
@@ -159,7 +143,7 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
     setDraggedIndex(null);
   };
 
-  const isValid = data.photo_urls.length > 0 && uploadingCount === 0;
+  const isValid = data.photos.length > 0 && uploadingCount === 0;
 
   useEffect(() => {
     onValidChange?.(isValid);
@@ -172,13 +156,13 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
           <ImageIcon className="w-8 h-8 text-accent" /> Add Photos <span className="text-red-500">*</span>
         </h2>
         <p className="text-foreground/50 text-sm text-center lg:text-left">
-          Show off your item. Good lighting and multiple angles help build trust. Max 5 photos.
+          Show off your item. Good lighting and multiple angles help build trust. Up to 5 photos, 7MB each.
         </p>
       </div>
 
       <div className="flex-3 flex flex-col gap-4">
         {/* Dropzone */}
-        {data.photo_urls.length < 5 && (
+        {data.photos.length < 5 && (
           <label
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -196,26 +180,26 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
               <p className="mb-2 text-sm text-foreground/80 font-medium">
                 <span className="text-accent hover:underline">Click to upload</span> or drag and drop
               </p>
-              <p className="text-xs text-foreground/40">PNG, JPG up to 5MB</p>
+              <p className="text-xs text-foreground/40">PNG, JPG up to 7MB</p>
             </div>
-            <input type="file" className="hidden" multiple accept="image/*" onChange={handleFileInput} />
+            <input type="file" className="hidden" multiple accept="image/png,image/jpeg,image/webp" onChange={handleFileInput} />
           </label>
         )}
 
         {error && <p className="text-red-400 text-sm font-medium">{error}</p>}
 
         {/* Photo Grid */}
-        {(data.photo_urls.length > 0 || uploadingCount > 0) && (
+        {(data.photos.length > 0 || uploadingCount > 0) && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2 max-w-[580px]">
-            {data.photo_urls.map((url, i) => (
+            {data.photos.map((photo, i) => (
               <div
-                key={url}
+                key={photo.url}
                 draggable
                 onDragStart={(e) => handleDragStart(e, i)}
-                onDragOver={(e) => handleDragOverItem(e, i)}
+                onDragOver={(e) => handleDragOverItem(e)}
                 onDrop={(e) => handleDropItem(e, i)}
                 onDragEnd={handleDragEnd}
-                onClick={() => setPreviewUrl(url)}
+                onClick={() => setPreviewUrl(photo.url)}
                 className={`
                   relative aspect-square rounded-xl overflow-hidden group border border-border/50
                   cursor-pointer transition-all duration-200 select-none
@@ -223,15 +207,15 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
                 `}
               >
                 <img
-                  src={url}
+                  src={photo.url}
                   alt={`Upload ${i + 1}`}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 pointer-events-none"
                 />
 
-                {/* Overlay */}
+                {/* Hover overlay */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
 
-                {/* Zoom icon indicator */}
+                {/* Zoom icon */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                   <ZoomIn className="w-6 h-6 text-white drop-shadow" />
                 </div>
@@ -257,7 +241,7 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
               </div>
             ))}
 
-            {/* Uploading Placeholders */}
+            {/* Upload placeholders */}
             {Array.from({ length: uploadingCount }).map((_, idx) => (
               <div
                 key={`uploading-${idx}`}
@@ -271,7 +255,7 @@ export function Step1Photos({ data, updateData, onValidChange, listingId }: Step
         )}
       </div>
 
-      {/* Lightbox Modal */}
+      {/* Lightbox */}
       {previewUrl && (
         <div
           className="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"

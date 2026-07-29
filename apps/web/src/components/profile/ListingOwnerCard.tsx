@@ -154,7 +154,7 @@ export function ListingOwnerCard({ listing, onStatusChange, onDelete }: Props) {
         <div className="border-t border-[var(--border-color)] px-4 py-3 flex items-center gap-2">
           {/* Edit */}
           <Link
-            href={`/listings/${listing.id}/edit`}
+            href={`/listings/${listing.id}/edit` as any}
             id={`edit-listing-${listing.id}`}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[var(--foreground)]/60 hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition-all"
           >
@@ -164,7 +164,7 @@ export function ListingOwnerCard({ listing, onStatusChange, onDelete }: Props) {
 
           {/* Availability shortcut → Step 6 */}
           <Link
-            href={`/listings/${listing.id}/edit?step=6`}
+            href={`/listings/${listing.id}/edit?step=6` as any}
             id={`availability-listing-${listing.id}`}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[var(--accent)]/70 hover:text-[var(--accent)] hover:bg-[var(--accent)]/5 transition-all"
           >
