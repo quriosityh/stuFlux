@@ -105,45 +105,61 @@ export function Step3DescriptionSpecs({ data, updateData, onValidChange }: Step3
           <label className="block text-sm font-semibold text-foreground/80 mb-4 uppercase tracking-wider">
             Specifications (Optional)
           </label>
-          <div className="space-y-3">
-            {Object.entries(data.specs).map(([key, value]) => (
-              <div key={key} className="flex gap-3 items-center group">
-                <div className="flex-1 bg-surface/50 border border-border/50 rounded-xl px-4 py-2 flex items-center justify-between text-sm">
-                  <span className="text-foreground/50 font-medium w-1/3 truncate">{key}</span>
-                  <span className="text-foreground font-medium w-2/3 truncate text-right">{value}</span>
-                </div>
-                <button
-                  onClick={() => handleRemoveSpec(key)}
-                  className="p-2 text-foreground/30 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+          <div className="space-y-4">
+            {Object.keys(data.specs).length > 0 && (
+              <div className="overflow-hidden rounded-xl border border-border/40">
+                <table className="w-full text-xs sm:text-sm text-center border-collapse">
+                  <thead>
+                    <tr className="bg-foreground/[0.04] border-b border-border/40 text-foreground/60 font-semibold uppercase text-[10px] sm:text-xs tracking-wider">
+                      <th className="py-2.5 px-3 text-center w-1/2">Feature</th>
+                      <th className="py-2.5 px-3 text-center w-1/2">Detail</th>
+                      <th className="py-2.5 px-2 w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/20">
+                    {Object.entries(data.specs).map(([key, value]) => (
+                      <tr key={key} className="hover:bg-foreground/[0.02] transition-colors group">
+                        <td className="py-2.5 px-3 text-center text-foreground/70 font-medium w-1/2">{key}</td>
+                        <td className="py-2.5 px-3 text-center text-foreground font-semibold w-1/2">{value}</td>
+                        <td className="py-2.5 px-2 text-center w-10">
+                          <button
+                            onClick={() => handleRemoveSpec(key)}
+                            className="p-1 text-foreground/30 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+                            title="Remove specification"
+                          >
+                            <X className="w-4 h-4 mx-auto" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
+            )}
 
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <input
                 type="text"
                 value={newSpecKey}
                 onChange={(e) => setNewSpecKey(e.target.value)}
-                placeholder="e.g. Brand"
-                className="w-1/3 bg-surface/50 border border-border/50 text-foreground placeholder-white/30 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-accent transition-colors"
+                placeholder="Feature (e.g. Brand)"
+                className="w-1/2 bg-surface/50 border border-border/50 text-foreground placeholder-foreground/30 rounded-xl px-3 py-2 text-xs sm:text-sm text-center focus:outline-none focus:border-accent transition-colors"
                 onKeyDown={(e) => e.key === 'Enter' && handleAddSpec()}
               />
               <input
                 type="text"
                 value={newSpecValue}
                 onChange={(e) => setNewSpecValue(e.target.value)}
-                placeholder="e.g. Sony"
-                className="w-full bg-surface/50 border border-border/50 text-foreground placeholder-white/30 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-accent transition-colors"
+                placeholder="Detail (e.g. Sony)"
+                className="w-1/2 bg-surface/50 border border-border/50 text-foreground placeholder-foreground/30 rounded-xl px-3 py-2 text-xs sm:text-sm text-center focus:outline-none focus:border-accent transition-colors"
                 onKeyDown={(e) => e.key === 'Enter' && handleAddSpec()}
               />
               <button
                 onClick={handleAddSpec}
                 disabled={!newSpecKey.trim() || !newSpecValue.trim()}
-                className="p-2 bg-border/50 text-foreground rounded-xl hover:bg-accent hover:text-black transition-colors disabled:opacity-50 disabled:hover:bg-border/50 disabled:hover:text-foreground flex-shrink-0"
+                className="p-2.5 bg-border/50 text-foreground rounded-xl hover:bg-accent hover:text-black transition-colors disabled:opacity-40 flex-shrink-0 flex items-center justify-center cursor-pointer"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
           </div>
