@@ -38,6 +38,18 @@ export const userVerifications = pgTable("user_verifications", {
     verification_level: text("verification_level").default("unverified"), // Default value
 });
 
+// ====================== PUSH SUBSCRIPTIONS ======================
+export const pushSubscriptions = pgTable("push_subscriptions", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    user_id: uuid("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 // ====================== CATEGORIES ======================
 export const categories = pgTable("categories", {
     id: serial("id").primaryKey(),
@@ -139,6 +151,14 @@ export const listingPhotos = pgTable("listing_photos", {
 });
 
 // ====================== CONVERSATIONS ======================
+//
+// Two thread types:
+//   inquiry  — booking_id IS NULL  (renter browsing / chatting before picking dates)
+//   booking  — booking_id IS SET   (one conversation per booking, 1:1)
+//
+// A partial unique index (enforced in migration SQL, not here) guarantees only
+// one inquiry thread per (listing_id, renter_id) pair while allowing unlimited
+// booking threads for the same pair.
 export const conversations = pgTable("conversations", {
     id: uuid("id").defaultRandom().primaryKey(),
     listing_id: uuid("listing_id")
@@ -150,14 +170,13 @@ export const conversations = pgTable("conversations", {
     owner_id: uuid("owner_id")
         .notNull()
         .references(() => users.id, { onDelete: "cascade" }),
+    // NULL  → inquiry thread (no booking yet)
+    // SET   → booking thread (1:1 with bookings row)
+    booking_id: uuid("booking_id")
+        .references(() => bookings.id, { onDelete: "set null" }),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-}, (table) => ({
-    // Unique constraint: one conversation per listing-renter pair
-    unique_conversation: {
-        columns: [table.listing_id, table.renter_id],
-    },
-}));
+});
 
 // ====================== MESSAGES ======================
 export const messages = pgTable("messages", {

@@ -3,6 +3,10 @@ import { AppError } from '../../common/errors.js';
 import { listingsRepository } from '../listings/infrastructure/repository.js';
 import { createBookingSchema } from './validations.js';
 import { bookingsRepository } from './repository.js';
+import { messagesRepository } from '../messages/repository.js';
+import { usersRepository } from '../users/repository.js';
+import { notificationEmitter, type NotificationEvent } from '../../infra/events/notificationEmitter.js';
+import { sendPushToUser } from '../../infra/push/sender.js';
 import type { BookingStatus } from './types.js';
 
 const VALID_STATUSES: BookingStatus[] = ['pending', 'confirmed', 'rejected', 'completed'];
@@ -62,7 +66,41 @@ export const createBooking = async (payload: unknown, renterId: string) => {
     deliveryFee: listing.delivery_fee || 0,
   });
 
-  return booking;
+  // ── Wire the conversation ────────────────────────────────────────────────
+  // Upgrades an existing inquiry thread or creates a fresh booking thread.
+  // Then posts a system event card so the renter sees the booking in chat.
+  const conversation = await messagesRepository.attachOrCreateConversation(
+    booking.id,
+    booking.listing_id,
+    renterId,
+    listing.owner.id,
+  );
+
+  const startStr  = booking.start_date;
+  const endStr    = booking.end_date;
+  const totalRs   = Math.round(totalAmount / 100).toLocaleString('en-PK');
+  const systemMsg = `📋 Booking request submitted · ${startStr} – ${endStr} · Rs. ${totalRs}`;
+  await messagesRepository.addMessage(conversation!.id, renterId, systemMsg);
+  // ────────────────────────────────────────────────────────────────────────
+
+  const renterName = await usersRepository.findDisplayName(renterId);
+  notificationEmitter.emit(`user:${listing.owner.id}`, {
+    type: 'booking_request',
+    bookingId: booking.id,
+    listingTitle: listing.title,
+    renterName: renterName ?? 'A renter',
+    startDate: booking.start_date,
+    endDate: booking.end_date,
+    conversationId: conversation!.id,
+  } satisfies NotificationEvent);
+  void sendPushToUser(listing.owner.id, {
+    type: 'booking_request',
+    title: 'New Rental Request',
+    body: `${renterName ?? 'A renter'} wants to rent your ${listing.title}`,
+    url: '/bookings',
+  });
+
+  return { booking, conversation_id: conversation!.id };
 };
 
 export const confirmBooking = async (bookingId: string, ownerId: string) => {
@@ -96,6 +134,26 @@ export const confirmBooking = async (bookingId: string, ownerId: string) => {
   const updated = await bookingsRepository.updateStatus(bookingId, 'confirmed', 'confirmed_at');
   if (updated) {
     await bookingsRepository.incrementListingBookingCount(booking.listing_id);
+
+    const [listing, conversation] = await Promise.all([
+      listingsRepository.findById(booking.listing_id),
+      messagesRepository.findConversationByBookingId(bookingId),
+    ]);
+    notificationEmitter.emit(`user:${booking.renter_id}`, {
+      type: 'booking_confirmed',
+      bookingId: booking.id,
+      listingTitle: listing?.title ?? '',
+      lenderName: listing?.owner?.display_name ?? '',
+      startDate: booking.start_date,
+      endDate: booking.end_date,
+      conversationId: conversation?.id ?? '',
+    } satisfies NotificationEvent);
+    void sendPushToUser(booking.renter_id, {
+      type: 'booking_confirmed',
+      title: 'Booking Confirmed',
+      body: `Your booking for ${listing?.title ?? 'this listing'} was confirmed`,
+      url: '/bookings',
+    });
   }
   return updated;
 };
@@ -106,7 +164,24 @@ export const rejectBooking = async (bookingId: string, ownerId: string) => {
   if (booking.owner_id !== ownerId) throw new AppError('Not allowed', 403, 'FORBIDDEN');
   if (booking.status !== 'pending') throw new AppError('Booking is not pending', 400, 'BOOKING_NOT_PENDING');
 
-  return bookingsRepository.updateStatus(bookingId, 'rejected', 'rejected_at');
+  const updated = await bookingsRepository.updateStatus(bookingId, 'rejected', 'rejected_at');
+  if (updated) {
+    const listing = await listingsRepository.findById(booking.listing_id);
+    notificationEmitter.emit(`user:${booking.renter_id}`, {
+      type: 'booking_rejected',
+      bookingId: booking.id,
+      listingTitle: listing?.title ?? '',
+      startDate: booking.start_date,
+      endDate: booking.end_date,
+    } satisfies NotificationEvent);
+    void sendPushToUser(booking.renter_id, {
+      type: 'booking_rejected',
+      title: 'Booking Request Declined',
+      body: `Your booking for ${listing?.title ?? 'this listing'} was declined`,
+      url: '/bookings',
+    });
+  }
+  return updated;
 };
 
 export const getBookings = async (

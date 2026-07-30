@@ -31,8 +31,15 @@ export default async function EditListingPage({ params }: { params: { id: string
       delivery_fee: l.delivery_fee ?? 0,
       security_deposit: l.security_deposit ?? 0,
       status: l.status ?? 'draft',
-      // Map photos array → photo_urls string array for the wizard
-      photo_urls: (l.photos ?? []).map((p: any) => p.url).filter(Boolean),
+      // Map existing photo rows → PhotoObject[] so the wizard can show and re-submit them
+      photos: (l.photos ?? []).map((p: any) => ({
+        url: p.url,
+        secure_url: p.url,
+        width: p.width ?? undefined,
+        height: p.height ?? undefined,
+        size_kb: p.size_kb ?? undefined,
+        mime_type: p.mime_type ?? undefined,
+      })).filter((p: any) => Boolean(p.url)),
       blocked_dates: [],
     };
   } catch {

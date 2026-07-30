@@ -23,7 +23,7 @@ type ListingFormWizardProps = {
 };
 
 const INITIAL_DATA: ListingFormData = {
-  photo_urls: [],
+  photos: [],
   category_id: 0,
   title: '',
   description: '',
@@ -75,8 +75,14 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
     delivery_fee: formData.delivery_fee,
     security_deposit: formData.security_deposit,
     status,
-    photos: formData.photo_urls.map((url, i) => ({
-      url,
+    // Send full photo objects — width/height/size_kb/mime_type are stored in DB
+    photos: formData.photos.map((photo, i) => ({
+      url: photo.url,
+      secure_url: photo.secure_url,
+      width: photo.width,
+      height: photo.height,
+      size_kb: photo.size_kb,
+      mime_type: photo.mime_type,
       is_primary: i === 0,
       position: i,
     })),
@@ -186,7 +192,7 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
         <div className="flex-1 flex flex-col min-h-[500px]  lg:border-l border-foreground/10">
           <div className="flex-1 lg:pl-12 pt-2 pb-24 lg:pb-0">
             {currentStep === 1 && (
-              <Step1Photos data={formData} updateData={updateFormData} onValidChange={setCanProceed} listingId={listingId} />
+              <Step1Photos data={formData} updateData={updateFormData} onValidChange={setCanProceed} />
             )}
             {currentStep === 2 && (
               <Step2CategoryTitle data={formData} updateData={updateFormData} onValidChange={setCanProceed} />

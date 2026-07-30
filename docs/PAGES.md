@@ -365,17 +365,50 @@ Slides up on `[Request to Rent]`. No page navigation — listing stays behind it
 
 ---
 
-### Conversation Architecture — One Thread Per Renter–Listing Pair
+### Conversation Architecture — One Thread Per Booking
 
-The `conversations` table enforces a **unique constraint on `(listing_id, renter_id)`** — one thread per renter–listing pair, forever.
+Each conversation thread maps **1 : 1 to either a booking or an open inquiry**.
+
+#### Thread Types
+
+| Type | `booking_id` | Phase | How it starts |
+| :--- | :--- | :--- | :--- |
+| **Inquiry thread** | `NULL` | `inquiry` | Renter taps "Message lender" from the listing page before picking dates. Only **one** inquiry thread is allowed per `(listing_id, renter_id)` pair (partial unique index). |
+| **Booking thread** | `SET` | `pending` → `confirmed` → `ongoing` → `completed` | Created (or upgraded from the inquiry thread) the moment `POST /bookings` fires. One thread per booking, unlimited per renter–listing pair. |
+
+#### Upgrade Flow (Inquiry → Booking)
+
+When a renter submits a booking request:
+1. `POST /bookings` creates the booking row.
+2. The booking service calls `attachOrCreateConversation`:
+   - If an **inquiry thread** already exists for `(listing_id, renter_id)` → it is **upgraded**: `booking_id` is set on it. The chat history is preserved.
+   - Otherwise → a **new thread** is created with `booking_id` already set.
+3. A system event card is posted automatically: `"📋 Booking request submitted · Jul 15–18 · Rs. 2,400"`.
+4. The API response includes `conversation_id` → frontend navigates the renter directly to that thread.
+
+#### Scenario Table
 
 | Scenario | Result |
 | :--- | :--- |
-| Renter A books Listing X in July, then again in September | **Same thread** — both booking system cards appear in sequence |
-| Renter A books Listing Y (different listing) | New thread |
-| Renter B books Listing X | New thread |
+| Renter A messages lender before picking dates | Inquiry thread created (`booking_id = NULL`) |
+| Renter A submits booking (Jul 15–18) | Inquiry thread upgraded → booking thread for that booking |
+| Renter A books same listing again (Sep 5–10) | New booking thread created for the September booking |
+| Renter A books Listing Y (different listing) | New thread (different listing) |
+| Renter B books Listing X | New thread (different renter) |
 
-**Context panel:** Shows the **most recently active booking** in the thread — earliest non-completed status (`pending` → `confirmed` → `ongoing`), falling back to the most recently completed one.
+#### Phase Derivation
+
+Phase is **never stored** on the conversation — it is derived at read time from the linked booking's status:
+
+```
+booking_id IS NULL          → inquiry
+booking.status = pending    → pending
+booking.status = confirmed  → confirmed  (includes ongoing — driven by dates on the frontend)
+booking.status = rejected   → rejected
+booking.status = completed  → completed
+```
+
+**Context panel** always shows the booking linked to the current thread — there is only ever one booking per thread, so there is no ambiguity.
 
 
 ## 3. Bookings Tab (`/bookings`)

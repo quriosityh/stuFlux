@@ -8,7 +8,7 @@ export interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
 
 const Heading = React.forwardRef<HTMLHeadingElement, HeadingProps>(
   ({ className, level = 2, glitch = false, ...props }, ref) => {
-    const Tag = `h${level}` as keyof JSX.IntrinsicElements
+    const Tag = `h${level}` as React.ElementType
     
     // Base styles for headings
     const baseStyles = "font-display font-bold text-foreground"

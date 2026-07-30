@@ -132,6 +132,7 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
             <div className="md:hidden w-full h-px bg-border/10 my-6" />
             
             <AvailabilityCalendar 
+              mode="renter"
               blockedDates={availability}
               selectedDates={selectedDates}
               onSelectDates={setSelectedDates}

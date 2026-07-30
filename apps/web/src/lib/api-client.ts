@@ -14,7 +14,7 @@ const CLIENT_API_URL =
 // Base client — used for client-side requests (goes through proxy)
 const apiClient = ky.create({
   prefixUrl: CLIENT_API_URL,
-  timeout: 10_000,
+  timeout: 30_000, // 30s — signature (up to 4s) + Cloudinary upload time
   retry: { limit: 1, methods: ['get'] },
 });
 
@@ -40,7 +40,7 @@ export function useApiClient() {
 export async function createServerApiClient(token?: string) {
   const serverClient = ky.create({
     prefixUrl: SERVER_API_URL,
-    timeout: 10_000,
+    timeout: 30_000,
     retry: { limit: 1, methods: ['get'] },
   });
 

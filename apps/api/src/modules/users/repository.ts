@@ -14,6 +14,14 @@ export const usersRepository = {
     return row ?? null;
   },
 
+  async findDisplayName(id: string) {
+    const [row] = await db
+      .select({ display_name: users.display_name })
+      .from(users)
+      .where(eq(users.id, id));
+    return row?.display_name ?? null;
+  },
+
   async upsertFromClerk(params: {
     clerk_user_id: string;
     display_name: string;
