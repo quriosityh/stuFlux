@@ -9,10 +9,10 @@ export function DesktopNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { name: 'Discover', href: '/', icon: Compass },
-    { name: 'DMs', href: '/messages', icon: MessageCircle, badge: 2 },
-    { name: 'Activity', href: '/activity', icon: Activity },
-    { name: 'Notifications', href: '/notifications', icon: Bell },
+    { name: 'Discover', href: '/' as const, icon: Compass },
+    { name: 'DMs', href: '/messages' as const, icon: MessageCircle, badge: 2 },
+    { name: 'Activity', href: '/activity' as const, icon: Activity },
+    { name: 'Notifications', href: '/notifications' as const, icon: Bell },
   ];
 
   return (
@@ -71,8 +71,8 @@ export function DesktopNav() {
               {/* Opaque Dropdown Menu with Smooth Texture */}
               <div className="absolute right-0 top-full mt-4 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
                 <div className="bg-[var(--background)] opacity-95 p-2 flex flex-col gap-1 border border-[var(--border-color)] rounded-2xl shadow-2xl backdrop-blur-3xl">
-                  <Link href="/profile" className="px-4 py-3 rounded-xl hover:bg-[var(--surface)] transition-colors text-sm font-bold">You (Profile)</Link>
-                  <Link href="/settings" className="px-4 py-3 rounded-xl hover:bg-[var(--surface)] transition-colors text-sm font-bold">Settings</Link>
+                  <Link href={{ pathname: '/profile' }} className="px-4 py-3 rounded-xl hover:bg-[var(--surface)] transition-colors text-sm font-bold">You (Profile)</Link>
+                  <Link href={{ pathname: '/settings' }} className="px-4 py-3 rounded-xl hover:bg-[var(--surface)] transition-colors text-sm font-bold">Settings</Link>
                   <div className="h-px bg-[var(--border-color)] my-1 opacity-50" />
                   <button className="text-left px-4 py-3 rounded-xl hover:bg-red-500/10 text-red-500 transition-colors text-sm font-bold">Sign Out</button>
                 </div>
@@ -80,7 +80,7 @@ export function DesktopNav() {
             </div>
 
             {/* Action CTA mostly right */}
-            <Link href="/listings/new" className="hyper-liquid inline-flex items-center justify-center gap-2 text-sm !py-2 !px-4 whitespace-nowrap ml-2">
+            <Link href={{ pathname: '/listings/new' }} className="hyper-liquid inline-flex items-center justify-center gap-2 text-sm !py-2 !px-4 whitespace-nowrap ml-2">
               <Plus size={16} strokeWidth={2.5} />
               <span>Drop</span>
             </Link>

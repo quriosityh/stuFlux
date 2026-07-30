@@ -27,7 +27,7 @@ export function ListingCard({ item }: ListingCardProps) {
   const isFeatured = item?.isFeatured || false;
 
   return (
-    <Link href={`/listings/${item?.id || '1'}`} className="group block cursor-pointer">
+    <Link href={{ pathname: `/listings/${item?.id || '1'}` }} className="group block cursor-pointer">
       {/* Image Container */}
       <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-3 bg-surface border border-border/5">
         <motion.div

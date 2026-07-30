@@ -234,7 +234,7 @@ These are the canonical categories. This table is the single source of truth —
 │                                          │
 │  [✨ Like New]                           │  ← condition pill, bottom-left overlay
 ├──────────────────────────────────────────┤
-│ DSLR Camera Kit                          │  ← title
+│ DSLR Camera Kit   q                       │  ← title
 │ 📍 Gulberg                        🚚     │  ← area + delivery icon
 │ Rs. 2,500/day              8 rentals     │  ← price + social proof
 └──────────────────────────────────────────┘
@@ -287,7 +287,7 @@ Components render in this fixed order. Desktop: 2-column (main content left, boo
 | 1 | **Breadcrumb + title actions** | ✅ Done | Desktop only. Category trail + listing title context. |
 | 2 | **Photo gallery** | ✅ Done | Full-width, swipeable. Primary photo first. |
 | 3 | **Listing meta block** (`ListingMeta`) | ⚠️ Partial | Shows area, rating, review count. Rating and review count are currently **hard-coded mock values** — not real data. |
-| 4 | **Lender snapshot** (`LenderSnapshot`) | ✅ Done | Avatar, display name, city, relative join time (`formatDistanceToNow`), verified badge. |
+| 4 | **Lender snapshot** (`LenderSnapshot`) | ✅ Done | Avatar, display name, city, relative join time (`formatDistanceToNow`),  |
 | 5 | **Item highlights** (`ItemHighlights`) | ✅ Done | Delivery available / Pickup only, `min_rental_days`, security deposit. |
 | 6 | **Description + specs** (`Description`) | ✅ Done | Show more/less toggle. Parses `Specs:` section from description text into a key/value grid if present. |
 | 7 | **Availability calendar** (`AvailabilityCalendar`) | ✅ Done | Blocked/booked dates grayed out. Selected date range stored in parent state. |
@@ -492,7 +492,6 @@ What it shows:
 - Owner display name
 - City
 - Relative join time
-- A verified-style check badge
 
 Implementation details:
 - Uses the owner object from the listing payload.
@@ -1176,7 +1175,7 @@ Stays permanently docked on desktop (`xl` right sidebar) and slides up as a bott
 The **Identity and Reputation Hub**. Stores trust ratings, transaction history, and settings.
 
 ### Sections
-1.  **User Hero Card**: Avatar, display name, neighborhood (e.g., Gulberg, Lahore), verified status, tenure.
+1.  **User Hero Card**: Avatar, display name, neighborhood (e.g., Gulberg, Lahore), tenure.
 2.  **Lender Stats Bar**:
     *   *Total Earnings* (Private: only visible to self).
     *   *Total Lent count* (Completed rentals as lender).

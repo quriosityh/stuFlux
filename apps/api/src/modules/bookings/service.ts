@@ -7,6 +7,8 @@ import { messagesRepository } from '../messages/repository.js';
 import { usersRepository } from '../users/repository.js';
 import { notificationEmitter, type NotificationEvent } from '../../infra/events/notificationEmitter.js';
 import { sendPushToUser } from '../../infra/push/sender.js';
+import { bookingConfirmedEmail, bookingRejectedEmail, bookingRequestEmail } from '../../infra/email/templates.js';
+import { sendEmail } from '../../infra/email/sender.js';
 import type { BookingStatus } from './types.js';
 
 const VALID_STATUSES: BookingStatus[] = ['pending', 'confirmed', 'rejected', 'completed'];
@@ -84,6 +86,7 @@ export const createBooking = async (payload: unknown, renterId: string) => {
   // ────────────────────────────────────────────────────────────────────────
 
   const renterName = await usersRepository.findDisplayName(renterId);
+  const renterEmail = await usersRepository.findEmailById(renterId);
   notificationEmitter.emit(`user:${listing.owner.id}`, {
     type: 'booking_request',
     bookingId: booking.id,
@@ -99,6 +102,19 @@ export const createBooking = async (payload: unknown, renterId: string) => {
     body: `${renterName ?? 'A renter'} wants to rent your ${listing.title}`,
     url: '/bookings',
   });
+
+  if (listing.owner.email && renterEmail?.display_name) {
+    void sendEmail({
+      to: listing.owner.email,
+      ...bookingRequestEmail({
+        lenderName: listing.owner.display_name,
+        renterName: renterEmail.display_name,
+        listingTitle: listing.title,
+        startDate: booking.start_date,
+        endDate: booking.end_date,
+      }),
+    });
+  }
 
   return { booking, conversation_id: conversation!.id };
 };
@@ -154,6 +170,20 @@ export const confirmBooking = async (bookingId: string, ownerId: string) => {
       body: `Your booking for ${listing?.title ?? 'this listing'} was confirmed`,
       url: '/bookings',
     });
+
+    const renter = await usersRepository.findEmailById(booking.renter_id);
+    if (renter?.email) {
+      void sendEmail({
+        to: renter.email,
+        ...bookingConfirmedEmail({
+          renterName: renter.display_name,
+          listingTitle: listing?.title ?? '',
+          lenderName: listing?.owner?.display_name ?? '',
+          startDate: booking.start_date,
+          endDate: booking.end_date,
+        }),
+      });
+    }
   }
   return updated;
 };
@@ -180,6 +210,19 @@ export const rejectBooking = async (bookingId: string, ownerId: string) => {
       body: `Your booking for ${listing?.title ?? 'this listing'} was declined`,
       url: '/bookings',
     });
+
+    const renter = await usersRepository.findEmailById(booking.renter_id);
+    if (renter?.email) {
+      void sendEmail({
+        to: renter.email,
+        ...bookingRejectedEmail({
+          renterName: renter.display_name,
+          listingTitle: listing?.title ?? '',
+          startDate: booking.start_date,
+          endDate: booking.end_date,
+        }),
+      });
+    }
   }
   return updated;
 };
