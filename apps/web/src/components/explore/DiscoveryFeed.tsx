@@ -46,7 +46,7 @@ export function DiscoveryFeed() {
     CATEGORIES.forEach(async ({ slug }) => {
       try {
         const res = await apiClient
-          .get(`listings?category_id=${slug}&sort=popular&limit=10`)
+          .get(`listings?category=${slug}&sort=popular&limit=10`)
           .json<{ data: any[] }>();
         const data = res.data && res.data.length ? res.data : SAMPLE_ITEMS;
         setCategoryData(prev => ({ ...prev, [slug]: data }));
@@ -81,7 +81,7 @@ export function DiscoveryFeed() {
         const items = categoryData[slug] ?? [];
         // Categories with fewer than 3 listings hide their carousel row entirely.
         if (items.length < 3) return null;
-        
+
         return (
           <CategoryCarousel
             key={slug}

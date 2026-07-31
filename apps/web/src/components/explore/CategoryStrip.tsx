@@ -2,18 +2,17 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Wrench, Camera, Music, Shirt, PartyPopper, Bike, Tent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const CATEGORIES = [
-  { id: 'power-energy', label: 'Power & Energy', icon: Zap },
-  { id: 'tools-home-fix', label: 'Tools & Home Fix', icon: Wrench },
-  { id: 'cameras-creators', label: 'Cameras & Creators', icon: Camera },
-  { id: 'music-audio', label: 'Music & Audio', icon: Music },
-  { id: 'clothing-fashion', label: 'Clothing & Fashion', icon: Shirt },
-  { id: 'hosting-party', label: 'Hosting & Party', icon: PartyPopper },
-  { id: 'bikes-boards', label: 'Bikes & Boards', icon: Bike },
-  { id: 'travel-outdoors', label: 'Travel & Outdoors', icon: Tent },
+  { id: 'power-energy', label: 'Power & Energy', image: '/images/categories/power-energy.png' },
+  { id: 'tools-home-fix', label: 'Tools & Home Fix', image: '/images/categories/tools-home-fix.png' },
+  { id: 'cameras-creators', label: 'Cameras & Creators', image: '/images/categories/cameras-creators.png' },
+  { id: 'music-audio', label: 'Music & Audio', image: '/images/categories/music-audio.png' },
+  { id: 'clothing-fashion', label: 'Clothing & Fashion', image: '/images/categories/clothing-fashion.png' },
+  { id: 'hosting-party', label: 'Hosting & Party', image: '/images/categories/hosting-party.png' },
+  { id: 'bikes-boards', label: 'Bikes & Boards', image: 'https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?auto=format&fit=crop&w=150&h=150&q=80' }, // Yellow skateboard
+  { id: 'travel-outdoors', label: 'Travel & Outdoors', image: 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?auto=format&fit=crop&w=150&h=150&q=80' }, // Bright yellow tent
 ];
 
 const containerVariants = {
@@ -64,12 +63,20 @@ export function CategoryStrip({ activeCategory, onCategoryChange }: CategoryStri
                 key={cat.id}
                 onClick={() => onCategoryChange(cat.id)}
                 className={cn(
-                  "relative flex flex-col items-center gap-2 min-w-max pb-2 transition-colors snap-start hover:text-foreground",
+                  "relative flex flex-col items-center gap-2.5 min-w-max pb-3 transition-colors snap-start hover:text-foreground",
                   isActive ? "text-foreground font-semibold" : "text-foreground/60"
                 )}
               >
-                <cat.icon size={24} className={cn("transition-transform", isActive ? "scale-110 text-[var(--accent)]" : "")} />
-                <span className="text-xs tracking-wide">{cat.label}</span>
+                <div 
+                  className={cn(
+                    "w-[56px] h-[56px] rounded-full overflow-hidden mb-1 transition-all duration-300 shadow-sm border border-border/10", 
+                    isActive ? "scale-105 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-background" : "opacity-80 hover:opacity-100 grayscale-[20%] hover:grayscale-0 hover:scale-105"
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={cat.image} alt={cat.label} className="w-full h-full object-cover" />
+                </div>
+                <span className="text-xs font-medium tracking-wide">{cat.label}</span>
                 
                 {isActive && (
                   <motion.div

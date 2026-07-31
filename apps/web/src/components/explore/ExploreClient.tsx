@@ -41,7 +41,7 @@ function ExploreContent() {
     try {
       const params = new URLSearchParams({ limit: '24', sort: 'newest' });
       if (search) params.set('q', search);
-      // category is a slug here; backend uses category_id — map if needed
+      if (category && category !== 'all') params.set('category', category);
       const res = await apiClient
         .get(`listings?${params.toString()}`)
         .json<{ data: any[]; meta: { total: number } }>();

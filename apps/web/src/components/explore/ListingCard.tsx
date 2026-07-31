@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Heart, MapPin, Truck } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ListingCardProps {
@@ -80,30 +80,25 @@ export function ListingCard({ item }: ListingCardProps) {
       {/* Card Content */}
       <div className="space-y-1.5 px-1 mt-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-syne font-bold text-[17px] leading-tight truncate text-foreground/90">{title}</h3>
+          <h3 className="font-bold text-[16px] leading-tight truncate text-foreground">{title}</h3>
         </div>
         
-        <div className="flex items-center justify-between text-xs text-foreground/50">
-          <div className="flex items-center gap-1.5 truncate">
-            <MapPin size={14} className="text-foreground/40 shrink-0" />
-            <span className="truncate font-medium tracking-wide">{area || 'Location N/A'}</span>
+        <div className="flex items-center justify-between text-[13px] text-muted-foreground mt-1">
+          <div className="truncate">
+            📍 {area || 'Location N/A'}
           </div>
           {item?.delivery_available && (
-            <Truck size={14} className="text-[var(--accent)] shrink-0" />
+            <span className="shrink-0 text-base leading-none" title="Delivery Available">🚚</span>
           )}
         </div>
         
-        <div className="pt-1.5 flex items-end justify-between">
-          <div className="flex items-baseline gap-1">
-            <span className="text-lg font-black tracking-tight text-foreground/90">
-              <span className="text-[13px] font-semibold text-foreground/50 mr-0.5">Rs.</span>
-              {price.toLocaleString()}
-            </span>
-            <span className="text-[11px] text-foreground/40 font-medium uppercase tracking-wider">/day</span>
+        <div className="flex items-end justify-between mt-1">
+          <div className="font-semibold text-[15px] text-foreground">
+            Rs. {price.toLocaleString()}/day
           </div>
           {item?.booking_count > 0 && (
-            <span className="text-[11px] font-medium text-foreground/40">
-              &middot; {item.booking_count} rentals
+            <span className="text-[13px] text-muted-foreground">
+              · {item.booking_count} rentals
             </span>
           )}
         </div>
