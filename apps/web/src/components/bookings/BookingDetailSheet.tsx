@@ -1,19 +1,26 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MockBooking } from './mockData';
+import { type Booking } from '@/hooks/useBookings';
 import { format } from 'date-fns';
-import { X, MessageCircle, Star } from 'lucide-react';
+import { X, MessageCircle, Star, Check, AlertCircle } from 'lucide-react';
+import { useAuth } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 
 interface Props {
-  booking: MockBooking;
+  booking: Booking;
   isOpen: boolean;
   onClose: () => void;
   role: 'renter' | 'lender';
+  onActionSuccess?: () => void;
 }
 
-export default function BookingDetailSheet({ booking, isOpen, onClose, role }: Props) {
+export default function BookingDetailSheet({ booking, isOpen, onClose, role, onActionSuccess }: Props) {
+  const { getToken } = useAuth();
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'auto';
@@ -23,6 +30,43 @@ export default function BookingDetailSheet({ booking, isOpen, onClose, role }: P
   const isLender = role === 'lender';
   const totalUpfront = booking.financials.rentTotal + booking.financials.deliveryFee + booking.financials.securityDeposit;
   const earnings = booking.financials.rentTotal + booking.financials.deliveryFee;
+
+  const handleAction = async (action: 'confirm' | 'reject' | 'cancel' | 'complete') => {
+    setIsSubmitting(true);
+    const token = await getToken();
+    if (!token) {
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/proxy/bookings/${booking.id}/${action}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        onActionSuccess?.();
+        onClose();
+      } else {
+        alert(`Failed to perform action: ${action}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('An error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChat = () => {
+    if (booking.conversation_id) {
+      router.push(`/messages/${booking.conversation_id}`);
+    } else {
+      router.push('/messages');
+    }
+    onClose();
+  };
 
   return (
     <AnimatePresence>
@@ -61,7 +105,8 @@ export default function BookingDetailSheet({ booking, isOpen, onClose, role }: P
                     <h2 className="text-[20px] font-semibold">
                       {booking.phase === 'pending' ? 'Pending Request' :
                         booking.phase === 'confirmed' ? 'Confirmed Booking' :
-                          booking.phase === 'active' ? 'Active Rental' : 'Completed Rental'}
+                          booking.phase === 'active' ? 'Active Rental' : 
+                            booking.phase === 'cancelled' ? 'Cancelled Booking' : 'Completed Rental'}
                     </h2>
                   </div>
                   <button onClick={onClose} className="secondary-button p-2 rounded-full">
@@ -71,7 +116,7 @@ export default function BookingDetailSheet({ booking, isOpen, onClose, role }: P
 
                 {/* Hero Section */}
                 {!isLender ? (
-                  <div className="flex gap-4 items-center p-3 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--foreground) 5%, transparent)', border: '1px solid var(--border-color)' }}>
+                  <div className="flex gap-4 items-center p-3 rounded-2xl" style={{ border: '1px solid var(--border-color)' }}>
                     <img src={booking.listing.image} alt={booking.listing.title} className="w-[56px] h-[56px] rounded-xl object-cover flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-[15px] truncate">{booking.listing.title}</h3>
@@ -79,11 +124,10 @@ export default function BookingDetailSheet({ booking, isOpen, onClose, role }: P
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="text-[12px] text-muted-foreground">📍 {booking.listing.area}</p>
-                      <button className="tactile-glitch text-[12px] font-medium mt-1">View Listing</button>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex gap-4 items-center p-3 rounded-2xl" style={{  border: '1px solid var(--border-color)' }}>
+                  <div className="flex gap-4 items-center p-3 rounded-2xl" style={{ border: '1px solid var(--border-color)' }}>
                     <img src={booking.counterpart.avatar} alt={booking.counterpart.name} className="w-[56px] h-[56px] rounded-full object-cover border-2 flex-shrink-0" style={{ borderColor: 'var(--border-color)' }} />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-[16px]">{booking.counterpart.name}</h3>
@@ -120,10 +164,19 @@ export default function BookingDetailSheet({ booking, isOpen, onClose, role }: P
                       </div>
                     </div>
                   )}
+                  {isLender && (
+                    <div className="flex justify-between items-center py-3">
+                      <span className="text-[14px] text-muted-foreground">Renter Contact</span>
+                      <div className="text-right">
+                        <p className="font-medium text-[14px]">{booking.counterpart.name}</p>
+                        {booking.phase !== 'pending' && <p className="text-[13px] text-muted-foreground mt-0.5">{booking.counterpart.phone}</p>}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Financials */}
-                <div className="rounded-2xl p-4 space-y-3" style={{  border: '1px solid var(--border-color)' }}>
+                <div className="rounded-2xl p-4 space-y-3" style={{ border: '1px solid var(--border-color)' }}>
                   <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
                     {isLender ? '💰 Your Earnings' : '💰 Price Breakdown'}
                   </h4>
@@ -160,11 +213,11 @@ export default function BookingDetailSheet({ booking, isOpen, onClose, role }: P
                 </div>
 
                 {/* Rental Rules */}
-                {!isLender && booking.rules && booking.rules.length > 0 && (
+                {!isLender && booking.listing.rules && booking.listing.rules.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">📄 Rental Rules</h4>
                     <ul className="space-y-1.5">
-                      {booking.rules.map((rule, idx) => (
+                      {booking.listing.rules.map((rule, idx) => (
                         <li key={idx} className="text-[14px] text-muted-foreground flex gap-2">
                           <span className="mt-0.5 opacity-50">–</span> {rule}
                         </li>
@@ -175,23 +228,54 @@ export default function BookingDetailSheet({ booking, isOpen, onClose, role }: P
 
                 {/* Actions */}
                 <div className="flex flex-col gap-3 pt-2">
-                  {isLender && booking.phase === 'pending' ? (
-                    <div className="flex gap-3">
-                      <button className="secondary-button flex-1 py-3 text-[14px] rounded-xl">
-                        Decline
-                      </button>
-                      <button className="hyper-liquid flex-1 py-3 text-[14px] rounded-xl">
-                        Accept Request
-                      </button>
+                  {isSubmitting ? (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--accent)]"></div>
                     </div>
                   ) : (
                     <>
-                      <button className="hyper-liquid w-full py-3.5 text-[14px] rounded-xl flex justify-center items-center gap-2">
-                        <MessageCircle size={18} />
-                        {booking.phase === 'completed' ? 'Message' : 'Coordinate Handoff'}
-                      </button>
-                      {!isLender && booking.phase === 'pending' && (
-                        <button className="secondary-button w-full py-3 text-[14px] rounded-xl">
+                      {isLender && booking.phase === 'pending' && (
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => handleAction('reject')}
+                            className="secondary-button flex-1 py-3 text-[14px] rounded-xl font-semibold"
+                          >
+                            Decline
+                          </button>
+                          <button
+                            onClick={() => handleAction('confirm')}
+                            className="hyper-liquid flex-1 py-3 text-[14px] rounded-xl font-semibold"
+                          >
+                            Accept Request
+                          </button>
+                        </div>
+                      )}
+
+                      {isLender && booking.phase === 'active' && (
+                        <button
+                          onClick={() => handleAction('complete')}
+                          className="hyper-liquid w-full py-3.5 text-[14px] rounded-xl font-semibold flex justify-center items-center gap-2"
+                        >
+                          <Check size={18} />
+                          Complete Rental
+                        </button>
+                      )}
+
+                      {booking.phase !== 'cancelled' && booking.phase !== 'completed' && (
+                        <button
+                          onClick={handleChat}
+                          className="hyper-liquid w-full py-3.5 text-[14px] rounded-xl flex justify-center items-center gap-2 font-semibold"
+                        >
+                          <MessageCircle size={18} />
+                          {booking.phase === 'pending' ? 'Coordinate Handoff' : 'Chat'}
+                        </button>
+                      )}
+
+                      {!isLender && (booking.phase === 'pending' || booking.phase === 'confirmed') && (
+                        <button
+                          onClick={() => handleAction('cancel')}
+                          className="secondary-button w-full py-3 text-[14px] rounded-xl font-semibold"
+                        >
                           Cancel Request
                         </button>
                       )}
