@@ -42,6 +42,7 @@ const dateString = z
 export const listFiltersSchema = z.object({
   q: z.string().max(200).optional(),
   category_id: z.coerce.number().int().positive().optional(),
+  category: z.string().min(1).max(100).optional(),
   area: z.string().min(2).max(100).optional(),
   delivery_available: z.preprocess(
     (val) => (val === 'true' || val === '1' ? true : val === 'false' || val === '0' ? false : undefined),

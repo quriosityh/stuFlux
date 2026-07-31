@@ -387,6 +387,7 @@ function buildWhere(filters: ListFiltersInput) {
     );
   }
   if (filters.category_id) clauses.push(eq(listings.category_id, filters.category_id));
+  if (filters.category) clauses.push(eq(categories.slug, filters.category));
   if (filters.area) clauses.push(eq(listings.area, filters.area));
   if (filters.delivery_available !== undefined) clauses.push(eq(listings.delivery_available, filters.delivery_available));
   if (filters.min_rate) clauses.push(gte(listings.daily_rate, filters.min_rate));
