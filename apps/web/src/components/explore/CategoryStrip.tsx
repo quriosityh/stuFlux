@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const CATEGORIES = [
@@ -29,79 +29,73 @@ interface CategoryStripProps {
   onCategoryChange: (cat: string) => void;
 }
 
-// How many px to scroll before strip appears (roughly the search bar height)
-const SCROLL_THRESHOLD = 80;
-// Collapsed nav height
+// Collapsed header height (after search bar folds away on scroll)
 const COLLAPSED_NAV_H = 72;
+// Scroll threshold after which the nav is considered collapsed
+const SCROLL_THRESHOLD = 80;
 
 export function CategoryStrip({ activeCategory, onCategoryChange }: CategoryStripProps) {
-  const [visible, setVisible] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => {
-      setVisible(window.scrollY > SCROLL_THRESHOLD);
-    };
+    const onScroll = () => setScrolled(window.scrollY > SCROLL_THRESHOLD);
     window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll(); // run once on mount
+    onScroll();
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          key="category-strip"
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -20, opacity: 0 }}
-          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed left-0 right-0 z-40 border-b border-border/5 bg-background shadow-md"
-          style={{ top: COLLAPSED_NAV_H }}
-        >
-          <div className="w-[85%] mx-auto">
-            <div className="flex gap-8 overflow-x-auto scrollbar-hide py-4 snap-x">
-              {CATEGORIES.map((cat, i) => {
-                const isActive = activeCategory === cat.id;
-                return (
-                  <motion.button
-                    key={cat.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.04, type: 'spring', stiffness: 200, damping: 25 }}
-                    onClick={() => onCategoryChange(cat.id)}
-                    className={cn(
-                      'relative flex flex-col items-center gap-2.5 min-w-max pb-3 transition-colors snap-start hover:text-foreground',
-                      isActive ? 'text-foreground font-semibold' : 'text-foreground/60'
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'w-[72px] h-[72px] rounded-full overflow-hidden mb-1 transition-all duration-300 shadow-md border-2',
-                        isActive
-                          ? 'scale-110 border-[var(--accent)] ring-2 ring-[var(--accent)]/30 ring-offset-2 ring-offset-background'
-                          : 'border-border/10 opacity-90 hover:opacity-100 hover:scale-105 hover:border-[var(--accent)]/40 hover:shadow-lg'
-                      )}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={cat.image} alt={cat.label} className="w-full h-full object-cover" />
-                    </div>
-                    <span className="text-xs font-medium tracking-wide">{cat.label}</span>
-
-                    {isActive && (
-                      <motion.div
-                        layoutId="category-indicator"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent)]"
-                        initial={false}
-                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                      />
-                    )}
-                  </motion.button>
-                );
-              })}
-            </div>
-          </div>
-        </motion.div>
+    // sticky — always in the flow. top changes based on whether header is expanded or collapsed.
+    <div
+      className={cn(
+        'w-full border-b border-border/5 bg-background z-40 shadow-sm sticky transition-[top] duration-300'
       )}
-    </AnimatePresence>
+      // When at page top: header is ~160px tall, strip sits below it naturally.
+      // When scrolled: header collapses to 72px, strip sticks at 72px.
+      style={{ top: scrolled ? COLLAPSED_NAV_H : 'var(--nav-expanded-h, 160px)' }}
+    >
+      <div className="w-[85%] mx-auto">
+        <div className="flex gap-8 overflow-x-auto scrollbar-hide py-4 snap-x">
+          {CATEGORIES.map((cat, i) => {
+            const isActive = activeCategory === cat.id;
+            return (
+              <motion.button
+                key={cat.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04, type: 'spring', stiffness: 200, damping: 25 }}
+                onClick={() => onCategoryChange(cat.id)}
+                className={cn(
+                  'relative flex flex-col items-center gap-2.5 min-w-max pb-3 transition-colors snap-start hover:text-foreground',
+                  isActive ? 'text-foreground font-semibold' : 'text-foreground/60'
+                )}
+              >
+                <div
+                  className={cn(
+                    'w-[72px] h-[72px] rounded-full overflow-hidden mb-1 transition-all duration-300 shadow-md border-2',
+                    isActive
+                      ? 'scale-110 border-[var(--accent)] ring-2 ring-[var(--accent)]/30 ring-offset-2 ring-offset-background'
+                      : 'border-border/10 opacity-90 hover:opacity-100 hover:scale-105 hover:border-[var(--accent)]/40 hover:shadow-lg'
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={cat.image} alt={cat.label} className="w-full h-full object-cover" />
+                </div>
+                <span className="text-xs font-medium tracking-wide">{cat.label}</span>
+
+                {isActive && (
+                  <motion.div
+                    layoutId="category-indicator"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent)]"
+                    initial={false}
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  />
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }

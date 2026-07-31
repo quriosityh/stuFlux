@@ -23,9 +23,6 @@ export function ListingCard({ item }: ListingCardProps) {
     ?? item?.photo?.thumbnail_url
     ?? item?.photo?.url
     ?? item?.imageUrl
-    ?? null;
-  const isFeatured = item?.isFeatured || false;
-
   return (
     <Link href={{ pathname: `/listings/${item?.id || '1'}` }} className="group block cursor-pointer">
       {/* Image Container */}
@@ -51,10 +48,8 @@ export function ListingCard({ item }: ListingCardProps) {
           )}
         </motion.div>
 
-        {/* Featured Badge Removed */}
-
         {/* Save Button (Heart) */}
-        <button 
+        <button
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -66,16 +61,17 @@ export function ListingCard({ item }: ListingCardProps) {
             whileTap={{ scale: 0.8 }}
             transition={{ type: 'spring', stiffness: 400, damping: 17 }}
           >
-            <Heart 
-              size={24} 
+            <Heart
+              size={24}
               className={cn(
                 "drop-shadow-md transition-colors",
                 isSaved ? "fill-[var(--accent)] text-[var(--accent)]" : "fill-black/30 text-white"
-              )} 
+              )}
             />
           </motion.div>
         </button>
       </div>
+
 
       {/* Card Content */}
       <div className="space-y-1.5 px-1 mt-3">
