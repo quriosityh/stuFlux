@@ -1,5 +1,16 @@
 import { db } from '../../src/infra/db/client.js';
-import { listingPhotos, listings } from '../schema.js';
+import { categories, listingPhotos, listings } from '../schema.js';
+
+const CATEGORY_SLUGS = [
+  'power-energy',
+  'tools-home-fix',
+  'cameras-creators',
+  'music-audio',
+  'clothing-fashion',
+  'hosting-party',
+  'bikes-boards',
+  'travel-outdoors',
+] as const;
 
 const listingsSeed = [
   { slug: 'honda-eu22i-generator-1', owner_id: '', title: 'Honda EU22i Portable Generator', description: 'Quiet petrol generator for backup power during load shedding, events, and outdoor work.', category_id: 1, daily_rate: 2200, area: 'gulberg', condition: 'good', rental_rules: 'Return with the same fuel level. CNIC required at handover.', status: 'active', specs: { brand: 'Honda', model: 'EU22i', output: '2200W' }, min_rental_days: 1, max_rental_days: 14, delivery_available: true, delivery_fee: 400, security_deposit: 8000, booking_count: 6, view_count: 142 },
@@ -17,12 +28,26 @@ const listingsSeed = [
 ] satisfies (typeof listings.$inferInsert & { slug: string })[];
 
 export async function seedListings(ownerIds: string[]) {
+  const seededCategories = await db
+    .select({ id: categories.id, slug: categories.slug })
+    .from(categories);
+  const categoryIdsBySlug = new Map(seededCategories.map((category) => [category.slug, category.id]));
+
   const insertedListings = await db
     .insert(listings)
-    .values(listingsSeed.map(({ slug: _slug, owner_id: _ownerId, ...listing }, index) => ({
-      ...listing,
-      owner_id: ownerIds[index % ownerIds.length],
-    })))
+    .values(listingsSeed.map(({ slug: _slug, owner_id: _ownerId, category_id, ...listing }, index) => {
+      const categorySlug = CATEGORY_SLUGS[category_id - 1];
+      const resolvedCategoryId = categorySlug ? categoryIdsBySlug.get(categorySlug) : undefined;
+      if (!resolvedCategoryId) {
+        throw new Error(`Missing seeded category for listing: ${listing.title}`);
+      }
+
+      return {
+        ...listing,
+        category_id: resolvedCategoryId,
+        owner_id: ownerIds[index % ownerIds.length],
+      };
+    }))
     .returning();
 
   await db.insert(listingPhotos).values(

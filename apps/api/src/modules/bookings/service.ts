@@ -80,7 +80,7 @@ export const createBooking = async (payload: unknown, renterId: string) => {
 
   const startStr  = booking.start_date;
   const endStr    = booking.end_date;
-  const totalRs   = Math.round(totalAmount / 100).toLocaleString('en-PK');
+  const totalRs   = totalAmount.toLocaleString('en-PK');
   const systemMsg = `📋 Booking request submitted · ${startStr} – ${endStr} · Rs. ${totalRs}`;
   await messagesRepository.addMessage(conversation!.id, renterId, systemMsg);
   // ────────────────────────────────────────────────────────────────────────
@@ -225,6 +225,17 @@ export const rejectBooking = async (bookingId: string, ownerId: string) => {
     }
   }
   return updated;
+};
+
+export const cancelBooking = async (bookingId: string, renterId: string) => {
+  const booking = await bookingsRepository.findById(bookingId);
+  if (!booking) throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
+  if (booking.renter_id !== renterId) throw new AppError('Not allowed', 403, 'FORBIDDEN');
+  if (booking.status !== 'pending') {
+    throw new AppError('Only pending bookings can be cancelled', 400, 'BOOKING_NOT_PENDING');
+  }
+
+  return bookingsRepository.updateStatus(bookingId, 'rejected', 'rejected_at');
 };
 
 export const getBookings = async (

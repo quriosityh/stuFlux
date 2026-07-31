@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
 import {
   User, MapPin, Calendar,
-  Package, Star,
+  Package,
   TrendingUp, ShoppingBag, Edit3, LogOut,
 } from 'lucide-react';
 
@@ -195,18 +195,6 @@ export function ProfileClient({ initialProfile, initialListings, initialBookings
                 )}
               </div>
 
-              {/* Mock rating */}
-              <div className="flex items-center gap-1.5 mt-2">
-                {[1,2,3,4,5].map((i) => (
-                  <Star
-                    key={i}
-                    size={14}
-                    className={i <= 4 ? 'fill-amber-400 text-amber-400' : 'fill-[var(--border-color)] text-[var(--border-color)]'}
-                  />
-                ))}
-                <span className="text-sm font-semibold text-[var(--foreground)]/70 ml-1">4.8</span>
-                <span className="text-xs text-[var(--foreground)]/40">· 12 reviews</span>
-              </div>
             </div>
 
             {/* Edit button */}

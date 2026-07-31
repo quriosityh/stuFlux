@@ -6,15 +6,14 @@ import EarningsSummary from './EarningsSummary';
 import EmptyState from './EmptyState';
 import { useApiClient } from '@/lib/api-client';
 import { Loader2 } from 'lucide-react';
-import { IconCheck, IconX, IconMessage, IconDeviceLaptop } from '@tabler/icons-react';
+import { IconCheck, IconX, IconDeviceLaptop } from '@tabler/icons-react';
 
 interface LendingTabProps {
   bookings: ActivityBooking[];
   onBookingUpdated: () => void;
-  onLocalAction: (id: string, action: 'confirm' | 'reject') => void;
 }
 
-export default function LendingTab({ bookings, onBookingUpdated, onLocalAction }: LendingTabProps) {
+export default function LendingTab({ bookings, onBookingUpdated }: LendingTabProps) {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const api = useApiClient();
 
@@ -38,13 +37,10 @@ export default function LendingTab({ bookings, onBookingUpdated, onLocalAction }
     try {
       setProcessingId(id);
       await api.patch(`bookings/${id}/${action}`);
-      onLocalAction(id, action);
       alert(`Booking request ${action === 'confirm' ? 'accepted' : 'declined'}!`);
       onBookingUpdated(); // refresh data
-    } catch (error) {
-      onLocalAction(id, action);
-      alert(`Booking request simulated: ${action === 'confirm' ? 'accepted' : 'declined'}`);
-      onBookingUpdated();
+    } catch {
+      alert('Could not update this booking. Please try again.');
     } finally {
       setProcessingId(null);
     }
@@ -109,10 +105,6 @@ export default function LendingTab({ bookings, onBookingUpdated, onLocalAction }
                     )}
                   </button>
                 </div>
-                <button className="flex items-center gap-1.5 px-[14px] py-[6px] rounded-lg text-[12px] font-bold border border-border/80 bg-surface/60 text-foreground/80 hover:text-foreground hover:bg-foreground/5 active:scale-95 transition-all">
-                  <IconMessage className="w-3.5 h-3.5" stroke={1.5} />
-                  Message
-                </button>
               </div>
             }
           />

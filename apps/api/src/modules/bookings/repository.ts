@@ -1,6 +1,7 @@
 import { db } from '../../infra/db/client.js';
-import { bookings, listings } from '../../../db/schema.js';
-import { and, eq, gte, lt, sql } from 'drizzle-orm';
+import { bookings, listings, listingPhotos, users } from '../../../db/schema.js';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { CreateBookingInput } from './validations.js';
 import type { BookingStatus } from './types.js';
 
@@ -59,7 +60,54 @@ export const bookingsRepository = {
     if (listingId) {
       conditions.push(eq(bookings.listing_id, listingId));
     }
-    return db.select().from(bookings).where(and(...conditions)).orderBy(bookings.created_at).limit(limit);
+    const renter = alias(users, 'booking_renter');
+    const owner = alias(users, 'booking_owner');
+
+    return db
+      .select({
+        id: bookings.id,
+        listing_id: bookings.listing_id,
+        renter_id: bookings.renter_id,
+        owner_id: bookings.owner_id,
+        start_date: bookings.start_date,
+        end_date: bookings.end_date,
+        total_days: bookings.total_days,
+        total_amount: bookings.total_amount,
+        status: bookings.status,
+        message: bookings.message,
+        created_at: bookings.created_at,
+        listing: {
+          title: listings.title,
+          daily_rate: listings.daily_rate,
+          city: listings.area,
+        },
+        listing_photo: {
+          url: listingPhotos.url,
+        },
+        renter: {
+          display_name: renter.display_name,
+          avatar_url: renter.avatar_url,
+        },
+        owner: {
+          display_name: owner.display_name,
+          avatar_url: owner.avatar_url,
+        },
+      })
+      .from(bookings)
+      .innerJoin(listings, eq(listings.id, bookings.listing_id))
+      .innerJoin(renter, eq(renter.id, bookings.renter_id))
+      .innerJoin(owner, eq(owner.id, bookings.owner_id))
+      .leftJoin(
+        listingPhotos,
+        and(
+          eq(listingPhotos.listing_id, listings.id),
+          eq(listingPhotos.is_primary, true),
+          isNull(listingPhotos.deleted_at),
+        ),
+      )
+      .where(and(...conditions))
+      .orderBy(desc(bookings.created_at))
+      .limit(limit);
   },
 
   async updateStatus(id: string, status: BookingStatus, timestampColumn: 'confirmed_at' | 'rejected_at' | 'completed_at') {

@@ -1,6 +1,6 @@
 import { asyncHandler } from '../../infra/http/middleware/errorHandler.js';
 import { requireAuth, type AuthenticatedRequest, optionalAuth } from '../../infra/http/middleware/auth.js';
-import { createBooking, confirmBooking, rejectBooking, getBookings, getAvailability } from './service.js';
+import { createBooking, confirmBooking, rejectBooking, cancelBooking, getBookings, getAvailability } from './service.js';
 import { Request, Response } from 'express';
 import { AppError } from '../../common/errors.js';
 
@@ -27,6 +27,16 @@ export const rejectBookingHandler = [
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
     const booking = await rejectBooking(id, req.auth!.userId);
+    if (!booking) throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
+    res.json({ data: booking });
+  }),
+];
+
+export const cancelBookingHandler = [
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+    const booking = await cancelBooking(id, req.auth!.userId);
     if (!booking) throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
     res.json({ data: booking });
   }),
