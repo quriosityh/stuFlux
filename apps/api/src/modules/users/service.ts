@@ -49,12 +49,11 @@ export const ensureUserSynced = async (clerkUserId: string) => {
     `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() ||
     clerkUser.username ||
     clerkUser.emailAddresses[0]?.emailAddress ||
-    existing?.display_name ||
     DEFAULT_NAME;
 
-  const email = clerkUser.emailAddresses[0]?.emailAddress || existing?.email || null;
-  const avatar_url = clerkUser.imageUrl || existing?.avatar_url || null;
-  const area = (existing as any)?.area || DEFAULT_AREA;
+  const email = clerkUser.emailAddresses[0]?.emailAddress || null;
+  const avatar_url = clerkUser.imageUrl || null;
+  const area = DEFAULT_AREA;
 
   const user = await usersRepository.upsertFromClerk({
     clerk_user_id: clerkUserId,

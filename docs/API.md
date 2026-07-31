@@ -356,7 +356,7 @@ Validates sizes, types, and counts of uploaded files.
 
 ## Bookings
 
-Booking status transitions: `pending` → `confirmed` | `rejected` → `completed`.
+Booking status transitions: `pending` → `confirmed` | `rejected` | `cancelled` → `completed`.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -364,6 +364,8 @@ Booking status transitions: `pending` → `confirmed` | `rejected` → `complete
 | GET | `/bookings` | 🔒 Required | Retrieve user's bookings (as owner or renter) |
 | PATCH | `/bookings/:id/confirm` | 🔒 Required | Owner confirms a pending booking |
 | PATCH | `/bookings/:id/reject` | 🔒 Required | Owner rejects a pending booking |
+| PATCH | `/bookings/:id/cancel` | 🔒 Required | Renter or Owner cancels a pending/confirmed booking |
+| PATCH | `/bookings/:id/complete` | 🔒 Required | Mark an active booking as completed |
 | GET | `/bookings/listings/:id/availability`| Optional | Retrieve confirmed booking dates and blocked dates |
 
 ### POST `/bookings`
