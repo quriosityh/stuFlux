@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Heart, Star } from 'lucide-react';
+import { Heart, MapPin, Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ListingCardProps {
@@ -43,18 +43,15 @@ export function ListingCard({ item }: ListingCardProps) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-[var(--surface)] to-[var(--border-color)]/30 flex items-center justify-center text-foreground/20 text-4xl">
-              📦
+            <div className="w-full h-full bg-gradient-to-br from-surface to-border/10 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-border/5 border border-border/10 flex items-center justify-center text-foreground/20 text-2xl shadow-inner">
+                📦
+              </div>
             </div>
           )}
         </motion.div>
 
-        {/* Featured Badge */}
-        {isFeatured && (
-          <div className="absolute top-3 left-3 bg-background/90 backdrop-blur-md px-2 py-1 rounded-md shadow-sm border border-border/10">
-            <span className="text-[10px] font-bold tracking-wider uppercase">Featured ✨</span>
-          </div>
-        )}
+        {/* Featured Badge Removed */}
 
         {/* Save Button (Heart) */}
         <button 
@@ -81,20 +78,34 @@ export function ListingCard({ item }: ListingCardProps) {
       </div>
 
       {/* Card Content */}
-      <div className="space-y-0.5 px-1">
+      <div className="space-y-1.5 px-1 mt-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-syne font-bold text-base truncate">{title}</h3>
+          <h3 className="font-syne font-bold text-[17px] leading-tight truncate text-foreground/90">{title}</h3>
         </div>
         
-        {area && (
-          <div className="text-xs text-foreground/50 truncate">
-            📍 {area}
+        <div className="flex items-center justify-between text-xs text-foreground/50">
+          <div className="flex items-center gap-1.5 truncate">
+            <MapPin size={14} className="text-foreground/40 shrink-0" />
+            <span className="truncate font-medium tracking-wide">{area || 'Location N/A'}</span>
           </div>
-        )}
+          {item?.delivery_available && (
+            <Truck size={14} className="text-[var(--accent)] shrink-0" />
+          )}
+        </div>
         
-        <div className="pt-1">
-          <span className="text-base font-extrabold text-[var(--accent)]">Rs. {price.toLocaleString()}</span>
-          <span className="text-xs text-foreground/40 font-medium"> / day</span>
+        <div className="pt-1.5 flex items-end justify-between">
+          <div className="flex items-baseline gap-1">
+            <span className="text-lg font-black tracking-tight text-foreground/90">
+              <span className="text-[13px] font-semibold text-foreground/50 mr-0.5">Rs.</span>
+              {price.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-foreground/40 font-medium uppercase tracking-wider">/day</span>
+          </div>
+          {item?.booking_count > 0 && (
+            <span className="text-[11px] font-medium text-foreground/40">
+              &middot; {item.booking_count} rentals
+            </span>
+          )}
         </div>
       </div>
     </Link>

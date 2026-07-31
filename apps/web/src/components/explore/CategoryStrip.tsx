@@ -2,18 +2,18 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Wrench, Music, Bike, Laptop, Book, Tent, MonitorPlay } from 'lucide-react';
+import { Zap, Wrench, Camera, Music, Shirt, PartyPopper, Bike, Tent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const CATEGORIES = [
-  { id: 'all', label: 'All Gear', icon: MonitorPlay },
-  { id: 'cameras', label: 'Cameras', icon: Camera },
-  { id: 'tools', label: 'Tools', icon: Wrench },
-  { id: 'music', label: 'Music', icon: Music },
-  { id: 'vehicles', label: 'Vehicles', icon: Bike },
-  { id: 'electronics', label: 'Electronics', icon: Laptop },
-  { id: 'books', label: 'Books', icon: Book },
-  { id: 'outdoors', label: 'Outdoors', icon: Tent },
+  { id: 'power-energy', label: 'Power & Energy', icon: Zap },
+  { id: 'tools-home-fix', label: 'Tools & Home Fix', icon: Wrench },
+  { id: 'cameras-creators', label: 'Cameras & Creators', icon: Camera },
+  { id: 'music-audio', label: 'Music & Audio', icon: Music },
+  { id: 'clothing-fashion', label: 'Clothing & Fashion', icon: Shirt },
+  { id: 'hosting-party', label: 'Hosting & Party', icon: PartyPopper },
+  { id: 'bikes-boards', label: 'Bikes & Boards', icon: Bike },
+  { id: 'travel-outdoors', label: 'Travel & Outdoors', icon: Tent },
 ];
 
 const containerVariants = {
@@ -39,8 +39,12 @@ const itemVariants = {
   },
 };
 
-export function CategoryStrip() {
-  const [activeCategory, setActiveCategory] = useState('all');
+interface CategoryStripProps {
+  activeCategory: string | null;
+  onCategoryChange: (cat: string) => void;
+}
+
+export function CategoryStrip({ activeCategory, onCategoryChange }: CategoryStripProps) {
 
   return (
     <div className="w-full border-b border-border/5 bg-background sticky top-[48px] md:top-[72px] z-40 shadow-sm">
@@ -58,7 +62,7 @@ export function CategoryStrip() {
               <motion.button
                 variants={itemVariants}
                 key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
+                onClick={() => onCategoryChange(cat.id)}
                 className={cn(
                   "relative flex flex-col items-center gap-2 min-w-max pb-2 transition-colors snap-start hover:text-foreground",
                   isActive ? "text-foreground font-semibold" : "text-foreground/60"
