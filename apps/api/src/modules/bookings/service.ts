@@ -145,7 +145,17 @@ export const confirmBooking = async (bookingId: string, ownerId: string) => {
     throw new AppError('Dates are blocked by the owner', 400, 'BOOKING_DATES_BLOCKED');
   }
 
-  const updated = await bookingsRepository.updateStatus(bookingId, 'confirmed', 'confirmed_at');
+  let updated;
+  try {
+    // The exclusion constraint added in migration 0007 is the final, atomic
+    // guard against a competing confirmation for the same dates.
+    updated = await bookingsRepository.updateStatus(bookingId, 'confirmed', 'confirmed_at');
+  } catch (error: unknown) {
+    if (isExclusionViolation(error)) {
+      throw new AppError('Dates already booked', 409, 'BOOKING_DATES_UNAVAILABLE');
+    }
+    throw error;
+  }
   if (updated) {
     await bookingsRepository.incrementListingBookingCount(booking.listing_id);
 
@@ -185,6 +195,10 @@ export const confirmBooking = async (bookingId: string, ownerId: string) => {
   }
   return updated;
 };
+
+function isExclusionViolation(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23P01';
+}
 
 export const rejectBooking = async (bookingId: string, ownerId: string) => {
   const result = await bookingsRepository.findById(bookingId);
@@ -256,8 +270,8 @@ export const completeBooking = async (bookingId: string, userId: string) => {
   if (!result) throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
   const booking = result.booking;
 
-  if (booking.owner_id !== userId && booking.renter_id !== userId) {
-    throw new AppError('Not allowed to complete this booking', 403, 'FORBIDDEN');
+  if (booking.owner_id !== userId) {
+    throw new AppError('Only the listing owner can complete this booking', 403, 'FORBIDDEN');
   }
   if (booking.status !== 'confirmed') {
     throw new AppError('Only confirmed bookings can be completed', 400, 'INVALID_BOOKING_STATE');

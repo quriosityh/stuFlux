@@ -5,11 +5,13 @@ import { useBookings, type Booking } from '@/hooks/useBookings';
 import { differenceInDays, format } from 'date-fns';
 import { MessageCircle, Star, Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
 import BookingDetailSheet from './BookingDetailSheet';
+import { BookingsLoadError } from './RentingTab';
 
 export default function RentingOutTab() {
   const router = useRouter();
-  const { bookings, isLoading, refetch } = useBookings('owner');
+  const { bookings, isLoading, error, refetch } = useBookings('owner');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
   if (isLoading) {
@@ -19,6 +21,10 @@ export default function RentingOutTab() {
         <p className="text-sm text-muted-foreground">Loading received requests...</p>
       </div>
     );
+  }
+
+  if (error) {
+    return <BookingsLoadError message={error.message} onRetry={refetch} />;
   }
 
   if (bookings.length === 0) {
@@ -32,7 +38,7 @@ export default function RentingOutTab() {
           List your items for rent. Once other students request them, they will show up here.
         </p>
         <button
-          onClick={() => router.push('/listings/new' as any)}
+          onClick={() => router.push('/listings/new' as Route)}
           className="hyper-liquid px-5 py-2.5 rounded-xl font-semibold text-[14px]"
         >
           Create Listing
@@ -46,13 +52,14 @@ export default function RentingOutTab() {
   const upcomingRentals = bookings.filter(b => b.phase === 'confirmed').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
   const currentlyOut = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
   const pendingReviews = bookings.filter(b => b.phase === 'completed').sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
+  const closedRequests = bookings.filter(b => b.phase === 'cancelled' || b.phase === 'rejected').sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
 
   const handleChat = (e: React.MouseEvent, conversationId: string | null) => {
     e.stopPropagation();
     if (conversationId) {
-      router.push(`/messages/${conversationId}`);
+      router.push(`/messages/${conversationId}` as Route);
     } else {
-      router.push('/messages');
+      router.push('/messages' as Route);
     }
   };
 
@@ -100,6 +107,7 @@ export default function RentingOutTab() {
                 {booking.phase === 'confirmed' && <span className="text-emerald-500">Confirmed</span>}
                 {booking.phase === 'completed' && <span className="text-foreground/60">Completed</span>}
                 {booking.phase === 'cancelled' && <span className="text-rose-500">Cancelled</span>}
+                {booking.phase === 'rejected' && <span className="text-rose-500">Declined</span>}
               </div>
 
               {booking.phase === 'active' && (
@@ -197,6 +205,13 @@ export default function RentingOutTab() {
         <section>
           <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Pending Reviews</h2>
           <div className="flex flex-col gap-4">{pendingReviews.map(renderCard)}</div>
+        </section>
+      )}
+
+      {closedRequests.length > 0 && (
+        <section>
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Closed Requests</h2>
+          <div className="flex flex-col gap-4">{closedRequests.map(renderCard)}</div>
         </section>
       )}
 

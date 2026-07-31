@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 export interface Booking {
   id: string;
-  phase: 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled';
+  phase: 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled' | 'rejected';
   status: string;
   startDate: Date;
   endDate: Date;
@@ -36,6 +36,11 @@ export interface Booking {
   created_at: string;
 }
 
+type ApiBooking = Omit<Booking, 'startDate' | 'endDate'> & {
+  startDate: string;
+  endDate: string;
+};
+
 export function useBookings(role: 'renter' | 'owner') {
   const { getToken, userId } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -56,11 +61,15 @@ export function useBookings(role: 'renter' | 'owner') {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to fetch bookings');
+        const payload = await res.json().catch(() => null) as { error?: { message?: string } } | null;
+        throw new Error(payload?.error?.message ?? 'Failed to fetch bookings');
       }
 
-      const payload = (await res.json()) as { data: any[] };
-      const formatted = payload.data.map((b: any) => ({
+      const payload = (await res.json()) as { data?: unknown };
+      if (!Array.isArray(payload.data)) {
+        throw new Error('The bookings service returned an invalid response');
+      }
+      const formatted: Booking[] = (payload.data as ApiBooking[]).map((b) => ({
         ...b,
         startDate: new Date(b.startDate),
         endDate: new Date(b.endDate),
@@ -68,8 +77,8 @@ export function useBookings(role: 'renter' | 'owner') {
 
       setBookings(formatted);
       setError(null);
-    } catch (err: any) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error('Failed to fetch bookings'));
     } finally {
       setIsLoading(false);
     }
@@ -79,59 +88,11 @@ export function useBookings(role: 'renter' | 'owner') {
     void fetchBookings();
   }, [fetchBookings, userId]);
 
-  const confirmBooking = async (bookingId: string) => {
+  const updateBooking = async (bookingId: string, action: 'confirm' | 'reject' | 'cancel' | 'complete') => {
     const token = await getToken();
     if (!token) return false;
 
-    const res = await fetch(`/api/proxy/bookings/${bookingId}/confirm`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (res.ok) {
-      void fetchBookings();
-      return true;
-    }
-    return false;
-  };
-
-  const rejectBooking = async (bookingId: string) => {
-    const token = await getToken();
-    if (!token) return false;
-
-    const res = await fetch(`/api/proxy/bookings/${bookingId}/reject`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (res.ok) {
-      void fetchBookings();
-      return true;
-    }
-    return false;
-  };
-
-  const cancelBooking = async (bookingId: string) => {
-    const token = await getToken();
-    if (!token) return false;
-
-    const res = await fetch(`/api/proxy/bookings/${bookingId}/cancel`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (res.ok) {
-      void fetchBookings();
-      return true;
-    }
-    return false;
-  };
-
-  const completeBooking = async (bookingId: string) => {
-    const token = await getToken();
-    if (!token) return false;
-
-    const res = await fetch(`/api/proxy/bookings/${bookingId}/complete`, {
+    const res = await fetch(`/api/proxy/bookings/${bookingId}/${action}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -148,9 +109,9 @@ export function useBookings(role: 'renter' | 'owner') {
     isLoading,
     error,
     refetch: fetchBookings,
-    confirmBooking,
-    rejectBooking,
-    cancelBooking,
-    completeBooking,
+    confirmBooking: (bookingId: string) => updateBooking(bookingId, 'confirm'),
+    rejectBooking: (bookingId: string) => updateBooking(bookingId, 'reject'),
+    cancelBooking: (bookingId: string) => updateBooking(bookingId, 'cancel'),
+    completeBooking: (bookingId: string) => updateBooking(bookingId, 'complete'),
   };
 }
