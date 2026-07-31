@@ -11,7 +11,7 @@ export function DesktopNav() {
   const navItems = [
     { name: 'Discover', href: '/' as const, icon: Compass },
     { name: 'DMs', href: '/messages' as const, icon: MessageCircle, badge: 2 },
-    { name: 'Activity', href: '/activity' as const, icon: Activity },
+    { name: 'Activity', href: '/bookings' as const, icon: Activity },
     { name: 'Notifications', href: '/notifications' as const, icon: Bell },
   ];
 
