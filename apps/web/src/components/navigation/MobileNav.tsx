@@ -9,11 +9,11 @@ export function MobileNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { name: 'Discover', href: '/', icon: Compass },
-    { name: 'DMs', href: '/messages', icon: Send },
-    { name: 'Drop', href: '/listings/new', icon: Plus, isDrop: true },
-    { name: 'Activity', href: '/activity', icon: Activity },
-    { name: 'You', href: '/profile', icon: UserRound },
+    { name: 'Discover', href: '/' as const, icon: Compass },
+    { name: 'DMs', href: '/messages' as const, icon: Send },
+    { name: 'Drop', href: '/listings/new' as const, icon: Plus, isDrop: true },
+    { name: 'Activity', href: '/activity' as const, icon: Activity },
+    { name: 'You', href: '/profile' as const, icon: UserRound },
   ];
 
   const activeIndex = navItems.findIndex(item => pathname === item.href);

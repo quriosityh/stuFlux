@@ -162,7 +162,9 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
               onBack={handleBack}
               onSubmit={handleSubmit}
               isSubmitting={isSubmitting}
+              onEditStep={(step) => setCurrentStep(step)}
             />
+
           </div>
         </div>
       </div>

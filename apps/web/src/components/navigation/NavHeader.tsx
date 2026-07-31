@@ -10,7 +10,7 @@ import { SearchBar, ActiveTab } from '../explore/SearchBar';
 import { LahoreArea, getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
 
 // Animation configs for slow, obvious transitions
-const transitionConfig = { duration: 0.4, ease: [0.16, 1, 0.3, 1] };
+const transitionConfig = { duration: 0.4, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] };
 
 export function NavHeader() {
   const pathname = usePathname();
@@ -36,7 +36,7 @@ export function NavHeader() {
 
       const rawAreaId = localStorage.getItem('search:areaId');
       if (rawAreaId) {
-        const area = getAreaById(Number(rawAreaId), LAHORE_AREAS_DATA);
+        const area = getAreaById(rawAreaId, LAHORE_AREAS_DATA);
         if (area) setSelectedArea(area as LahoreArea);
       }
     } catch (err) {
@@ -101,9 +101,9 @@ export function NavHeader() {
   const isExpanded = (isExplorePage && !isScrolled) || activeTab !== null;
 
   const navItems = [
-    { name: 'Explore', href: '/' },
-    { name: 'Chats', href: '/messages' },
-    { name: 'Activity', href: '/activity' },
+    { name: 'Explore', href: '/' as const },
+    { name: 'Chats', href: '/messages' as const },
+    { name: 'Activity', href: '/activity' as const },
   ];
 
   // Check if PDP sticky nav wants to replace us
@@ -299,14 +299,14 @@ export function NavHeader() {
               </AnimatePresence>
             </div>
 
-            <Link href="/listings/new" className={cn(
+            <Link href={{ pathname: '/listings/new' }} className={cn(
               "hyper-liquid inline-flex items-center justify-center font-semibold transition-all overflow-hidden whitespace-nowrap gap-2 text-sm px-4 py-2 rounded-full relative z-10"
             )}>
               <Plus size={18} strokeWidth={2.5} />
             </Link>
 
             <Link
-              href="/profile"
+              href={{ pathname: '/profile' }}
               id="nav-profile-link"
               className="relative group z-10 w-10 h-10 rounded-full border border-border/20 overflow-hidden hover:ring-2 hover:ring-[var(--accent)] transition-all cursor-pointer bg-gradient-to-br from-background to-surface flex items-center justify-center"
             >

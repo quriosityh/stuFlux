@@ -22,6 +22,14 @@ export const usersRepository = {
     return row?.display_name ?? null;
   },
 
+  async findEmailById(id: string) {
+    const [row] = await db
+      .select({ email: users.email, display_name: users.display_name })
+      .from(users)
+      .where(eq(users.id, id));
+    return row ?? null;
+  },
+
   async upsertFromClerk(params: {
     clerk_user_id: string;
     display_name: string;

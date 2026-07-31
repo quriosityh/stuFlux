@@ -631,6 +631,13 @@ as the SSE stream from Stage 1).
 Sends a transactional email for the two highest-value events: a new booking request (lender)
 and a booking confirmation or rejection (renter). Does NOT send email for chat messages — too noisy.
 
+### Implementation status
+
+Stage 3 is being added after Stage 2. The code should use Resend with best-effort delivery:
+- if `RESEND_API_KEY` is missing, email delivery must no-op and log only
+- if `RESEND_FROM_ADDRESS` is missing, default to `notifications@stuflux.local`
+- `APP_URL` should default to `http://localhost:3000` in development
+
 ### Service
 **Resend** — [resend.com](https://resend.com). Free tier: 3,000 emails/month, 100/day.
 No credit card required. Official `resend` npm SDK.

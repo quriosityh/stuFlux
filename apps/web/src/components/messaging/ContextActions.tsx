@@ -14,7 +14,7 @@ export function ContextActions({ conversation }: { conversation: Conversation })
       <h3 className="font-syne font-bold text-sm text-[var(--foreground)] opacity-60 uppercase tracking-wider">Actions</h3>
       
       {phase === 'inquiry' && role === 'renter' && (
-        <Link href={`/listings/${listingId}#availability`} className="hyper-liquid w-full py-3 text-sm flex items-center justify-center gap-2">
+        <Link href={{ pathname: `/listings/${listingId}`, hash: 'availability' }} className="hyper-liquid w-full py-3 text-sm flex items-center justify-center gap-2">
           <Calendar size={16} />
           <span>Select Dates to Book</span>
         </Link>
