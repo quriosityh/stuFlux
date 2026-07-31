@@ -71,6 +71,10 @@ export const getBookingByIdHandler = [
     const { id } = req.params;
     const booking = await bookingsRepository.findById(id);
     if (!booking) throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
+    if (booking.booking.renter_id !== req.auth!.userId && booking.booking.owner_id !== req.auth!.userId) {
+      // Do not disclose whether a booking exists to users outside the rental.
+      throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
+    }
     res.json({ data: booking });
   }),
 ];

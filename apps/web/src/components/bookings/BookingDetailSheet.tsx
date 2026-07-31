@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { X, MessageCircle, Star, Check, AlertCircle } from 'lucide-react';
 import { useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
 
 interface Props {
   booking: Booking;
@@ -61,9 +62,9 @@ export default function BookingDetailSheet({ booking, isOpen, onClose, role, onA
 
   const handleChat = () => {
     if (booking.conversation_id) {
-      router.push(`/messages/${booking.conversation_id}`);
+      router.push(`/messages/${booking.conversation_id}` as Route);
     } else {
-      router.push('/messages');
+      router.push('/messages' as Route);
     }
     onClose();
   };
