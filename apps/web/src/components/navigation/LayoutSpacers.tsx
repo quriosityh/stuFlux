@@ -1,21 +1,34 @@
 'use client';
 
+import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
 export function TopSpacer() {
   const pathname = usePathname();
-  const isPDP = pathname.startsWith('/listings/');
-  
-  // Since Desktop NavHeader is hidden on mobile globally, we don't need a top spacer on mobile.
-  return <div className="hidden md:block h-16" />;
+
+  useEffect(() => {
+    const measure = () => {
+      const nav = document.querySelector('nav');
+      if (nav) {
+        const h = nav.getBoundingClientRect().height;
+        document.documentElement.style.setProperty('--nav-expanded-h', `${h}px`);
+      }
+    };
+
+    measure();
+    const nav = document.querySelector('nav');
+    if (!nav) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, []);
+
+  // Spacer keeps content below fixed nav; height matches expanded nav height
+  return <div className="hidden md:block" style={{ height: 'var(--nav-expanded-h, 160px)' }} />;
 }
 
 export function BottomSpacer() {
   const pathname = usePathname();
-  const isPDP = pathname.startsWith('/listings/');
-  
-  // On PDP, the bottom padding is handled by the PDP client for its specific CTA.
-  // Otherwise, we need pb-24 equivalent for the MobileNav.
-  if (isPDP) return null;
+  if (pathname.startsWith('/listings/')) return null;
   return <div className="h-16 md:hidden shrink-0" />;
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import apiClient from '@/lib/api-client';
 import { CategoryStrip } from './CategoryStrip';
 import { DiscoveryFeed } from './DiscoveryFeed';
@@ -10,9 +11,24 @@ import { FilterSidebar } from './FilterSidebar';
 import { ListingGrid } from './ListingGrid';
 import { ResultsHeader } from './ResultsHeader';
 
-export default function ExploreClient() {
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('all');
+function ExploreContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [search, setSearch] = useState(searchParams.get('q') || '');
+  const category = searchParams.get('category') || 'all';
+
+  const setCategory = (cat: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (cat === 'all') {
+      params.delete('category');
+    } else {
+      params.set('category', cat);
+    }
+    router.push(`${pathname}?${params.toString()}` as any, { scroll: false });
+  };
+
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -25,7 +41,7 @@ export default function ExploreClient() {
     try {
       const params = new URLSearchParams({ limit: '24', sort: 'newest' });
       if (search) params.set('q', search);
-      // category is a slug here; backend uses category_id — map if needed
+      if (category && category !== 'all') params.set('category', category);
       const res = await apiClient
         .get(`listings?${params.toString()}`)
         .json<{ data: any[]; meta: { total: number } }>();
@@ -44,7 +60,7 @@ export default function ExploreClient() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <CategoryStrip />
+      <CategoryStrip activeCategory={category} onCategoryChange={setCategory} />
 
       <main className="w-[85%] mx-auto pt-10 pb-20">
         {mode === 'discovery' ? (
@@ -72,5 +88,13 @@ export default function ExploreClient() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function ExploreClient() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <ExploreContent />
+    </Suspense>
   );
 }
