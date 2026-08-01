@@ -61,6 +61,7 @@ export default async function ProfilePage() {
       initialProfile={profile}
       initialBookings={bookings.data ?? []}
       initialReviews={reviews}
+      initialListings={listings}
     />
   );
 }
