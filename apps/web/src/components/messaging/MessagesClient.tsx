@@ -30,6 +30,8 @@ type ApiConversation = {
   owner_avatar_url?: string | null;
   listing_photo_url?: string | null;
   phase?: string | null;
+  /** Populated server-side — avoids Clerk ID vs internal UUID mismatch on client */
+  viewer_role?: 'renter' | 'lender' | null;
   last_message?: {
     id: string;
     body: string;
@@ -48,10 +50,18 @@ function formatTimestamp(value?: string | null) {
 }
 
 function mapConversation(item: ApiConversation, currentUserId?: string | null): Conversation {
-  const isRenter = currentUserId === item.renter_id;
+  // Use viewer_role from the API (server knows the internal UUID — client only has Clerk ID)
+  // Fall back to checking renter_id only if viewer_role is missing (old API versions)
+  const isRenter = item.viewer_role
+    ? item.viewer_role === 'renter'
+    : currentUserId === item.renter_id;
+
   const otherUserName = isRenter ? item.owner_display_name ?? 'Owner' : item.renter_display_name ?? 'Renter';
   const otherUserId = isRenter ? item.owner_id : item.renter_id;
   const listingImage = item.listing_photo_url || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1000&auto=format&fit=crop';
+
+  // Use last_message.created_at if available, otherwise fall back to updated_at
+  const rawUpdatedAt = item.last_message?.created_at ?? item.updated_at ?? item.created_at ?? '';
 
   return {
     id: item.id,
@@ -67,9 +77,14 @@ function mapConversation(item: ApiConversation, currentUserId?: string | null): 
       ? { startDate: formatTimestamp(item.booking_start_date), endDate: formatTimestamp(item.booking_end_date) }
       : undefined,
     lastMessage: item.last_message
-      ? { body: item.last_message.body, createdAt: formatTimestamp(item.last_message.created_at) }
+      ? {
+          body: item.last_message.body,
+          createdAt: formatTimestamp(item.last_message.created_at),
+          rawCreatedAt: item.last_message.created_at ?? '',
+        }
       : undefined,
     unreadCount: item.unread_count ?? 0,
+    rawUpdatedAt,
   };
 }
 
@@ -119,7 +134,10 @@ export function MessagesClient({ initialConversationId }: { initialConversationI
         if (!res.ok) throw new Error('Failed to load conversations');
         const payload = (await res.json()) as { data: ApiConversation[] };
         if (!cancelled) {
-          setConversations(payload.data.map((item) => mapConversation(item, userId)));
+          // Sort newest first by rawUpdatedAt
+          const mapped = payload.data.map((item) => mapConversation(item, userId));
+          mapped.sort((a, b) => b.rawUpdatedAt.localeCompare(a.rawUpdatedAt));
+          setConversations(mapped);
           setIsLoading(false);
         }
       } catch {
@@ -163,7 +181,12 @@ export function MessagesClient({ initialConversationId }: { initialConversationI
   }, [isMobile, selectedId]);
 
   const handleConversationUpdated = (updated: Conversation) => {
-    setConversations((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    setConversations((prev) => {
+      const next = prev.map((item) => (item.id === updated.id ? updated : item));
+      // Re-sort so the conversation with newest message bubbles to the top
+      next.sort((a, b) => b.rawUpdatedAt.localeCompare(a.rawUpdatedAt));
+      return next;
+    });
   };
 
   const filteredConversations = useMemo(() => {

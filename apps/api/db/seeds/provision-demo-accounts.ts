@@ -6,6 +6,22 @@ import { demoUsers } from './users.js';
 
 const password = process.env.DEMO_ACCOUNT_PASSWORD || 'Stufluxpass00*';
 
+async function retryDatabaseUpdate(action: () => Promise<void>, name: string) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      await action();
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 4) break;
+      console.warn(`Database update for ${name} failed; retrying (${attempt}/4)...`);
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1_500));
+    }
+  }
+  throw lastError;
+}
+
 async function main() {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Demo accounts cannot be provisioned in production.');
@@ -26,9 +42,11 @@ async function main() {
     });
 
     // Keep the existing database UUID intact so all seeded bookings and messages remain connected.
-    await db.update(users)
-      .set({ clerk_user_id: clerkUser.id, email: demoUser.email, avatar_url: demoUser.avatar_url })
-      .where(eq(users.display_name, demoUser.display_name));
+    await retryDatabaseUpdate(async () => {
+      await db.update(users)
+        .set({ clerk_user_id: clerkUser.id, email: demoUser.email, avatar_url: demoUser.avatar_url })
+        .where(eq(users.display_name, demoUser.display_name));
+    }, demoUser.display_name);
     console.log(`✓ ${demoUser.display_name}: ${demoUser.email}`);
   }
   console.log(`Demo password: ${password}`);

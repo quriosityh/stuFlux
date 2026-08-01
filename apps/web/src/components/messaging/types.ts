@@ -4,9 +4,12 @@ export interface Message {
   id: string;
   senderId: string;
   body: string;
-  createdAt: string;
+  createdAt: string;       // formatted display string
+  rawCreatedAt: string;    // ISO string for sorting
   type?: 'text' | 'system';
   systemSubtype?: string;
+  /** Server-annotated on REST load. undefined for optimistic/SSE messages — use senderId fallback. */
+  viewerIsSender?: boolean;
 }
 
 export interface Conversation {
@@ -26,7 +29,9 @@ export interface Conversation {
   };
   lastMessage?: {
     body: string;
-    createdAt: string;
+    createdAt: string;     // formatted display string
+    rawCreatedAt: string;  // ISO string for sorting
   };
   unreadCount: number;
+  rawUpdatedAt: string;    // ISO string for sorting conversation list
 }

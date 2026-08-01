@@ -112,7 +112,9 @@ export const listMessages = async (conversationId: string, query: unknown, userI
   const { limit, offset } = listMessagesSchema.parse(query);
   const msgs = await messagesRepository.getMessages(conversationId, limit, offset);
   await messagesRepository.markConversationRead(conversationId, userId);
-  return msgs;
+  // Annotate each message so the client knows which side to render it on.
+  // This avoids the Clerk ID vs internal UUID mismatch on the frontend.
+  return msgs.map((m) => ({ ...m, viewer_is_sender: m.sender_id === userId }));
 };
 
 // ---------------------------------------------------------------------------
