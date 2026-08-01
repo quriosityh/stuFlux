@@ -18,12 +18,22 @@ export default async function ProfilePage() {
   let profile = null;
   let listings: { data: any[]; meta: { total: number } } = { data: [], meta: { total: 0 } };
   let bookings: { data: any[] } = { data: [] };
+  let reviews: any[] = [];
 
   try {
     const res = await api.get('users/me').json<{ data: any }>();
     profile = res.data ?? null;
   } catch {
-    // will show skeleton / fallback
+    // fallback
+  }
+
+  if (profile?.id) {
+    try {
+      const res = await api.get(`users/${profile.id}/reviews`).json<any>();
+      reviews = res.data?.reviews || res.data || [];
+    } catch {
+      reviews = [];
+    }
   }
 
   try {
@@ -49,8 +59,8 @@ export default async function ProfilePage() {
   return (
     <ProfileClient
       initialProfile={profile}
-      initialListings={listings.data ?? []}
       initialBookings={bookings.data ?? []}
+      initialReviews={reviews}
     />
   );
 }

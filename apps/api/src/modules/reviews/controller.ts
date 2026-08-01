@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../infra/http/middleware/auth.js';
 import * as service from './service.js';
-import { createReviewSchema, updateReviewSchema, getReviewsQuerySchema, reviewIdSchema } from './validations.js';
+import { createReviewSchema, updateReviewSchema, getReviewsQuerySchema, reviewIdSchema } from './validation.js';
 
 export const createReview = async (req: AuthenticatedRequest, res: Response) => {
   const validated = createReviewSchema.parse(req.body);
@@ -22,8 +22,8 @@ export const getReviews = async (req: AuthenticatedRequest, res: Response) => {
   let result;
 
   if (validated.listingId) result = await service.getListingReviews(validated);
-  else if (validated.ownerId) result = await service.getOwnerReviews(validated);
-  else return res.status(400).json({ success: false, message: 'Either listingId or ownerId must be provided' });
+  else if (validated.targetId || validated.ownerId) result = await service.getUserReviews(validated);
+  else return res.status(400).json({ success: false, message: 'Either listingId, targetId, or ownerId must be provided' });
 
   return res.status(200).json({ success: true, data: result });
 };

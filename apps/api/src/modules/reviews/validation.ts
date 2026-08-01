@@ -67,9 +67,9 @@ export const updateReviewSchema = z
 export const getReviewsQuerySchema = z
   .object({
     listingId: z.string().uuid().optional(),
+    targetId: z.string().uuid().optional(),
     ownerId: z.string().uuid().optional(),
 
-    // ✅ FIXED (no more '1' / '10' error)
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(10),
 
@@ -77,10 +77,10 @@ export const getReviewsQuerySchema = z
     category: z
       .enum(['cleanliness', 'communication', 'accuracy', 'value'])
       .optional(),
-    reviewerType: z.enum(['renter', 'owner']).optional(),
+    role: z.enum(['as_lender', 'as_renter', 'all']).optional(),
   })
-  .refine((data) => data.listingId || data.ownerId, {
-    message: 'Either listingId or ownerId must be provided',
+  .refine((data) => data.listingId || data.targetId || data.ownerId, {
+    message: 'Either listingId, targetId, or ownerId must be provided',
   });
 
 /**
