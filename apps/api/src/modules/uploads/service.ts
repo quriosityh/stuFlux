@@ -1,6 +1,5 @@
 import { AppError } from '../../common/errors.js';
 import { buildUploadSignature, isAllowedMime, isWithinSize } from '../../utils/cloudinary.js';
-import { listingsRepository } from '../listings/infrastructure/repository.js';
 
 const MAX_FILES = 5;
 const MAX_BYTES = 7 * 1024 * 1024; // 7MB per file
@@ -17,34 +16,39 @@ export type UploadedAsset = {
   mime_type?: string;
 };
 
-const assertListingOwnedByUser = async (listingId: string, userId: string) => {
-  if (!listingId) throw new AppError('Listing id is required', 400, 'LISTING_ID_REQUIRED');
-  const listing = await listingsRepository.findByIdForOwner(listingId, userId);
-  if (!listing) throw new AppError('Listing not found for user', 404, 'LISTING_NOT_FOUND');
-};
-
-export const getUploadSignature = async (userId: string, listingId: string) => {
+/**
+ * Returns a signed Cloudinary upload signature scoped to the user's folder.
+ * No listing ID required — photos always land in stuflux/users/{userId}/
+ * and are associated with a listing only when POST /listings is called.
+ */
+export const getUploadSignature = async (userId: string) => {
   if (!userId) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
-  await assertListingOwnedByUser(listingId, userId);
 
-  const folder = `stuflux/users/${userId}/listings/${listingId}`;
+  const folder = `stuflux/users/${userId}`;
   const signature = buildUploadSignature(folder);
 
+  // IMPORTANT: only return fields that were included in the signature.
+  // Adding extra fields here would cause Cloudinary to reject the upload
+  // because it re-derives the expected signature from all posted form fields.
+  // resource_type, max_files, max_file_size are NOT part of the signed params.
   return {
     upload: {
-      ...signature,
-      folder,
-      resource_type: 'image',
-      max_files: MAX_FILES,
-      max_file_size: MAX_BYTES,
-      listing_id: listingId,
+      timestamp: signature.timestamp,
+      folder: signature.folder,
+      signature: signature.signature,
+      api_key: signature.api_key,
+      cloud_name: signature.cloud_name,
     },
   };
 };
 
-export const completeUpload = async (userId: string, listingId: string, payload: any) => {
+/**
+ * Validates and sanitizes uploaded Cloudinary assets.
+ * Returns standardized photo objects ready to be sent in the `photos` field
+ * of POST /listings or PUT /listings/:id.
+ */
+export const completeUpload = async (userId: string, payload: any) => {
   if (!userId) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
-  await assertListingOwnedByUser(listingId, userId);
 
   const files: UploadedAsset[] = payload?.files || [];
   if (!Array.isArray(files) || files.length === 0) {

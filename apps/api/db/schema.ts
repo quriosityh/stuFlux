@@ -17,7 +17,7 @@ export const users = pgTable("users", {
     id: uuid("id").defaultRandom().primaryKey(), // UUID with default random generation
     clerk_user_id: text("clerk_user_id").unique().notNull(), // Clerk-provided ID (must be unique)
     display_name: text("display_name").notNull(), // Required display name
-    city: text("city").notNull(), // Required city
+    area: text("area").notNull(), // Required area (Lahore Area ID)
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(), // Auto timestamp
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(), // Auto timestamp
 
@@ -36,6 +36,18 @@ export const userVerifications = pgTable("user_verifications", {
         .notNull(),
     phone_verified: boolean("phone_verified").default(false), // Defaults to false
     verification_level: text("verification_level").default("unverified"), // Default value
+});
+
+// ====================== PUSH SUBSCRIPTIONS ======================
+export const pushSubscriptions = pgTable("push_subscriptions", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    user_id: uuid("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 // ====================== CATEGORIES ======================
@@ -60,8 +72,11 @@ export const listings = pgTable("listings", {
         .notNull()
         .references(() => categories.id),
     daily_rate: integer("daily_rate").notNull(),
-    city: text("city").notNull(),
-    address: text("address"),
+    area: text("area").notNull(), // Stores Lahore Area ID
+    condition: text("condition", { 
+        enum: ["like_new", "good", "fair", "well_used"] 
+    }),
+    rental_rules: text("rental_rules"), // Max 1000 characters
     status: text("status", {
         enum: ["draft", "active", "inactive", "archived"],
     }).default("draft"),
@@ -77,8 +92,19 @@ export const listings = pgTable("listings", {
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
+// ====================== LISTING_BLOCKED_DATES ======================
+export const listingBlockedDates = pgTable("listing_blocked_dates", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listing_id: uuid("listing_id")
+        .notNull()
+        .references(() => listings.id, { onDelete: "cascade" }),
+    start_date: date("start_date").notNull(),
+    end_date: date("end_date").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 // ====================== BOOKINGS ======================
-export const bookingStatus = pgEnum('booking_status', ['pending', 'confirmed', 'rejected', 'completed']);
+export const bookingStatus = pgEnum('booking_status', ['pending', 'confirmed', 'rejected', 'completed', 'cancelled']);
 
 export const bookings = pgTable("bookings", {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -95,6 +121,7 @@ export const bookings = pgTable("bookings", {
     delivery_fee: integer("delivery_fee").default(0),
     confirmed_at: timestamp("confirmed_at", { withTimezone: true }),
     rejected_at: timestamp("rejected_at", { withTimezone: true }),
+    cancelled_at: timestamp("cancelled_at", { withTimezone: true }),
     completed_at: timestamp("completed_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
@@ -125,6 +152,14 @@ export const listingPhotos = pgTable("listing_photos", {
 });
 
 // ====================== CONVERSATIONS ======================
+//
+// Two thread types:
+//   inquiry  — booking_id IS NULL  (renter browsing / chatting before picking dates)
+//   booking  — booking_id IS SET   (one conversation per booking, 1:1)
+//
+// A partial unique index (enforced in migration SQL, not here) guarantees only
+// one inquiry thread per (listing_id, renter_id) pair while allowing unlimited
+// booking threads for the same pair.
 export const conversations = pgTable("conversations", {
     id: uuid("id").defaultRandom().primaryKey(),
     listing_id: uuid("listing_id")
@@ -136,14 +171,13 @@ export const conversations = pgTable("conversations", {
     owner_id: uuid("owner_id")
         .notNull()
         .references(() => users.id, { onDelete: "cascade" }),
+    // NULL  → inquiry thread (no booking yet)
+    // SET   → booking thread (1:1 with bookings row)
+    booking_id: uuid("booking_id")
+        .references(() => bookings.id, { onDelete: "set null" }),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-}, (table) => ({
-    // Unique constraint: one conversation per listing-renter pair
-    unique_conversation: {
-        columns: [table.listing_id, table.renter_id],
-    },
-}));
+});
 
 // ====================== MESSAGES ======================
 export const messages = pgTable("messages", {

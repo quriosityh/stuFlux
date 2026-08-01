@@ -1,26 +1,356 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Enable manual dark mode toggling via data attribute (prevents Next.js class reconciliation conflicts) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-@theme inline {
+@theme {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-border: var(--border-color);
+
+  --radius-pill: 9999px;
+  --radius-btn: 0.75rem;
+}
+
+:root,
+:root[data-theme="light"] {
+  /* Light Mode — Warm Daylight Chrome */
+
+  /* ── Layer 1: Ground ── */
+  --background: #FFFFFF;
+
+  /* ── Layer 2: Surface ── */
+  /* Pure white glass lifts off the warm ground */
+  --surface: rgba(255, 255, 255, 0.82);
+
+  /* ── Layer 3: Borders & Depth ── */
+  /* Visible but tasteful — same principle as dark's white glow borders */
+  --border-color: rgba(0, 0, 0, 0.14);
+  --input-border: rgba(0, 0, 0, 0.26);
+  --inner-bevel: inset 0 1px 0 rgba(255, 255, 255, 1), inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+  --shadow-color: rgba(0, 0, 0, 0.09);
+  --shadow-ambient: rgba(0, 0, 0, 0.05);
+
+  /* ── Layer 4: Typography ── */
+  --foreground: #0F0F10;
+  /* near-black, slightly warm */
+  --text-muted: #4A4A52;
+  /* clear secondary — reads at a glance */
+  --text-subtle: #8A8A94;
+  /* tertiary / placeholders */
+
+  /* ── Layer 5: Semantic surfaces ── */
+  --tag-bg: rgba(0, 91, 234, 0.08);
+  /* accent-tinted — not grey noise */
+  --tag-fg: #003BAA;
+  /* deep blue for contrast on tinted bg */
+  --nav-bg: rgba(255, 255, 255, 0.75);
+
+  /* ── Accent ── */
+  --accent: #005BEA;
+  --accent-hover: #00C6FF;
+  --liquid-gradient: linear-gradient(135deg, #005BEA 0%, #00C6FF 50%, #a78bfa 100%);
+
+  /* ── Buttons ── */
+  --btn-shadow: 0 2px 12px 0 rgba(0, 91, 234, 0.28);
+  --btn-shadow-hover: 0 6px 24px 0 rgba(0, 91, 234, 0.38);
+
+  --noise-opacity: 0.03;
+
+  /* Sheet surface — fully opaque so it covers content beneath */
+  --sheet-bg: #FFFFFF;
+}
+
+:root[data-theme="dark"] {
+  /* Dark Mode — Deep Space Chrome */
+  --background: #050505;
+  --foreground: #FFFFFF;
+  --surface: rgba(28, 28, 30, 0.6);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --input-border: rgba(255, 255, 255, 0.18);
+  --inner-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --shadow-ambient: rgba(0, 0, 0, 0.25);
+  --noise-opacity: 0.15;
+
+  --text-muted: #8E8E93;
+  --text-subtle: #48484A;
+  --tag-bg: rgba(0, 255, 255, 0.1);
+  --tag-fg: #00E5FF;
+  --nav-bg: #18181b;
+
+  --accent: #00FFFF;
+  --accent-hover: #0066FF;
+  --liquid-gradient: linear-gradient(135deg, #00FFFF 0%, #0066FF 60%, #a855f7 100%);
+
+  --btn-shadow: 0 2px 8px 0 rgba(0, 255, 255, 0.15);
+  --btn-shadow-hover: 0 4px 12px 0 rgba(0, 255, 255, 0.25);
+
+  /* Sheet surface */
+  --sheet-bg: #0E0E10;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --background: #050505;
+    --foreground: #FFFFFF;
+    --surface: rgba(28, 28, 30, 0.6);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --input-border: rgba(255, 255, 255, 0.18);
+    --inner-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    --shadow-color: rgba(0, 0, 0, 0.4);
+    --shadow-ambient: rgba(0, 0, 0, 0.25);
+    --noise-opacity: 0.15;
+
+    --text-muted: #8E8E93;
+    --text-subtle: #48484A;
+    --tag-bg: rgba(0, 255, 255, 0.1);
+    --tag-fg: #00E5FF;
+    --nav-bg: #18181b;
+
+    --accent: #00FFFF;
+    --accent-hover: #0066FF;
+    --liquid-gradient: linear-gradient(135deg, #00FFFF 0%, #0066FF 60%, #a855f7 100%);
+
+    --btn-shadow: 0 2px 8px 0 rgba(0, 255, 255, 0.15);
+    --btn-shadow-hover: 0 4px 12px 0 rgba(0, 255, 255, 0.25);
+
+    /* Sheet surface */
+    --sheet-bg: #0E0E10;
   }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* WOW FACTOR 1: Liquid Chrome Surfaces */
+.chrome-card {
+  background-color: var(--surface);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--border-color);
+  /* Two-layer shadow: crisp lift + wide ambient — mirrors dark's depth */
+  box-shadow:
+    0 1px 3px 0 var(--shadow-color),
+    0 8px 32px 0 var(--shadow-ambient),
+    var(--inner-bevel);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Noise removed for cleaner glass aesthetic */
+
+/* WOW FACTOR 2: Liquid Button */
+.liquid-button {
+  border-radius: var(--radius-btn);
+  background: var(--liquid-gradient);
+  background-size: 200% 200%;
+  color: #000000;
+  /* Always dark text for high contrast on accents */
+  font-weight: 700;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--btn-shadow);
+  padding: 0.5rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.liquid-button:hover {
+  background-position: 100% 50%;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--btn-shadow-hover);
+}
+
+.liquid-button:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* WOW FACTOR 3: Glitch Text (Chromatic Aberration) */
+.glitch-text {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.glitch-text:hover {
+  /* Glitch removed for clean aesthetic */
+}
+
+/* Force headings to use Space Grotesk */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* NEW 2026 BUTTON INTERACTIONS */
+.hyper-liquid {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-btn);
+  background: linear-gradient(110deg in oklab, var(--accent) 0%, var(--accent-hover) 28%, color-mix(in srgb, var(--accent-hover) 15%, white) 50%, var(--accent-hover) 72%, var(--accent) 100%);
+  background-size: 300% 100%;
+  background-position: 0% 50%;
+  color: #000000;
+  font-weight: 800;
+  border: none;
+  transition: background-position 0.6s ease-out, box-shadow 0.4s ease, transform 0.3s ease;
+  box-shadow: 0 0 5px 0 color-mix(in oklch, var(--accent) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+:root[data-theme="dark"] .hyper-liquid {
+  box-shadow: 0 0 5px 0 rgba(0, 255, 255, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hyper-liquid {
+    box-shadow: 0 0 5px 0 rgba(0, 255, 255, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+}
+
+.hyper-liquid:hover {
+  background-position: 100% 50%;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+  transform: scale(1.01);
+  box-shadow: 0 0 15px 0 var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+:root[data-theme="dark"] .hyper-liquid:hover {
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 0 15px 0 rgba(0, 255, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hyper-liquid:hover {
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 15px 0 rgba(0, 255, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+}
+
+.hyper-liquid:active {
+  transform: scale(0.98) !important;
+  filter: brightness(0.9);
+  box-shadow: 0 0 2px 0 var(--accent), inset 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.glass-spotlight {
+  position: relative;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklch, var(--surface) 95%, var(--accent) 5%);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  box-shadow: 0 0 10px 0 color-mix(in oklch, var(--accent) 15%, transparent);
+  border: 1px solid var(--border-color);
+  color: var(--foreground);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.glass-spotlight:hover {
+  box-shadow: 0 0 15px 0 color-mix(in oklch, var(--accent) 80%, transparent),
+    0 0 30px 0 color-mix(in oklch, var(--accent) 40%, transparent),
+    inset 0 0 20px 0 color-mix(in oklch, var(--accent) 20%, transparent);
+  border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+}
+
+.secondary-button {
+  background: color-mix(in oklch, var(--foreground) 5%, transparent);
+  color: var(--foreground);
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn);
+  transition: all 0.3s ease;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+.secondary-button:hover {
+  background: transparent;
+  border-color: color-mix(in oklch, var(--foreground) 20%, transparent);
+  box-shadow: none !important;
+}
+
+.tactile-glitch {
+  position: relative;
+  background: transparent;
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.tactile-glitch::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.tactile-glitch:hover {
+  color: var(--accent);
+}
+
+.tactile-glitch:hover::after {
+  width: 100%;
+}
+
+/* Subtle amber pulse for urgent warnings */
+@keyframes urgentPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-urgent-pulse {
+  animation: urgentPulse 2s ease-in-out infinite;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }

@@ -3,7 +3,8 @@ import { env } from './env.js';
 
 const allowedOrigins = env.ALLOWED_ORIGINS.map((o) => o.replace(/\/$/, ''));
 const allowAll = allowedOrigins.includes('*');
-
+//random commitx
+//random commits
 export const corsConfig = cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);

@@ -1,0 +1,31 @@
+# --- Tier 1: Secrets & Keys ---
+.env
+.env.local
+*.pem
+*.key
+credentials.json
+service-account-*.json
+
+# --- Tier 2: Dependencies & Caches ---
+node_modules/
+venv/
+.venv/
+.pytest_cache/
+__pycache__/
+
+# --- Tier 3: Build & Outputs ---
+build/
+dist/
+coverage/
+*.log
+*.so
+*.dat
+
+# --- Tier 4: Large Assets ---
+media/
+archive/
+
+
+docx/
+/apps/api
+docs/design-refs

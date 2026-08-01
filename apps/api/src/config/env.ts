@@ -32,6 +32,6 @@ process.env.SOCKET_PORT = process.env.SOCKET_PORT || '5000';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 process.env.ALLOWED_ORIGINS =
   process.env.ALLOWED_ORIGINS ||
-  'http://localhost:3000,https://stuflux.vercel.app';
+  'http://localhost:3000,http://127.0.0.1:3000,https://stuflux.vercel.app';
 
 export const env = validateEnv();
