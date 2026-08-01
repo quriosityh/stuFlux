@@ -1,6 +1,7 @@
 import { asyncHandler } from '../../infra/http/middleware/errorHandler.js';
 import { requireAuth, type AuthenticatedRequest, optionalAuth } from '../../infra/http/middleware/auth.js';
-import { createBooking, confirmBooking, rejectBooking, getBookings, getAvailability } from './service.js';
+import { createBooking, confirmBooking, rejectBooking, cancelBooking, completeBooking, getBookings, getAvailability } from './service.js';
+import { bookingsRepository } from './repository.js';
 import { Request, Response } from 'express';
 import { AppError } from '../../common/errors.js';
 
@@ -32,6 +33,26 @@ export const rejectBookingHandler = [
   }),
 ];
 
+export const cancelBookingHandler = [
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+    const booking = await cancelBooking(id, req.auth!.userId);
+    if (!booking) throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
+    res.json({ data: booking });
+  }),
+];
+
+export const completeBookingHandler = [
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+    const booking = await completeBooking(id, req.auth!.userId);
+    if (!booking) throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
+    res.json({ data: booking });
+  }),
+];
+
 export const listBookingsHandler = [
   requireAuth,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -41,6 +62,20 @@ export const listBookingsHandler = [
     const limit = req.query.limit ? Math.min(Number(req.query.limit), 200) : 50;
     const bookings = await getBookings(req.auth!.userId, role, status, listingId, limit);
     res.json({ data: bookings });
+  }),
+];
+
+export const getBookingByIdHandler = [
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+    const booking = await bookingsRepository.findById(id);
+    if (!booking) throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
+    if (booking.booking.renter_id !== req.auth!.userId && booking.booking.owner_id !== req.auth!.userId) {
+      // Do not disclose whether a booking exists to users outside the rental.
+      throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
+    }
+    res.json({ data: booking });
   }),
 ];
 

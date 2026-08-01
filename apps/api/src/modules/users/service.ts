@@ -49,12 +49,11 @@ export const ensureUserSynced = async (clerkUserId: string) => {
     `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() ||
     clerkUser.username ||
     clerkUser.emailAddresses[0]?.emailAddress ||
-    existing?.display_name ||
     DEFAULT_NAME;
 
-  const email = clerkUser.emailAddresses[0]?.emailAddress || existing?.email || null;
-  const avatar_url = clerkUser.imageUrl || existing?.avatar_url || null;
-  const area = (existing as any)?.area || DEFAULT_AREA;
+  const email = clerkUser.emailAddresses[0]?.emailAddress || null;
+  const avatar_url = clerkUser.imageUrl || null;
+  const area = DEFAULT_AREA;
 
   const user = await usersRepository.upsertFromClerk({
     clerk_user_id: clerkUserId,
@@ -72,7 +71,42 @@ export const ensureUserSynced = async (clerkUserId: string) => {
 };
 
 export const getProfile = async (dbUserId: string) => {
-  return usersRepository.findById(dbUserId);
+  const user = await usersRepository.findById(dbUserId);
+  if (!user) return null;
+
+  const [phoneVerified, stats] = await Promise.all([
+    usersRepository.isPhoneVerified(dbUserId),
+    usersRepository.getUserStats(dbUserId),
+  ]);
+
+  return {
+    ...user,
+    phone_verified: phoneVerified,
+    stats,
+  };
+};
+
+export const getPublicProfile = async (targetUserId: string) => {
+  const user = await usersRepository.findById(targetUserId);
+  if (!user) return null;
+
+  const [phoneVerified, stats] = await Promise.all([
+    usersRepository.isPhoneVerified(targetUserId),
+    usersRepository.getUserStats(targetUserId),
+  ]);
+
+  // Strip private metrics (total_earned, pending_earnings) for public view
+  const { total_earned, pending_earnings, ...publicStats } = stats;
+
+  return {
+    id: user.id,
+    display_name: user.display_name,
+    area: user.area,
+    avatar_url: user.avatar_url,
+    phone_verified: phoneVerified,
+    stats: publicStats,
+    created_at: user.created_at,
+  };
 };
 
 export const updateProfile = async (dbUserId: string, payload: UpdateProfileInput) => {

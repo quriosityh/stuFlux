@@ -103,7 +103,7 @@ export function NavHeader() {
   const navItems = [
     { name: 'Explore', href: '/' as const },
     { name: 'Chats', href: '/messages' as const },
-    { name: 'Activity', href: '/activity' as const },
+    { name: 'Activity', href: '/bookings' as const },
   ];
 
   // Check if PDP sticky nav wants to replace us

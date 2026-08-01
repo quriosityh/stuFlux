@@ -1,19 +1,25 @@
 import { db } from '../../infra/db/client.js';
-import { bookings, listings } from '../../../db/schema.js';
-import { and, eq, gte, lt, sql } from 'drizzle-orm';
+import { bookings, conversations, listings, listingPhotos, users } from '../../../db/schema.js';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { CreateBookingInput } from './validations.js';
 import type { BookingStatus } from './types.js';
+
+const renterUser = alias(users, 'renter_user');
+const ownerUser = alias(users, 'owner_user');
 
 export const bookingsRepository = {
   async checkConfirmedOverlap(listingId: string, start: Date, end: Date) {
     const [row] = await db
-      .select({ exists: sql<boolean>`EXISTS (
+      .select({
+        exists: sql<boolean>`EXISTS (
         SELECT 1 FROM ${bookings}
         WHERE ${bookings.listing_id} = ${listingId}
           AND ${bookings.status} = 'confirmed'
           AND ${bookings.start_date} < ${end}
           AND ${bookings.end_date} > ${start}
-      )` })
+      )`,
+      })
       .from(bookings);
     return !!row?.exists;
   },
@@ -47,7 +53,47 @@ export const bookingsRepository = {
   },
 
   async findById(id: string) {
-    const [row] = await db.select().from(bookings).where(eq(bookings.id, id));
+    const [row] = await db
+      .select({
+        booking: bookings,
+        listing: {
+          id: listings.id,
+          title: listings.title,
+          daily_rate: listings.daily_rate,
+          area: listings.area,
+          rental_rules: listings.rental_rules,
+          delivery_available: listings.delivery_available,
+          image: listingPhotos.url,
+        },
+        renter: {
+          id: renterUser.id,
+          display_name: renterUser.display_name,
+          avatar_url: renterUser.avatar_url,
+          email: renterUser.email,
+        },
+        owner: {
+          id: ownerUser.id,
+          display_name: ownerUser.display_name,
+          avatar_url: ownerUser.avatar_url,
+          email: ownerUser.email,
+        },
+        conversation_id: conversations.id,
+      })
+      .from(bookings)
+      .innerJoin(listings, eq(bookings.listing_id, listings.id))
+      .leftJoin(renterUser, eq(bookings.renter_id, renterUser.id))
+      .leftJoin(ownerUser, eq(bookings.owner_id, ownerUser.id))
+      .leftJoin(
+        listingPhotos,
+        and(
+          eq(listingPhotos.listing_id, bookings.listing_id),
+          eq(listingPhotos.is_primary, true),
+          isNull(listingPhotos.deleted_at)
+        )
+      )
+      .leftJoin(conversations, eq(conversations.booking_id, bookings.id))
+      .where(eq(bookings.id, id));
+
     return row ?? null;
   },
 
@@ -59,10 +105,52 @@ export const bookingsRepository = {
     if (listingId) {
       conditions.push(eq(bookings.listing_id, listingId));
     }
-    return db.select().from(bookings).where(and(...conditions)).orderBy(bookings.created_at).limit(limit);
+
+    return db
+      .select({
+        booking: bookings,
+        listing: {
+          id: listings.id,
+          title: listings.title,
+          daily_rate: listings.daily_rate,
+          area: listings.area,
+          rental_rules: listings.rental_rules,
+          delivery_available: listings.delivery_available,
+          image: listingPhotos.url,
+        },
+        renter: {
+          id: renterUser.id,
+          display_name: renterUser.display_name,
+          avatar_url: renterUser.avatar_url,
+          email: renterUser.email,
+        },
+        owner: {
+          id: ownerUser.id,
+          display_name: ownerUser.display_name,
+          avatar_url: ownerUser.avatar_url,
+          email: ownerUser.email,
+        },
+        conversation_id: conversations.id,
+      })
+      .from(bookings)
+      .innerJoin(listings, eq(bookings.listing_id, listings.id))
+      .leftJoin(renterUser, eq(bookings.renter_id, renterUser.id))
+      .leftJoin(ownerUser, eq(bookings.owner_id, ownerUser.id))
+      .leftJoin(
+        listingPhotos,
+        and(
+          eq(listingPhotos.listing_id, bookings.listing_id),
+          eq(listingPhotos.is_primary, true),
+          isNull(listingPhotos.deleted_at)
+        )
+      )
+      .leftJoin(conversations, eq(conversations.booking_id, bookings.id))
+      .where(and(...conditions))
+      .orderBy(desc(bookings.created_at))
+      .limit(limit);
   },
 
-  async updateStatus(id: string, status: BookingStatus, timestampColumn: 'confirmed_at' | 'rejected_at' | 'completed_at') {
+  async updateStatus(id: string, status: BookingStatus, timestampColumn: 'confirmed_at' | 'rejected_at' | 'cancelled_at' | 'completed_at') {
     const [row] = await db
       .update(bookings)
       .set({

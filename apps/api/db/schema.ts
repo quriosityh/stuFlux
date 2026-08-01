@@ -104,7 +104,7 @@ export const listingBlockedDates = pgTable("listing_blocked_dates", {
 });
 
 // ====================== BOOKINGS ======================
-export const bookingStatus = pgEnum('booking_status', ['pending', 'confirmed', 'rejected', 'completed']);
+export const bookingStatus = pgEnum('booking_status', ['pending', 'confirmed', 'rejected', 'completed', 'cancelled']);
 
 export const bookings = pgTable("bookings", {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -121,6 +121,7 @@ export const bookings = pgTable("bookings", {
     delivery_fee: integer("delivery_fee").default(0),
     confirmed_at: timestamp("confirmed_at", { withTimezone: true }),
     rejected_at: timestamp("rejected_at", { withTimezone: true }),
+    cancelled_at: timestamp("cancelled_at", { withTimezone: true }),
     completed_at: timestamp("completed_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
@@ -193,3 +194,5 @@ export const messages = pgTable("messages", {
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     deleted_at: timestamp("deleted_at", { withTimezone: true }),
 });
+
+export * from "../src/modules/reviews/schema.js";

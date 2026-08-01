@@ -62,6 +62,9 @@
   --btn-shadow-hover: 0 6px 24px 0 rgba(0, 91, 234, 0.38);
 
   --noise-opacity: 0.03;
+
+  /* Sheet surface — fully opaque so it covers content beneath */
+  --sheet-bg: #FFFFFF;
 }
 
 :root[data-theme="dark"] {
@@ -88,6 +91,9 @@
 
   --btn-shadow: 0 2px 8px 0 rgba(0, 255, 255, 0.15);
   --btn-shadow-hover: 0 4px 12px 0 rgba(0, 255, 255, 0.25);
+
+  /* Sheet surface */
+  --sheet-bg: #0E0E10;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -114,6 +120,9 @@
 
     --btn-shadow: 0 2px 8px 0 rgba(0, 255, 255, 0.15);
     --btn-shadow-hover: 0 4px 12px 0 rgba(0, 255, 255, 0.25);
+
+    /* Sheet surface */
+    --sheet-bg: #0E0E10;
   }
 }
 

@@ -1170,27 +1170,133 @@ Stays permanently docked on desktop (`xl` right sidebar) and slides up as a bott
 
 ---
 
-## 5. Profile Tab (`/profile`)
+## 5. Profile (`/profile`, `/users/[id]`)
 
-The **Identity and Reputation Hub**. Stores trust ratings, transaction history, and settings.
+The **Identity, Reputation, and Earnings Hub**. A student has one unified profile identity but two distinct marketplace reputations: one earned as a **Lender** (item quality, responsiveness, punctuality) and one earned as a **Renter** (care for gear, timely return). They are never merged into a single ambiguous rating.
 
-### Sections
-1.  **User Hero Card**: Avatar, display name, neighborhood (e.g., Gulberg, Lahore), tenure.
-2.  **Lender Stats Bar**:
-    *   *Total Earnings* (Private: only visible to self).
-    *   *Total Lent count* (Completed rentals as lender).
-    *   *Total Rented count* (Completed rentals as renter).
-    *   *Average Star Rating*.
-3.  **History Switcher**:
-    ```
-    ┌───────────────────────────┐
-    │  As Lender  │  As Renter  │
-    └───────────────────────────┘
-    ```
-    *   Displays full history of completed, reviewed transactions.
-    *   Visible to the public as a trust indicator (earnings amounts hidden).
-4.  **Reviews Feed**: Aggregated reviews received from other students on the platform.
-5.  **Settings Drawer** (Own view only): Profile edits, theme selection (Light/Dark mode), and logout.
+---
+
+### A. Own vs Public View Architecture
+
+To keep the Profile experience clean, fast, and student-focused:
+
+* **Unified Structure**: Shared hero header layout across both views so student identity feels consistent.
+* **Own Profile (`/profile` or `/me`)**: Unlocks private financial metrics, full rental history, received/given reviews, and settings.
+* **Public Profile (`/users/[id]`)**: Surfaces public trust signals (verified phone, tenure, role ratings, active storefront inventory, and published reviews). Strictly hides private financial totals, addresses, phone numbers, and booking ledgers.
+
+| Section / Data | Private Own View (`/profile`) | Public Counterpart View (`/users/[id]`) |
+| :--- | :---: | :---: |
+| Avatar, Display Name, Area badge, Tenure | ✅ | ✅ |
+| Phone Verified Badge (`📱 Phone Verified`) | ✅ | ✅ |
+| Dual Reputation Chips (`Lending` / `Renting` ratings) | ✅ | ✅ |
+| Primary CTA | `[ ✏️ Edit Profile ]` | `[ 💬 Message ]` *(Contextual)* |
+| Tab 1 | **`[ 💰 Earnings ]`** (Lender KPIs & monthly summary) | **`[ 📦 Listings ]`** (Active storefront items) |
+| Tab 2 | **`[ 📦 History ]`** (Full borrowed & lent records) | **`[ ⭐ Reviews ]`** (Public feedback feed) |
+| Tab 3 | **`[ ⭐ Reviews ]`** (Detailed reviews & filters) | *(Hidden)* |
+| Tab 4 | **`[ ⚙️ Settings ]`** (Edit profile, theme, auth) | *(Hidden)* |
+| Monetary amounts & earnings metrics | ✅ Visible | ❌ Hidden |
+
+---
+
+### B. Hero & Dual-Role Reputation Header
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [Avatar]  Hassan Ali                                    [ Edit Profile ]│
+│           📍 Gulberg, Lahore  ·  Member since Jun 2026                 │
+│           📱 Phone Verified                                             │
+│                                                                         │
+│  [ 🏠 Lending: ★ 4.9 (8 rentals) ]   [ 📦 Renting: ★ 4.8 (6 rentals) ]  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Identity & Trust Pills**:
+   - Avatar photo with initials fallback badge.
+   - Display Name + Area (`📍 Gulberg, Lahore`).
+   - Tenure (`Member since Jun 2026`).
+   - Verification status badge (`📱 Phone Verified`).
+2. **Dual-Role Reputation Chips**:
+   - **`[ 🏠 Lending: ★ 4.9 (8 rentals) ]`**: Calculated exclusively from reviews written by renters after completed bookings. Answers: *Can I trust this owner and their gear?*
+   - **`[ 📦 Renting: ★ 4.8 (6 rentals) ]`**: Calculated exclusively from reviews written by lenders after completed bookings. Answers: *Can I trust this student with my gear?*
+   - Tapping either chip filters the content on the active tab (e.g. switching the review feed or history perspective).
+   - If a student has zero completed rentals in a role, the chip displays `New to lending` or `New to renting` (never `0.0 ★`).
+
+---
+
+### C. Tab Contents Breakdown
+
+#### 1. Earnings Tab (`[ 💰 Earnings ]`) *(Own Profile Only)*
+
+Provides a clear financial overview for lenders calculated dynamically from existing `bookings` data (`owner_id = user.id`) without chart heavy dependencies.
+
+##### A. Top KPI Cards (3 Cards)
+```
+┌──────────────────────────┬──────────────────────────┬──────────────────────────┐
+│ Total Earned 💰          │ Pending / Active ⏳      │ Completed Lent 📦        │
+│ Rs. 24,500               │ Rs. 5,400                │ 8 rentals                │
+│ (All-time completed)     │ (Ongoing & confirmed)    │ (Lender transactions)    │
+└──────────────────────────┴──────────────────────────┴──────────────────────────┘
+```
+- **Total Earned**: `SUM(total_amount + delivery_fee)` for all `completed` bookings where `owner_id = user.id`. Security deposits are strictly excluded as they are refundable collateral.
+- **Pending / Active**: `SUM(total_amount + delivery_fee)` for `confirmed` or `ongoing` bookings awaiting completion.
+- **Completed Lent**: `COUNT(*)` of completed rentals as lender.
+
+##### B. Monthly Earnings Breakdown
+A simple, pure-CSS list grouped by month:
+- `July 2026`: **Rs. 14,500** · 4 rentals
+- `June 2026`: **Rs. 10,000** · 4 rentals
+
+##### C. No Transaction Redundancy
+To avoid duplicating the transaction list present in the History tab, the Earnings tab finishes with a direct link CTA:
+`[ View Full Rental History → ]` which seamlessly navigates to the **History Tab**.
+
+---
+
+#### 2. Public Storefront Tab (`[ 📦 Listings ]`) *(Public Profile Only)*
+
+Surfaces the student's active and available items for rent using standard `ListingCard` components:
+- Only listings with `status = 'active'` are shown. Draft, paused, or archived listings are hidden.
+- Visitors can tap any card to view specs or initiate a booking.
+- If the user has no active listings, displays a clean empty state: *"Hassan Ali has no active listings right now."*
+
+---
+
+#### 3. History Tab (`[ 📦 History ]`) *(Own Profile Only)*
+
+The unified ledger of past transactions with sub-toggles to keep borrowing and lending distinct:
+- **Sub-Toggle**: `[ Borrowed (Renter) ]` | `[ Lent Out (Lender) ]`
+- **Card UI**: Reuses the compact `BookingCard` component displaying item thumbnail, title, counterpart name, completed dates (`Jul 15–18, 2026`), and total amount spent/earned.
+
+---
+
+#### 4. Reviews Tab (`[ ⭐ Reviews ]`) *(Own & Public Profile)*
+
+- **Aggregate Rating Bar**: Displays average rating and total review count for the active role (e.g. `★ 4.9 / 5 · 8 reviews`).
+- **Role Filters**: `All` | `As Lender` | `As Renter`.
+- **Review Card**:
+  - Reviewer avatar + display name.
+  - Role tag (`Lender` or `Renter`).
+  - Star rating (1–5 stars) + creation date.
+  - Comment text (up to 500 characters).
+  - Item reference link (`Re: DSLR Camera Kit`).
+
+---
+
+#### 5. Settings Tab (`[ ⚙️ Settings ]`) *(Own Profile Only)*
+
+- **Profile Info**: Editable Display Name & Area selector (`PUT /me`).
+- **Trust & Phone**: Phone verification status & trigger.
+- **Preferences**: Light / Dark mode toggle.
+- **Account**: Sign Out CTA.
+
+---
+
+### D. Review & Trust Rules
+
+1. **Completed Bookings Only**: A review can only be created for a booking with `status = 'completed'`.
+2. **Role & Target Auto-Derivation**: The backend automatically derives `reviewer_id`, `target_id`, `listing_id`, and `role` (`as_lender` or `as_renter`) from the booking record.
+3. **Explicit Listing FK**: The `reviews` table stores `listing_id` directly to allow fast indexing and retrieval on Listing Detail Pages without nested joins.
+4. **Independent Role Ratings**: Lender ratings (evaluating owner/gear) and Renter ratings (evaluating borrower behavior) are stored and aggregated separately. Never combine them into a single score.
 
 ---
 
@@ -1215,4 +1321,3 @@ The **Identity and Reputation Hub**. Stores trust ratings, transaction history, 
 | **Embedded Booking Context in Chat** | Context panel alongside chat prevents back-and-forth context switching and provides instant phase action triggers. |
 | **Two-Tiered Inbox Filtering (Role + Phase)** | Allows users to quickly toggle between borrowing/lending and filter by specific deal status (inquiry, pending, confirmed, ongoing, completed). |
 | **System Event Cards in Chat** | Keeps deal milestones clear, transparent, and immutable directly in the conversation history stream. |
-
