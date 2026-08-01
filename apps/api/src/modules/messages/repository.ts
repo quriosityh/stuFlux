@@ -210,6 +210,8 @@ export const messagesRepository = {
           phase: derivePhase(conv.booking_status),
           last_message:  lastMsg ?? null,
           unread_count: Number(unreadCount ?? 0),
+          // Tells the client which role the requesting user has in this conversation
+          viewer_role: conv.renter_id === userId ? 'renter' : 'lender',
         };
       }),
     );

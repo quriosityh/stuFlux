@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../../infra/http/middleware/errorHandler.js';
 import { requireAuth, type AuthenticatedRequest } from '../../infra/http/middleware/auth.js';
-import { getProfile, updateProfile } from './service.js';
+import { getProfile, getPublicProfile, updateProfile } from './service.js';
 import { updateProfileSchema } from './validations.js';
 import { AppError } from '../../common/errors.js';
 
@@ -21,5 +21,15 @@ export const updateMe = [
     const updated = await updateProfile(req.auth!.userId, parsed);
     if (!updated) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     res.json({ data: updated });
+  }),
+];
+
+export const getUserById = [
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.params.id;
+    if (!userId) throw new AppError('User ID is required', 400, 'MISSING_USER_ID');
+    const user = await getPublicProfile(userId);
+    if (!user) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+    res.json({ data: user });
   }),
 ];

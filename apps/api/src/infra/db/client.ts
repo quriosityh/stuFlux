@@ -72,7 +72,7 @@ pool.on('remove', () => {
   }
 });
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && process.env.SKIP_INITIAL_DB_CHECK !== 'true') {
   testConnection().then(success => {
     if (!success) {
       console.warn('⚠️  Initial database connection test failed');
