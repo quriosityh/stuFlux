@@ -17,8 +17,11 @@ export function ContextBookingDetails({ conversation }: { conversation: Conversa
     );
   }
 
-  // Calculate days for mock
-  const days = 3; 
+  const start = rentalPeriod?.startDate ? new Date(rentalPeriod.startDate) : null;
+  const end = rentalPeriod?.endDate ? new Date(rentalPeriod.endDate) : null;
+  const days = start && end
+    ? Math.max(0, Math.round((end.getTime() - start.getTime()) / 86_400_000))
+    : 0;
   const total = dailyRate * days;
 
   return (
@@ -31,7 +34,7 @@ export function ContextBookingDetails({ conversation }: { conversation: Conversa
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
           <span className="text-xs opacity-60">Dates</span>
-          <span className="font-bold text-sm">{rentalPeriod?.startDate} → {rentalPeriod?.endDate}</span>
+          <span className="font-bold text-sm">{rentalPeriod?.startDate ?? '—'} → {rentalPeriod?.endDate ?? '—'}</span>
         </div>
         <div className="flex flex-col items-end">
           <span className="text-xs opacity-60">Duration</span>

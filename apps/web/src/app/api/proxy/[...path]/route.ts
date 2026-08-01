@@ -10,15 +10,15 @@ async function forwardRequest(req: NextRequest, path: string[]) {
   const { getToken } = await auth();
   const token = await getToken();
 
-  if (!token) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
   const targetUrl = new URL(`${API_BASE_URL}/${path.map((segment) => encodeURIComponent(segment)).join('/')}`);
   targetUrl.search = req.nextUrl.search;
 
   const headers = new Headers(req.headers);
-  headers.set('Authorization', `Bearer ${token}`);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  } else {
+    headers.delete('Authorization');
+  }
   headers.delete('host');
   headers.delete('connection');
   headers.delete('content-length');

@@ -105,7 +105,6 @@ export const bookingsRepository = {
     if (listingId) {
       conditions.push(eq(bookings.listing_id, listingId));
     }
-
     return db
       .select({
         booking: bookings,

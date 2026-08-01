@@ -1,157 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, ShoppingBag, Package } from 'lucide-react';
 import type { ActivityBooking } from './types';
 import RentingTab from './RentingTab';
 import LendingTab from './LendingTab';
 import { useApiClient } from '@/lib/api-client';
-
-const INITIAL_RENTING: ActivityBooking[] = [
-  {
-    id: '1',
-    listing_id: 'l1',
-    renter_id: 'me',
-    owner_id: 'u1',
-    start_date: new Date(Date.now() - 86400000 * 2).toISOString(), // Active
-    end_date: new Date(Date.now() + 86400000 * 3).toISOString(),
-    total_days: 5,
-    total_amount: 15000,
-    status: 'confirmed',
-    message: null,
-    created_at: new Date(Date.now() - 86400000 * 4).toISOString(),
-    listing: { title: 'Sony Alpha A7III Camera Body', daily_rate: 3000, city: 'Lahore' },
-    listing_photo: { url: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=500' },
-    renter: { display_name: 'Me', avatar_url: null },
-    owner: { display_name: 'Ali Khan', avatar_url: null },
-  },
-  {
-    id: '2',
-    listing_id: 'l2',
-    renter_id: 'me',
-    owner_id: 'u2',
-    start_date: new Date(Date.now() + 86400000 * 5).toISOString(), // Upcoming
-    end_date: new Date(Date.now() + 86400000 * 7).toISOString(),
-    total_days: 2,
-    total_amount: 4000,
-    status: 'confirmed',
-    message: null,
-    created_at: new Date().toISOString(),
-    listing: { title: 'Camping Tent 4-Person', daily_rate: 2000, city: 'Islamabad' },
-    listing_photo: { url: 'https://images.unsplash.com/photo-1504280390467-333065a8813a?auto=format&fit=crop&q=80&w=500' },
-    renter: { display_name: 'Me', avatar_url: null },
-    owner: { display_name: 'Zahra', avatar_url: null },
-  },
-  {
-    id: '3',
-    listing_id: 'l3',
-    renter_id: 'me',
-    owner_id: 'u3',
-    start_date: new Date(Date.now() - 86400000 * 10).toISOString(), // Completed
-    end_date: new Date(Date.now() - 86400000 * 8).toISOString(),
-    total_days: 2,
-    total_amount: 6000,
-    status: 'completed',
-    message: null,
-    created_at: new Date(Date.now() - 86400000 * 12).toISOString(),
-    listing: { title: 'DJI Mavic Air 2 Drone', daily_rate: 3000, city: 'Karachi' },
-    listing_photo: { url: 'https://images.unsplash.com/photo-1507582020474-9a35b7d455d9?auto=format&fit=crop&q=80&w=500' },
-    renter: { display_name: 'Me', avatar_url: null },
-    owner: { display_name: 'Usman', avatar_url: null },
-  },
-  {
-    id: '6',
-    listing_id: 'l6',
-    renter_id: 'me',
-    owner_id: 'u6',
-    start_date: new Date(Date.now() + 86400000 * 3).toISOString(), // Pending request from renter
-    end_date: new Date(Date.now() + 86400000 * 5).toISOString(),
-    total_days: 2,
-    total_amount: 5000,
-    status: 'pending',
-    message: 'Can I rent this for my school project?',
-    created_at: new Date().toISOString(),
-    listing: { title: 'Sony FE 50mm f/1.8 Lens', daily_rate: 2500, city: 'Lahore' },
-    listing_photo: null,
-    renter: { display_name: 'Me', avatar_url: null },
-    owner: { display_name: 'Kashif', avatar_url: null },
-  }
-];
-
-const INITIAL_LENDING: ActivityBooking[] = [
-  {
-    id: '4',
-    listing_id: 'l4',
-    renter_id: 'u4',
-    owner_id: 'me',
-    start_date: new Date(Date.now() + 86400000 * 1).toISOString(), // Pending request
-    end_date: new Date(Date.now() + 86400000 * 3).toISOString(),
-    total_days: 2,
-    total_amount: 8000,
-    status: 'pending',
-    message: 'Hi, I need this for a weekend project. Will take good care of it!',
-    created_at: new Date(Date.now() - 86400000 * 0.2).toISOString(), // created ~4.8h ago
-    listing: { title: 'MacBook Pro M2 (2023)', daily_rate: 4000, city: 'Lahore' },
-    listing_photo: { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&q=80&w=500' },
-    renter: { display_name: 'Bilal', avatar_url: null },
-    owner: { display_name: 'Me', avatar_url: null },
-  },
-  {
-    id: '5',
-    listing_id: 'l5',
-    renter_id: 'u5',
-    owner_id: 'me',
-    start_date: new Date(Date.now() - 86400000 * 1).toISOString(), // Active
-    end_date: new Date(Date.now() + 86400000 * 1).toISOString(), // 1 day remaining
-    total_days: 2,
-    total_amount: 3000,
-    status: 'confirmed',
-    message: null,
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-    listing: { title: 'Nintendo Switch OLED', daily_rate: 1500, city: 'Lahore' },
-    listing_photo: { url: 'https://images.unsplash.com/photo-1610444319307-5fa965fcc96d?auto=format&fit=crop&q=80&w=500' },
-    renter: { display_name: 'Sara', avatar_url: null },
-    owner: { display_name: 'Me', avatar_url: null },
-  },
-  {
-    id: '7',
-    listing_id: 'l1',
-    renter_id: 'u1',
-    owner_id: 'me',
-    start_date: new Date(Date.now() - 86400000 * 60).toISOString(), // Completed
-    end_date: new Date(Date.now() - 86400000 * 55).toISOString(),
-    total_days: 5,
-    total_amount: 15000,
-    status: 'completed',
-    message: null,
-    created_at: new Date(Date.now() - 86400000 * 62).toISOString(),
-    listing: { title: 'Sony Alpha A7III Camera Body', daily_rate: 3000, city: 'Lahore' },
-    listing_photo: { url: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=500' },
-    renter: { display_name: 'Ali Khan', avatar_url: null },
-    owner: { display_name: 'Me', avatar_url: null },
-  },
-  {
-    id: '8',
-    listing_id: 'l3',
-    renter_id: 'u3',
-    owner_id: 'me',
-    start_date: new Date(Date.now() - 86400000 * 30).toISOString(), // Completed
-    end_date: new Date(Date.now() - 86400000 * 27).toISOString(),
-    total_days: 3,
-    total_amount: 9000,
-    status: 'completed',
-    message: null,
-    created_at: new Date(Date.now() - 86400000 * 32).toISOString(),
-    listing: { title: 'DJI Mavic Air 2 Drone', daily_rate: 3000, city: 'Karachi' },
-    listing_photo: { url: 'https://images.unsplash.com/photo-1507582020474-9a35b7d455d9?auto=format&fit=crop&q=80&w=500' },
-    renter: { display_name: 'Usman', avatar_url: null },
-    owner: { display_name: 'Me', avatar_url: null },
-  }
-];
-
-// Session-level mutable copy of mock data
-let mockRentingStore = [...INITIAL_RENTING];
-let mockLendingStore = [...INITIAL_LENDING];
 
 export default function ActivityClient() {
   const [activeTab, setActiveTab] = useState<'renting' | 'lending'>('renting');
@@ -161,46 +15,24 @@ export default function ActivityClient() {
   const [error, setError] = useState<string | null>(null);
   const api = useApiClient();
 
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Try to fetch from real API first
       const rentingRes = await api.get('bookings?role=renter').json<{ data: ActivityBooking[] }>();
       const lendingRes = await api.get('bookings?role=owner').json<{ data: ActivityBooking[] }>();
-
-      // If we got empty arrays from API but we want mock data for testing/demo when DB is empty:
-      if (rentingRes.data.length === 0 && lendingRes.data.length === 0) {
-        setRentingBookings(mockRentingStore);
-        setLendingBookings(mockLendingStore);
-      } else {
-        setRentingBookings(rentingRes.data);
-        setLendingBookings(lendingRes.data);
-      }
+      setRentingBookings(rentingRes.data ?? []);
+      setLendingBookings(lendingRes.data ?? []);
     } catch (e) {
-      console.warn('API error, falling back to mock data:', e);
-      // Fallback to session mock store
-      setRentingBookings(mockRentingStore);
-      setLendingBookings(mockLendingStore);
+      setError('Could not load your booking activity. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [api]);
 
   useEffect(() => {
     fetchBookings();
-  }, []);
-
-  const handleBookingAction = (id: string, action: 'confirm' | 'reject') => {
-    // Update local store to support immediate visual update in mock mode
-    mockLendingStore = mockLendingStore.map(b =>
-      b.id === id ? { ...b, status: action === 'confirm' ? 'confirmed' : 'rejected' } : b
-    );
-    mockRentingStore = mockRentingStore.map(b =>
-      b.id === id ? { ...b, status: action === 'confirm' ? 'confirmed' : 'rejected' } : b
-    );
-    fetchBookings();
-  };
+  }, [fetchBookings]);
 
   const pendingCount = lendingBookings.filter(b => b.status === 'pending').length;
 
@@ -254,9 +86,9 @@ export default function ActivityClient() {
       ) : (
         <div>
           {activeTab === 'renting' ? (
-            <RentingTab bookings={rentingBookings} onBookingUpdated={fetchBookings} onLocalAction={handleBookingAction} />
+            <RentingTab bookings={rentingBookings} onBookingUpdated={fetchBookings} />
           ) : (
-            <LendingTab bookings={lendingBookings} onBookingUpdated={fetchBookings} onLocalAction={handleBookingAction} />
+            <LendingTab bookings={lendingBookings} onBookingUpdated={fetchBookings} />
           )}
         </div>
       )}

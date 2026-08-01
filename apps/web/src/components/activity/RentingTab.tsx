@@ -5,17 +5,16 @@ import { isFuture } from 'date-fns';
 import type { ActivityBooking } from './types';
 import BookingCard, { getDisplayStatus } from './BookingCard';
 import BookingSection from './BookingSection';
-import { IconReceipt, IconStar, IconX, IconMessage } from '@tabler/icons-react';
+import { IconX } from '@tabler/icons-react';
 import { Loader2 } from 'lucide-react';
 import { useApiClient } from '@/lib/api-client';
 
 interface RentingTabProps {
   bookings: ActivityBooking[];
   onBookingUpdated: () => void;
-  onLocalAction: (id: string, action: 'confirm' | 'reject') => void;
 }
 
-export default function RentingTab({ bookings, onBookingUpdated, onLocalAction }: RentingTabProps) {
+export default function RentingTab({ bookings, onBookingUpdated }: RentingTabProps) {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const api = useApiClient();
 
@@ -45,12 +44,11 @@ export default function RentingTab({ bookings, onBookingUpdated, onLocalAction }
 
     try {
       setCancellingId(id);
-      await api.patch(`bookings/${id}/reject`);
-      onLocalAction(id, 'reject');
+      await api.patch(`bookings/${id}/cancel`);
       alert(`Rental request for "${title}" cancelled successfully.`);
-    } catch (err) {
-      onLocalAction(id, 'reject');
-      alert(`Rental request for "${title}" simulated cancellation.`);
+      onBookingUpdated();
+    } catch {
+      alert('Could not cancel this rental request. Please try again.');
     } finally {
       setCancellingId(null);
     }
@@ -95,10 +93,6 @@ export default function RentingTab({ bookings, onBookingUpdated, onLocalAction }
                     <IconX className="w-3.5 h-3.5" stroke={1.5} />
                   )}
                   Cancel Request
-                </button>
-                <button className="flex items-center gap-1.5 px-[14px] py-[6px] rounded-lg text-[12px] font-bold border border-border/80 bg-surface/60 text-foreground/80 hover:text-foreground hover:bg-foreground/5 active:scale-95 transition-all">
-                  <IconMessage className="w-3.5 h-3.5" stroke={1.5} />
-                  Message Host
                 </button>
               </div>
             }
@@ -165,18 +159,6 @@ export default function RentingTab({ bookings, onBookingUpdated, onLocalAction }
             key={b.id}
             booking={b}
             role="renter"
-            footer={
-              <div className="flex items-center gap-2 mt-1">
-                <button className="flex items-center gap-1.5 px-[14px] py-[6px] rounded-lg text-[12px] font-bold bg-foreground text-background hover:bg-foreground/90 active:scale-95 transition-all">
-                  <IconStar className="w-3.5 h-3.5" stroke={1.5} />
-                  Leave review
-                </button>
-                <button className="flex items-center gap-1.5 px-[14px] py-[6px] rounded-lg text-[12px] font-bold border border-border/80 bg-surface/60 text-foreground/80 hover:text-foreground hover:bg-foreground/5 active:scale-95 transition-all">
-                  <IconReceipt className="w-3.5 h-3.5" stroke={1.5} />
-                  Receipt
-                </button>
-              </div>
-            }
           />
         ))}
       </BookingSection>

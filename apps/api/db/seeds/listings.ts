@@ -1,6 +1,17 @@
 import { eq, inArray } from 'drizzle-orm';
 import { db } from '../../src/infra/db/client.js';
-import { listingPhotos, listings } from '../schema.js';
+import { categories, listingPhotos, listings } from '../schema.js';
+
+const CATEGORY_SLUGS = [
+  'power-energy',
+  'tools-home-fix',
+  'cameras-creators',
+  'music-audio',
+  'clothing-fashion',
+  'hosting-party',
+  'bikes-boards',
+  'travel-outdoors',
+] as const;
 
 const listingImages = [
   'https://images.unsplash.com/photo-1581094794329-c8112a89af12',
@@ -56,16 +67,30 @@ const listingsSeed = [
 ] satisfies (typeof listings.$inferInsert & { slug: string })[];
 
 export async function seedListings(ownerIds: string[]) {
+  const seededCategories = await db
+    .select({ id: categories.id, slug: categories.slug })
+    .from(categories);
+  const categoryIdsBySlug = new Map(seededCategories.map((category) => [category.slug, category.id]));
+
   const existingListings = await db
     .select({ title: listings.title })
     .from(listings)
     .where(inArray(listings.title, listingsSeed.map((listing) => listing.title)));
   const existingTitles = new Set(existingListings.map((listing) => listing.title));
   const missingListings = listingsSeed
-    .map(({ slug: _slug, owner_id: _ownerId, ...listing }, index) => ({
-      ...listing,
-      owner_id: ownerIds[index % ownerIds.length],
-    }))
+    .map(({ slug: _slug, owner_id: _ownerId, category_id, ...listing }, index) => {
+      const categorySlug = CATEGORY_SLUGS[category_id - 1];
+      const resolvedCategoryId = categorySlug ? categoryIdsBySlug.get(categorySlug) : undefined;
+      if (!resolvedCategoryId) {
+        throw new Error(`Missing seeded category for listing: ${listing.title}`);
+      }
+
+      return {
+        ...listing,
+        category_id: resolvedCategoryId,
+        owner_id: ownerIds[index % ownerIds.length],
+      };
+    })
     .filter((listing) => !existingTitles.has(listing.title));
   if (missingListings.length) await db.insert(listings).values(missingListings);
 

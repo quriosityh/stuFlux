@@ -78,7 +78,7 @@ export const createBooking = async (payload: unknown, renterId: string) => {
 
   const startStr  = booking.start_date;
   const endStr    = booking.end_date;
-  const totalRs   = Math.round(totalAmount / 100).toLocaleString('en-PK');
+  const totalRs   = totalAmount.toLocaleString('en-PK');
   const systemMsg = `📋 Booking request submitted · ${startStr} – ${endStr} · Rs. ${totalRs}`;
   await messagesRepository.addMessage(conversation!.id, renterId, systemMsg);
   // ────────────────────────────────────────────────────────────────────────
@@ -276,8 +276,8 @@ export const completeBooking = async (bookingId: string, userId: string) => {
   if (booking.status !== 'confirmed') {
     throw new AppError('Only confirmed bookings can be completed', 400, 'INVALID_BOOKING_STATE');
   }
-
   const updated = await bookingsRepository.updateStatus(bookingId, 'completed', 'completed_at');
+  return updated;
   return updated;
 };
 

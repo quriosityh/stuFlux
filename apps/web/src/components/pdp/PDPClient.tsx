@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { useApiClient } from '@/lib/api-client';
 import { useAuth } from '@clerk/nextjs';
@@ -12,8 +12,6 @@ import { LenderSnapshot } from './LenderSnapshot';
 import { ItemHighlights } from './ItemHighlights';
 import { Description } from './Description';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
-import { ReviewsSection } from './ReviewsSection';
-import { LenderProfile } from './LenderProfile';
 import { BookingCard } from './BookingCard';
 import { PDPStickyNav } from './PDPStickyNav';
 import { PDPMobileNav } from './PDPMobileNav';
@@ -31,7 +29,6 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
-  const reviewsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -67,7 +64,7 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
       setBookingSuccess(true);
     } catch (e: any) {
       const msg = e?.response ? await e.response.json().catch(() => null) : null;
-      setBookingError(msg?.message ?? 'Failed to request booking. Please try again.');
+      setBookingError(msg?.error?.message ?? msg?.message ?? 'Failed to request booking. Please try again.');
     } finally {
       setBookingLoading(false);
     }
@@ -114,8 +111,6 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
             <ListingMeta 
               title={listing.title}
               city={listing.area ?? listing.city} 
-              reviewCount={7}
-              rating={3.9}
             />
 
             <LenderSnapshot owner={listing.owner} />
@@ -209,13 +204,6 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
           </div>
 
         </div>
-
-        {/* FULL-WIDTH SECTIONS BELOW THE TWO-COLUMN LAYOUT */}
-        <div ref={reviewsRef}>
-          <ReviewsSection />
-        </div>
-
-        <LenderProfile owner={listing.owner} />
 
       </div>
     </>

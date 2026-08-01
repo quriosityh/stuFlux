@@ -52,7 +52,6 @@ export const completeBookingHandler = [
     res.json({ data: booking });
   }),
 ];
-
 export const listBookingsHandler = [
   requireAuth,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
