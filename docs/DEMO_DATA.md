@@ -14,14 +14,14 @@ For sign-in accounts, run this once against a **development Clerk instance**:
 npm --prefix apps/api run db:seed:accounts
 ```
 
-This provisions the fixture users in Clerk and relinks the existing database rows so their rentals, inboxes, profiles, and reviews appear after sign-in. The command is deliberately blocked in production. It uses `StuFluxDemo2026!` by default; set `DEMO_ACCOUNT_PASSWORD` to replace it.
+This provisions the fixture users in Clerk and relinks the existing database rows so their rentals, inboxes, profiles, and reviews appear after sign-in. The command is deliberately blocked in production. It uses `Stufluxpass00*` by default; set `DEMO_ACCOUNT_PASSWORD` to replace it.
 
 The most useful evaluator accounts are:
 
 | Account | Email | Why use it |
 | --- | --- | --- |
-| Ayesha Khan | `ayesha@stuflux.demo` | Active lender with a busy inbox, a pending generator request, completed rentals, and reviews. |
-| Hamza Ahmed | `hamza@stuflux.demo` | Both rents and lends; useful for comparing both booking tabs. |
-| Mahnoor Ali | `mahnoor@stuflux.demo` | Active renter with confirmed, pending, and historic transactions. |
+| Ayesha Khan | `ayesha@stuflux-demo.com` | Active lender with a busy inbox, a pending generator request, completed rentals, and reviews. |
+| Hamza Ahmed | `hamza@stuflux-demo.com` | Both rents and lends; useful for comparing both booking tabs. |
+| Mahnoor Ali | `mahnoor@stuflux-demo.com` | Active renter with confirmed, pending, and historic transactions. |
 
 Listing photographs use fixed, curated Unsplash image URLs instead of a random-image endpoint, so the same product presentation stays consistent between evaluations.

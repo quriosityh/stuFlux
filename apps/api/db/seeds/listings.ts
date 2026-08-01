@@ -82,15 +82,13 @@ export async function seedListings(ownerIds: string[]) {
 
   // Existing projects may still have the original random picsum fixtures.
   // Replace only those known fixture URLs; never overwrite a user's uploaded photo.
-  await Promise.all(existingPhotos
-    .filter((photo) => photo.url.includes('picsum.photos'))
-    .map((photo) => {
-      const listing = seededListings.find((item) => item.id === photo.listing_id)!;
-      const index = listingsSeed.findIndex((seed) => seed.title === listing.title) % listingImages.length;
-      return db.update(listingPhotos)
-        .set({ url: imageUrl(listingImages[index], 1200 - (photo.position ?? 0) * 160), thumbnail_url: imageUrl(listingImages[index], 480) })
-        .where(eq(listingPhotos.id, photo.id));
-    }));
+  for (const photo of existingPhotos.filter((item) => item.url.includes('picsum.photos'))) {
+    const listing = seededListings.find((item) => item.id === photo.listing_id)!;
+    const index = listingsSeed.findIndex((seed) => seed.title === listing.title) % listingImages.length;
+    await db.update(listingPhotos)
+      .set({ url: imageUrl(listingImages[index], 1200 - (photo.position ?? 0) * 160), thumbnail_url: imageUrl(listingImages[index], 480) })
+      .where(eq(listingPhotos.id, photo.id));
+  }
 
   const photos = seededListings.flatMap((listing) => {
     if (listingIdsWithPhotos.has(listing.id)) return [];

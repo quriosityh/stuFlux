@@ -9,6 +9,7 @@ import {
     serial,
     pgEnum,
     date,
+    uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // ====================== USERS ======================
@@ -195,4 +196,28 @@ export const messages = pgTable("messages", {
     deleted_at: timestamp("deleted_at", { withTimezone: true }),
 });
 
-export * from "../src/modules/reviews/schema.js";
+// ====================== REVIEWS ======================
+// Kept in the database schema so Drizzle Kit can load it directly.
+export const reviewRoleEnum = pgEnum('review_role', ['as_lender', 'as_renter']);
+
+export const reviews = pgTable(
+    'reviews',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        bookingId: uuid('booking_id').notNull().references(() => bookings.id, { onDelete: 'cascade' }),
+        listingId: uuid('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }),
+        reviewerId: uuid('reviewer_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+        targetId: uuid('target_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+        role: reviewRoleEnum('role').notNull(),
+        rating: integer('rating').notNull(),
+        categoryRatings: jsonb('category_ratings').$type<Record<string, number>>().default({}).notNull(),
+        comment: text('comment'),
+        anonymous: boolean('anonymous').default(false).notNull(),
+        createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+        deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    },
+    (table) => ({
+        uniqueBookingReviewer: uniqueIndex('uniq_booking_reviewer').on(table.bookingId, table.reviewerId),
+    }),
+);
