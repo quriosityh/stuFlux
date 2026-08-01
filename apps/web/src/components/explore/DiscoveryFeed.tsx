@@ -5,10 +5,10 @@ import apiClient from '@/lib/api-client';
 import { CategoryCarousel } from './CategoryCarousel';
 
 const SECTIONS = [
-  { title: '📷 Cameras & Lenses', slug: 'cameras', categoryId: 1 },
+  { title: '📷 Cameras & Lenses', slug: 'cameras', categoryId: 3 },
   { title: '🔧 Tools & Equipment', slug: 'tools', categoryId: 2 },
-  { title: '🎸 Musical Instruments', slug: 'music', categoryId: 3 },
-  { title: '🚲 Rides & Vehicles', slug: 'vehicles', categoryId: 4 },
+  { title: '🎸 Musical Instruments', slug: 'music', categoryId: 4 },
+  { title: '🚲 Rides & Vehicles', slug: 'vehicles', categoryId: 7 },
 ];
 
 export function DiscoveryFeed() {

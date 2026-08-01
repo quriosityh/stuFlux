@@ -70,23 +70,22 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="font-display text-lg font-semibold text-[var(--foreground)]">Edit profile</h2>
-          <p className="mt-1 text-sm text-[var(--foreground)]/50">Fine-tune how your profile appears to other students.</p>
-        </div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-display text-lg font-bold text-[var(--foreground)]">Edit Profile</h2>
         <button
           onClick={onCancel}
-          className="flex h-9 w-9 items-center justify-center rounded-2xl text-[var(--foreground)]/40 transition-all hover:bg-[var(--foreground)]/5 hover:text-[var(--foreground)]"
+          className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--foreground)]/40 hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition-all"
         >
           <X size={16} />
         </button>
       </div>
 
       <div className="flex flex-col gap-6">
+        {/* Display Name */}
         <div className="flex flex-col gap-2">
-          <label className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[var(--foreground)]/40">
-            Display name
+          <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--foreground)]/40 font-display">
+            Display Name
           </label>
           <input
             id="edit-display-name"
@@ -94,42 +93,49 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
             value={displayName}
             onChange={e => setDisplayName(e.target.value)}
             placeholder="Your name"
-            className="w-full rounded-2xl border border-[var(--border-color)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--foreground)] placeholder-[var(--foreground)]/25 transition-all focus:border-[var(--accent)]/60 focus:outline-none"
+            className="w-full bg-[var(--background)] border border-[var(--border-color)] text-[var(--foreground)] placeholder-[var(--foreground)]/25 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[var(--accent)]/60 transition-all"
           />
         </div>
 
+        {/* Area Selection */}
         <div className="flex flex-col gap-2">
-          <label className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[var(--foreground)]/40">
-            Your area in Lahore
+          <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--foreground)]/40 font-display">
+            Your Area in Lahore
           </label>
 
+          {/* Selected pill */}
           {selectedAreaLabel && (
-            <div className="mb-1 flex items-center gap-2">
-              <span className="flex items-center gap-1.5 rounded-full border border-[var(--accent)]/20 bg-[var(--accent)]/8 px-3 py-1 text-sm font-semibold text-[var(--accent)]">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--accent)] bg-[var(--accent)]/8 px-3 py-1 rounded-full border border-[var(--accent)]/20">
                 <MapPin size={12} />
                 {selectedAreaLabel}
               </span>
-              <button onClick={() => setSelectedArea('')} className="text-xs text-[var(--foreground)]/40 transition-colors hover:text-[var(--foreground)]">
+              <button
+                onClick={() => setSelectedArea('')}
+                className="text-xs text-[var(--foreground)]/40 hover:text-[var(--foreground)] transition-colors"
+              >
                 Clear
               </button>
             </div>
           )}
 
+          {/* Search input */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--foreground)]/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground)]/30" />
             <input
               id="edit-area-search"
               type="text"
               value={areaSearch}
               onChange={e => setAreaSearch(e.target.value)}
               placeholder="Search area…"
-              className="w-full rounded-2xl border border-[var(--border-color)] bg-[var(--background)] pl-9 pr-4 py-2.5 text-sm text-[var(--foreground)] placeholder-[var(--foreground)]/25 transition-all focus:border-[var(--accent)]/60 focus:outline-none"
+              className="w-full bg-[var(--background)] border border-[var(--border-color)] text-[var(--foreground)] placeholder-[var(--foreground)]/25 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)]/60 transition-all"
             />
           </div>
 
-          <div className="flex max-h-52 flex-col overflow-y-auto rounded-2xl border border-[var(--border-color)]/50 divide-y divide-[var(--border-color)]/30 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border-color)]">
+          {/* Area list */}
+          <div className="flex flex-col divide-y divide-[var(--border-color)]/30 overflow-y-auto max-h-48 rounded-xl border border-[var(--border-color)]/40 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-[var(--border-color)] [&::-webkit-scrollbar-thumb]:rounded-full">
             {filteredAreas.length === 0 ? (
-              <div className="py-6 text-center text-sm text-[var(--foreground)]/30">
+              <div className="text-center text-[var(--foreground)]/30 text-sm py-6">
                 No areas found for &ldquo;{areaSearch}&rdquo;
               </div>
             ) : (
@@ -143,12 +149,12 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
                     className={`flex items-center gap-3 px-4 py-2.5 text-left transition-colors duration-150 ${
                       isSelected
                         ? 'bg-[var(--accent)]/8 text-[var(--foreground)]'
-                        : 'text-[var(--foreground)]/70 hover:bg-[var(--surface)]/60'
+                        : 'hover:bg-[var(--surface)]/60 text-[var(--foreground)]/70'
                     }`}
                   >
-                    <MapPin className={`h-3.5 w-3.5 flex-shrink-0 ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]/25'}`} />
-                    <span className="flex-1 text-sm font-medium">{area.name}</span>
-                    {isSelected && <Check className="h-3.5 w-3.5 flex-shrink-0 text-[var(--accent)]" />}
+                    <MapPin className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]/25'}`} />
+                    <span className="text-sm font-medium flex-1">{area.name}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-[var(--accent)] flex-shrink-0" />}
                   </button>
                 );
               })
@@ -156,24 +162,29 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
           </div>
         </div>
 
+        {/* Error */}
         {error && (
-          <p className="rounded-2xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-400">
+          <p className="text-sm text-red-400 bg-red-400/8 border border-red-400/20 rounded-xl px-4 py-3">
             {error}
           </p>
         )}
 
+        {/* Actions */}
         <div className="flex gap-3 pt-1">
-          <button onClick={onCancel} className="flex-1 rounded-2xl border border-[var(--border-color)] py-2.5 text-sm font-semibold text-[var(--foreground)]/60 transition-colors hover:text-[var(--foreground)]">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl border border-[var(--border-color)] text-sm font-semibold text-[var(--foreground)]/60 hover:text-[var(--foreground)] transition-colors"
+          >
             Cancel
           </button>
           <button
             id="save-profile-btn"
             onClick={handleSave}
             disabled={saving || !isDirty}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--accent)] py-2.5 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl hyper-liquid text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </div>
