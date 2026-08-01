@@ -194,3 +194,5 @@ export const messages = pgTable("messages", {
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     deleted_at: timestamp("deleted_at", { withTimezone: true }),
 });
+
+export * from "../src/modules/reviews/schema.js";

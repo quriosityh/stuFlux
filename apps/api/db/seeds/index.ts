@@ -1,7 +1,9 @@
 import { closePool } from '../../src/infra/db/client.js';
 import { seedBookings } from './bookings.js';
 import { seedCategories } from './categories.js';
+import { seedConversations, seedInquiryConversations } from './conversations.js';
 import { seedListings } from './listings.js';
+import { seedReviews } from './reviews.js';
 import { seedUsers } from './users.js';
 
 async function main() {
@@ -21,6 +23,11 @@ async function main() {
       })),
     );
     console.log(`✅ ${seededBookings.length} demo bookings seeded`);
+    const seededConversations = await seedConversations(seededBookings);
+    await seedInquiryConversations(seededUsers.map((user) => user.id), seededListings.map((listing) => listing.id));
+    console.log(`✅ ${seededConversations.length + 1} demo conversations seeded`);
+    const seededReviews = await seedReviews(seededBookings);
+    console.log(`✅ ${seededReviews.length} demo reviews seeded`);
   } catch (err) {
     console.error('❌ Seed failed', err);
     process.exitCode = 1;

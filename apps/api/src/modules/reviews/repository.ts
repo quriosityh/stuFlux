@@ -2,7 +2,7 @@ import { db } from '../../infra/db/client.js';
 import { reviews, bookings, listings, users } from '../../../db/schema.js';
 import { eq, and, isNull, desc, asc, sql, inArray } from 'drizzle-orm';
 import type { NewReview, Review } from './schema.js';
-import type { GetReviewsQuery } from './validations.js';
+import type { GetReviewsQuery } from './validation.js';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
 
 // Constants
@@ -138,7 +138,7 @@ export const updateAnonymityStatus = async (bookingId: string, tx: any = db): Pr
 
   // Case 1: Both parties have reviewed - reveal immediately
   if (bookingReviews.length === 2) {
-    const reviewIds = bookingReviews.map(r => r.id);
+    const reviewIds = bookingReviews.map((r: any) => r.id);
     await tx.update(reviews)
       .set({ anonymous: false, updatedAt: new Date() })
       .where(inArray(reviews.id, reviewIds)); // ✅ SAFE: Using inArray instead of string interpolation
@@ -181,7 +181,7 @@ export const getListingReviews = async (query: GetReviewsQuery) => {
   const whereClause = and(
     eq(reviews.listingId, query.listingId!),
     isNull(reviews.deletedAt),
-    query.reviewerType ? eq(reviews.reviewerType, query.reviewerType) : sql`TRUE`,
+    query.role && query.role !== 'all' ? eq(reviews.role, query.role as any) : sql`TRUE`,
     query.category ? sql`${reviews.categoryRatings}->>${query.category} IS NOT NULL` : sql`TRUE`
   );
 
@@ -191,9 +191,10 @@ export const getListingReviews = async (query: GetReviewsQuery) => {
       rating: reviews.rating,
       categoryRatings: reviews.categoryRatings,
       comment: reviews.comment,
-      reviewerType: reviews.reviewerType,
+      role: reviews.role,
       anonymous: reviews.anonymous,
       reviewerId: reviews.reviewerId,
+      targetId: reviews.targetId,
       createdAt: reviews.createdAt,
     })
     .from(reviews)
@@ -213,27 +214,27 @@ export const getListingReviews = async (query: GetReviewsQuery) => {
     })
     .from(reviews)
     .where(whereClause)
-    .get();
+    .then(rows => rows[0]);
 
   return {
     reviews: reviewRows,
     pagination: { page, limit, total: Number(statsRow?.total || 0) },
     ratings: {
-      average: parseFloat(statsRow?.avgRating?.toFixed(1) || '0'),
+      average: parseFloat(statsRow?.avgRating ? Number(statsRow.avgRating).toFixed(1) : '0'),
       category: {
-        cleanliness: parseFloat(statsRow?.avgCleanliness?.toFixed(1) || '0'),
-        communication: parseFloat(statsRow?.avgCommunication?.toFixed(1) || '0'),
-        accuracy: parseFloat(statsRow?.avgAccuracy?.toFixed(1) || '0'),
-        value: parseFloat(statsRow?.avgValue?.toFixed(1) || '0'),
+        cleanliness: parseFloat(statsRow?.avgCleanliness ? Number(statsRow.avgCleanliness).toFixed(1) : '0'),
+        communication: parseFloat(statsRow?.avgCommunication ? Number(statsRow.avgCommunication).toFixed(1) : '0'),
+        accuracy: parseFloat(statsRow?.avgAccuracy ? Number(statsRow.avgAccuracy).toFixed(1) : '0'),
+        value: parseFloat(statsRow?.avgValue ? Number(statsRow.avgValue).toFixed(1) : '0'),
       },
     },
   };
 };
 
 /**
- * Get paginated owner reviews across all their listings
+ * Get paginated user reviews (received as lender or renter)
  */
-export const getOwnerReviews = async (query: GetReviewsQuery) => {
+export const getUserReviews = async (query: GetReviewsQuery) => {
   const page = query.page || 1;
   const limit = query.limit || 10;
   const offset = (page - 1) * limit;
@@ -250,11 +251,12 @@ export const getOwnerReviews = async (query: GetReviewsQuery) => {
       orderBy = desc(reviews.createdAt);
   }
 
+  const targetId = query.targetId || query.ownerId;
+
   const whereClause = and(
-    eq(reviews.ownerId, query.ownerId!),
+    eq(reviews.targetId, targetId!),
     isNull(reviews.deletedAt),
-    query.reviewerType ? eq(reviews.reviewerType, query.reviewerType) : sql`TRUE`,
-    query.category ? sql`${reviews.categoryRatings}->>${query.category} IS NOT NULL` : sql`TRUE`
+    query.role ? eq(reviews.role, query.role as any) : sql`TRUE`
   );
 
   const reviewRows = await db
@@ -263,9 +265,10 @@ export const getOwnerReviews = async (query: GetReviewsQuery) => {
       rating: reviews.rating,
       categoryRatings: reviews.categoryRatings,
       comment: reviews.comment,
-      reviewerType: reviews.reviewerType,
+      role: reviews.role,
       anonymous: reviews.anonymous,
       reviewerId: reviews.reviewerId,
+      targetId: reviews.targetId,
       createdAt: reviews.createdAt,
     })
     .from(reviews)
@@ -278,26 +281,16 @@ export const getOwnerReviews = async (query: GetReviewsQuery) => {
     .select({
       total: sql<number>`count(*)`,
       avgRating: sql<number>`avg(${reviews.rating}::numeric)`,
-      avgCleanliness: sql<number>`avg((${reviews.categoryRatings}->>'cleanliness')::numeric)`,
-      avgCommunication: sql<number>`avg((${reviews.categoryRatings}->>'communication')::numeric)`,
-      avgAccuracy: sql<number>`avg((${reviews.categoryRatings}->>'accuracy')::numeric)`,
-      avgValue: sql<number>`avg((${reviews.categoryRatings}->>'value')::numeric)`,
     })
     .from(reviews)
     .where(whereClause)
-    .get();
+    .then(rows => rows[0]);
 
   return {
     reviews: reviewRows,
     pagination: { page, limit, total: Number(statsRow?.total || 0) },
     ratings: {
-      average: parseFloat(statsRow?.avgRating?.toFixed(1) || '0'),
-      category: {
-        cleanliness: parseFloat(statsRow?.avgCleanliness?.toFixed(1) || '0'),
-        communication: parseFloat(statsRow?.avgCommunication?.toFixed(1) || '0'),
-        accuracy: parseFloat(statsRow?.avgAccuracy?.toFixed(1) || '0'),
-        value: parseFloat(statsRow?.avgValue?.toFixed(1) || '0'),
-      },
+      average: parseFloat(statsRow?.avgRating ? Number(statsRow.avgRating).toFixed(1) : '0'),
     },
   };
 };

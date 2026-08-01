@@ -56,8 +56,9 @@ These endpoints are mounted at root level (e.g., `/api/v1/me`).
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/me` | 🔒 Required | Get the current user's profile |
+| GET | `/me` | 🔒 Required | Get the current user's profile and private stats |
 | PUT | `/me` | 🔒 Required | Update the current user's profile |
+| GET | `/users/:id` | Optional | Get public user profile, trust signals, and role stats |
 
 ### GET `/me`
 **Response:**
@@ -69,6 +70,18 @@ These endpoints are mounted at root level (e.g., `/api/v1/me`).
     "email": "user@example.com",
     "display_name": "John Doe",
     "area": "Gulberg",
+    "avatar_url": "https://res.cloudinary.com/.../avatar.jpg",
+    "phone_verified": true,
+    "stats": {
+      "total_earned": 2450000,
+      "pending_earnings": 540000,
+      "completed_lent": 8,
+      "completed_borrowed": 6,
+      "lender_rating_avg": 4.9,
+      "lender_rating_count": 8,
+      "renter_rating_avg": 4.8,
+      "renter_rating_count": 6
+    },
     "created_at": "2026-06-30T10:00:00.000Z",
     "updated_at": "2026-07-13T11:30:00.000Z"
   }
@@ -86,6 +99,31 @@ These endpoints are mounted at root level (e.g., `/api/v1/me`).
 *Note: Both fields are optional (minimum 2, maximum 100 characters).*
 
 **Response:** Same profile structure as `GET /me` wrapped in a `data` object.
+
+### GET `/users/:id`
+Retrieves public identity, trust indicators, and dual-role reputation for another student. Strictly excludes earnings, phone number, and private transaction records.
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "d0a80101-5678-1234-abcd-8765432109ba",
+    "display_name": "Hassan Ali",
+    "area": "Gulberg",
+    "avatar_url": "https://res.cloudinary.com/.../hassan.jpg",
+    "phone_verified": true,
+    "stats": {
+      "completed_lent": 8,
+      "completed_borrowed": 6,
+      "lender_rating_avg": 4.9,
+      "lender_rating_count": 8,
+      "renter_rating_avg": 4.8,
+      "renter_rating_count": 6
+    },
+    "created_at": "2026-06-01T10:00:00.000Z"
+  }
+}
+```
 
 ---
 
@@ -529,6 +567,114 @@ Marks all received messages in the conversation as read.
 Soft-deletes a message (marks `deleted_at`).
 
 **Response:** `{ "data": MessageObject }`
+
+---
+
+## Reviews
+
+Mounted at `/api/v1/reviews` and user/listing resources.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/reviews` | 🔒 Required | Submit a review for a completed booking |
+| GET | `/users/:id/reviews` | Optional | Get reviews received by a user (with role filter) |
+| GET | `/listings/:id/reviews` | Optional | Get reviews for a specific listing (item ratings) |
+
+### Database Schema (`reviews` Table)
+
+```typescript
+export const reviews = pgTable("reviews", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  booking_id: uuid("booking_id")
+    .notNull()
+    .references(() => bookings.id, { onDelete: "cascade" }),
+  listing_id: uuid("listing_id")
+    .notNull()
+    .references(() => listings.id, { onDelete: "cascade" }),
+  reviewer_id: uuid("reviewer_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  target_id: uuid("target_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  role: text("role", { enum: ["as_lender", "as_renter"] }).notNull(),
+  rating: integer("rating").notNull(), // 1 to 5
+  comment: text("comment"), // max 500 chars
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+```
+
+### POST `/reviews`
+Submits a review for a `completed` booking. The backend verifies that the authenticated user was either the lender or renter of the booking, that the booking is completed, and auto-populates `listing_id`, `reviewer_id`, `target_id`, and `role` (`"as_lender"` if renter rating the host, `"as_renter"` if host rating the borrower).
+
+**Request Body:**
+```json
+{
+  "booking_id": "f0a80303-1234-5678-abcd-1234567890ef",
+  "rating": 5,
+  "comment": "Camera was in pristine condition! Smooth handoff and very responsive."
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "r0a80909-1234-5678-abcd-1234567890ef",
+    "booking_id": "f0a80303-1234-5678-abcd-1234567890ef",
+    "listing_id": "e0a80202-5678-1234-abcd-9876543210fe",
+    "reviewer_id": "c0a80101-1234-5678-abcd-1234567890ab",
+    "target_id": "d0a80101-5678-1234-abcd-8765432109ba",
+    "role": "as_lender",
+    "rating": 5,
+    "comment": "Camera was in pristine condition! Smooth handoff and very responsive.",
+    "created_at": "2026-07-19T14:00:00.000Z"
+  }
+}
+```
+
+### GET `/users/:id/reviews`
+Retrieves reviews received by a user.
+
+**Query Parameters:**
+- `role` — `"all" | "as_lender" | "as_renter"` (default: `"all"`).
+- `page` — Number (default: `1`).
+- `limit` — Number (default: `20`).
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "r0a80909-1234-5678-abcd-1234567890ef",
+      "rating": 5,
+      "comment": "Camera was in pristine condition!",
+      "role": "as_lender",
+      "created_at": "2026-07-19T14:00:00.000Z",
+      "reviewer": {
+        "id": "c0a80101-1234-5678-abcd-1234567890ab",
+        "display_name": "Ali Raza",
+        "avatar_url": "https://res.cloudinary.com/.../ali.jpg"
+      },
+      "listing": {
+        "id": "e0a80202-5678-1234-abcd-9876543210fe",
+        "title": "DSLR Camera Kit"
+      }
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+### GET `/listings/:id/reviews`
+Retrieves reviews specifically for an item listing (renter reviews of owner/gear).
+
+**Response:** `{ "data": [ ReviewObject, ... ] }`
 
 ---
 

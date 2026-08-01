@@ -12,10 +12,7 @@ import {
 import { relations } from 'drizzle-orm';
 import { bookings, listings, users } from '../../../db/schema.js';
 
-/**
- * ENUM for reviewer type (DB-level safety)
- */
-export const reviewerTypeEnum = pgEnum('reviewer_type', ['renter', 'owner']);
+export const reviewRoleEnum = pgEnum('review_role', ['as_lender', 'as_renter']);
 
 export const reviews = pgTable(
   'reviews',
@@ -30,15 +27,15 @@ export const reviews = pgTable(
       .notNull()
       .references(() => listings.id, { onDelete: 'cascade' }),
 
-    ownerId: uuid('owner_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-
     reviewerId: uuid('reviewer_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
 
-    reviewerType: reviewerTypeEnum('reviewer_type').notNull(),
+    targetId: uuid('target_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    role: reviewRoleEnum('role').notNull(),
 
     rating: integer('rating').notNull(),
 
@@ -49,7 +46,7 @@ export const reviews = pgTable(
 
     comment: text('comment'),
 
-    anonymous: boolean('anonymous').default(true).notNull(),
+    anonymous: boolean('anonymous').default(false).notNull(),
 
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
@@ -85,8 +82,8 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
     references: [listings.id],
   }),
 
-  owner: one(users, {
-    fields: [reviews.ownerId],
+  target: one(users, {
+    fields: [reviews.targetId],
     references: [users.id],
   }),
 
