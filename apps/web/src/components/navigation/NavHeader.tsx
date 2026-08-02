@@ -100,10 +100,10 @@ export function NavHeader() {
   // Expand if we are at top of explore page OR if a search tab is actively open
   const isExpanded = (isExplorePage && !isScrolled) || activeTab !== null;
 
-  const navItems = [
-    { name: 'Explore', href: '/' as const },
-    { name: 'Chats', href: '/messages' as const },
-    { name: 'Activity', href: '/bookings' as const },
+  const navItems: { name: string; href: string }[] = [
+    { name: 'Explore', href: '/' },
+    { name: 'Chats', href: '/messages' },
+    { name: 'Activity', href: '/bookings' },
   ];
 
   // Check if PDP sticky nav wants to replace us
@@ -167,7 +167,7 @@ export function NavHeader() {
                     return (
                       <Link 
                         key={item.name} 
-                        href={item.href}
+                        href={item.href as any}
                         className={cn(
                           "relative px-1 py-2 transition-colors glitch-text",
                           isActive ? "text-[var(--accent)]" : "text-foreground/70 hover:text-foreground"

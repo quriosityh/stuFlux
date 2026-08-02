@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApiClient } from '@/lib/api-client';
 import { AreaSelector } from '@/components/shared/AreaSelector';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { ShieldCheck, User, MapPin, Phone } from 'lucide-react';
 import { Profile } from '@/components/profile/ProfileClient';
 import { useUser } from '@clerk/nextjs';
@@ -92,7 +92,8 @@ export function OnboardingFlow() {
       setPhoneState('pending');
     } catch (err: any) {
       console.error('Error sending code', err);
-      setPhoneError(err.errors?.[0]?.message || 'Failed to send verification code.');
+      const errorMessage = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message || 'Failed to send verification code. Please check the number format.';
+      setPhoneError(errorMessage);
       setPhoneState('idle');
     }
   };
@@ -249,7 +250,7 @@ export function OnboardingFlow() {
           )}
           <Button 
             onClick={handleNext} 
-            disabled={(step === 1 && !displayName.trim()) || saving}
+            disabled={(step === 1 && !displayName.trim()) || (step === 3 && !(profile?.phone_verified || hasClerkVerifiedPhone)) || saving}
             className="flex-[2]"
           >
             {saving && step === 3 ? "Saving..." : (step === 3 ? "Complete Setup" : "Continue")}

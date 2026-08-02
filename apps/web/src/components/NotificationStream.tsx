@@ -1,7 +1,7 @@
 'use client';
 
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { useEffect } from 'react';
 
 export type InAppNotification =
   | {
@@ -36,95 +36,166 @@ export type InAppNotification =
       preview: string;
     };
 
-function urlBase64ToArrayBuffer(base64String: string): ArrayBuffer {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  const buffer = new ArrayBuffer(rawData.length);
-  const bytes = new Uint8Array(buffer);
-  for (let index = 0; index < rawData.length; index += 1) {
-    bytes[index] = rawData.charCodeAt(index);
-  }
-  return buffer;
+export interface NotificationItem {
+  id: string;
+  notification: InAppNotification;
+  timestamp: Date;
+  read: boolean;
+}
+
+// Global store so any component can subscribe
+type Listener = (item: NotificationItem) => void;
+const listeners = new Set<Listener>();
+export function subscribeToNotifications(fn: Listener) {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+function broadcast(item: NotificationItem) {
+  listeners.forEach((fn) => fn(item));
+}
+
+function urlBase64ToUint8Array(base64: string) {
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
 /**
- * Keeps the authenticated user's notification SSE stream open. Consumers can
- * subscribe to `stuflux:notification` until a dedicated notification store or
- * toast system is introduced.
+ * Mounts once in the layout (inside <SignedIn>).
+ * - Opens an SSE stream to /api/proxy/notifications/stream (proxied to backend)
+ * - Subscribes to Web Push
+ * - Broadcasts all events to the global notification store
  */
 export function NotificationStream() {
   const { isSignedIn, getToken } = useAuth();
 
+  // ── SSE ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isSignedIn) return;
 
-    const eventSource = new EventSource('/api/notifications/stream');
-    eventSource.onmessage = (message) => {
-      try {
-        const notification = JSON.parse(message.data) as InAppNotification;
-        window.dispatchEvent(
-          new CustomEvent<InAppNotification>('stuflux:notification', { detail: notification }),
-        );
-      } catch {
-        // Ignore malformed events without interrupting EventSource reconnects.
-      }
+    let es: EventSource | null = null;
+    let retryTimeout: ReturnType<typeof setTimeout>;
+
+    const connect = async () => {
+      // Pass Clerk JWT in the URL (SSE cannot set headers)
+      const token = await getToken();
+      if (!token) return;
+
+      es = new EventSource(`/api/proxy/notifications/stream?token=${token}`);
+
+      es.onmessage = (e) => {
+        try {
+          const notification = JSON.parse(e.data) as InAppNotification;
+          const item: NotificationItem = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            notification,
+            timestamp: new Date(),
+            read: false,
+          };
+          broadcast(item);
+          // Also fire the legacy CustomEvent for any other listeners
+          window.dispatchEvent(
+            new CustomEvent<InAppNotification>('stuflux:notification', { detail: notification }),
+          );
+        } catch {
+          // ignore malformed frames
+        }
+      };
+
+      es.onerror = () => {
+        es?.close();
+        // Simple exponential back-off reconnect
+        retryTimeout = setTimeout(connect, 5000);
+      };
     };
 
-    return () => eventSource.close();
-  }, [isSignedIn]);
+    void connect();
 
+    return () => {
+      clearTimeout(retryTimeout);
+      es?.close();
+    };
+  }, [isSignedIn, getToken]);
+
+  // ── Web Push ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isSignedIn || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (!isSignedIn) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!publicKey) return;
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidKey) return;
 
     let cancelled = false;
 
-    const subscribeToPush = async () => {
+    const subscribe = async () => {
       try {
-        const registration = await navigator.serviceWorker.register('/sw.js');
+        const reg = await navigator.serviceWorker.register('/sw.js');
         const permission = await Notification.requestPermission();
         if (permission !== 'granted' || cancelled) return;
 
-        const subscription =
-          (await registration.pushManager.getSubscription()) ??
-          (await registration.pushManager.subscribe({
+        const existing = await reg.pushManager.getSubscription();
+        const sub =
+          existing ??
+          (await reg.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToArrayBuffer(publicKey),
+            applicationServerKey: urlBase64ToUint8Array(vapidKey),
           }));
+
         const token = await getToken();
         if (!token || cancelled) return;
 
-        const p256dh = subscription.getKey('p256dh');
-        const auth = subscription.getKey('auth');
+        const p256dh = sub.getKey('p256dh');
+        const auth = sub.getKey('auth');
         if (!p256dh || !auth) return;
 
         await fetch('/api/proxy/push/subscribe', {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            endpoint: subscription.endpoint,
+            endpoint: sub.endpoint,
             keys: {
               p256dh: btoa(String.fromCharCode(...new Uint8Array(p256dh))),
               auth: btoa(String.fromCharCode(...new Uint8Array(auth))),
             },
           }),
         });
-      } catch (error) {
-        console.error('[push] Unable to subscribe:', error);
+      } catch (err) {
+        console.error('[push] subscribe error:', err);
       }
     };
 
-    void subscribeToPush();
+    void subscribe();
     return () => {
       cancelled = true;
     };
-  }, [getToken, isSignedIn]);
+  }, [isSignedIn, getToken]);
 
   return null;
+}
+
+/**
+ * Hook that returns the in-app notification inbox.
+ * Works anywhere inside the app — no context provider needed.
+ */
+export function useNotifications() {
+  const [items, setItems] = useState<NotificationItem[]>([]);
+
+  useEffect(() => {
+    return subscribeToNotifications((item) => {
+      setItems((prev) => [item, ...prev].slice(0, 50)); // cap at 50
+    });
+  }, []);
+
+  const markRead = useCallback((id: string) => {
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  }, []);
+
+  const markAllRead = useCallback(() => {
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
+  const unreadCount = items.filter((n) => !n.read).length;
+
+  return { items, unreadCount, markRead, markAllRead };
 }

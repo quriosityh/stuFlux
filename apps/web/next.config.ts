@@ -3,15 +3,14 @@ const nextConfig = {
   // ✅ Allow native Node modules in Server Components (e.g., 'pg')
   serverExternalPackages: ['pg'],
 
-  // ✅ Type-safe routing (Next.js 14+)
-  typedRoutes: false,
-
   // ✅ Enable React Compiler (Next.js 15+)
   reactCompiler: true,
 
   experimental: {
     // ✅ Optimize imports for popular libraries
     optimizePackageImports: ['lucide-react', 'clsx', 'react-hook-form'],
+    // ✅ Disable typed routes to allow plain string hrefs
+    typedRoutes: false,
   },
 
   // ✅ Proxy API calls through Next.js to avoid CORS in development

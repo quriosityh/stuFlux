@@ -4,6 +4,7 @@ import { Space_Grotesk, Manrope } from 'next/font/google'
 import './globals.css'
 import { Navigation } from '@/components/navigation/Navigation'
 import { NotificationStream } from '@/components/NotificationStream'
+import { GlobalNotificationToasts } from '@/components/GlobalNotificationToasts'
 
 const spaceGrotesk = Space_Grotesk({ 
   subsets: ['latin'],
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </SignedOut>
           <SignedIn>
             <NotificationStream />
+            <GlobalNotificationToasts />
             <main className="flex-1 relative z-0 flex flex-col">{children}</main>
           </SignedIn>
           <BottomSpacer />

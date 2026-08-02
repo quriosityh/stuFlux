@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Compass, Send, Plus, Activity, UserRound } from 'lucide-react';
@@ -8,12 +9,12 @@ import { cn } from '@/lib/utils';
 export function MobileNav() {
   const pathname = usePathname();
 
-  const navItems = [
-    { name: 'Discover', href: '/' as const, icon: Compass },
-    { name: 'DMs', href: '/messages' as const, icon: Send },
-    { name: 'Drop', href: '/listings/new' as const, icon: Plus, isDrop: true },
-    { name: 'Activity', href: '/bookings' as const, icon: Activity },
-    { name: 'You', href: '/profile' as const, icon: UserRound },
+  const navItems: { name: string; href: string; icon: React.ElementType; isDrop?: boolean }[] = [
+    { name: 'Discover', href: '/', icon: Compass },
+    { name: 'DMs', href: '/messages', icon: Send },
+    { name: 'Drop', href: '/listings/new', icon: Plus, isDrop: true },
+    { name: 'Activity', href: '/bookings', icon: Activity },
+    { name: 'You', href: '/profile', icon: UserRound },
   ];
 
   const activeIndex = navItems.findIndex(item => pathname === item.href);
@@ -55,7 +56,7 @@ export function MobileNav() {
           return (
             <Link
               key={item.name}
-              href={item.href}
+              href={item.href as any}
               className={cn(
                 "flex flex-col items-center relative transition-all duration-200 w-12",
                 isActive

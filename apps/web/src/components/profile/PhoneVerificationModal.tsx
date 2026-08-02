@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useApiClient } from '@/lib/api-client';
 import { Phone, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 
 type Props = {
   onSuccess: () => void;
@@ -50,7 +50,8 @@ export function PhoneVerificationModal({ onSuccess, onCancel }: Props) {
       setPhoneState('pending');
     } catch (err: any) {
       console.error('Error sending code', err);
-      setPhoneError(err.errors?.[0]?.message || 'Failed to send verification code.');
+      const errorMessage = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message || 'Failed to send verification code. Please check the number format.';
+      setPhoneError(errorMessage);
       setPhoneState('idle');
     }
   };
