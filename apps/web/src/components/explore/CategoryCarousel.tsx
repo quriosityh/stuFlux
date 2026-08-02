@@ -10,6 +10,7 @@ interface CategoryCarouselProps {
   title: string;
   categorySlug: string;
   items: any[]; // We'll refine this type later
+  href?: string;
 }
 
 const containerVariants = {
@@ -36,8 +37,9 @@ const itemVariants = {
   },
 };
 
-export function CategoryCarousel({ title, categorySlug, items }: CategoryCarouselProps) {
+export function CategoryCarousel({ title, categorySlug, items, href }: CategoryCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const targetHref = href ?? (categorySlug === 'all' ? '/?view=results' : `/?category=${categorySlug}`);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -51,7 +53,7 @@ export function CategoryCarousel({ title, categorySlug, items }: CategoryCarouse
       {/* Header */}
       <div className="flex items-center justify-between mb-3 sm:mb-4">
         <Link 
-          href={`/?category=${categorySlug}`} 
+          href={targetHref} 
           className="group/link flex items-center gap-2"
         >
           <h2 className="font-syne text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tighter hover:opacity-80 transition-opacity py-1 leading-normal">
@@ -95,7 +97,7 @@ export function CategoryCarousel({ title, categorySlug, items }: CategoryCarouse
         {/* See All Card */}
         <motion.div variants={itemVariants} className="snap-start shrink-0 w-[calc(50%-6px)] sm:w-[calc(50%-8px)] md:w-[calc(20%-13px)]">
           <Link 
-            href={`/?category=${categorySlug}`}
+            href={targetHref}
             className="w-full h-full min-h-[220px] rounded-2xl border-2 border-dashed border-border/15 bg-transparent flex flex-col items-center justify-center gap-4 hover:border-[var(--accent)]/50 hover:bg-[var(--accent)]/5 hover:shadow-sm transition-all duration-300 group/card cursor-pointer"
           >
             <div className="w-14 h-14 rounded-full bg-surface border border-border/10 shadow-sm flex items-center justify-center group-hover/card:bg-[var(--accent)] group-hover/card:text-black group-hover/card:scale-110 group-hover/card:border-[var(--accent)] transition-all duration-300">

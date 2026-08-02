@@ -31,6 +31,7 @@ function ExploreContent() {
   // Read URL search params
   const search = searchParams.get('q') || '';
   const category = searchParams.get('category') || 'all';
+  const view = searchParams.get('view') || '';
   const requestedSort = searchParams.get('sort');
   const sort: ListingSort =
     requestedSort === 'rate_asc' ||
@@ -77,7 +78,7 @@ function ExploreContent() {
     Boolean(endDate) ||
     Boolean(area);
 
-  const mode = isFiltering ? 'search' : 'discovery';
+  const mode = isFiltering || view === 'results' ? 'search' : 'discovery';
 
   // Helper to update URL search parameters
   const updateUrlParams = useCallback(
@@ -181,7 +182,7 @@ function ExploreContent() {
         <CategoryStrip activeCategory={category} onCategoryChange={setCategory} />
       )}
 
-      <main className="w-[92%] sm:w-[90%] md:w-[86%] max-w-[1600px] mx-auto pt-3 sm:pt-4 md:pt-5 pb-12 sm:pb-14">
+      <main className="w-[92%] sm:w-[90%] md:w-[86%] max-w-[1600px] mx-auto pt-1 sm:pt-2 md:pt-3 pb-12 sm:pb-14">
         {mode === 'discovery' ? (
           <div className="space-y-10 sm:space-y-12">
             <DiscoveryFeed />
@@ -231,14 +232,6 @@ function ExploreContent() {
                       <span className="text-xs sm:text-sm font-semibold text-foreground/60 bg-surface px-3 py-1 rounded-full border border-border/15">
                         {total === 1 ? '1 item' : `${total} items`}
                       </span>
-                      {activeFilterCount > 0 && (
-                        <button
-                          onClick={handleClearAll}
-                          className="text-xs font-semibold text-[var(--accent)] hover:underline sm:ml-auto"
-                        >
-                          Reset filters
-                        </button>
-                      )}
                     </div>
                     <p className="mx-auto max-w-3xl text-sm leading-relaxed text-foreground/65 sm:mx-0 sm:text-base">
                       {activeCategoryMeta.description}

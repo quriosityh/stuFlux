@@ -156,12 +156,12 @@ export function DiscoveryFeed() {
     <div className="space-y-8 sm:space-y-10 lg:space-y-12">
       {/* 🔥 Trending */}
       {trending.length > 0 && (
-        <CategoryCarousel title="🔥 Trending" categorySlug="all" items={trending} />
+        <CategoryCarousel title="🔥 Trending" categorySlug="all" href="/?view=results" items={trending} />
       )}
 
       {/* ✨ New Arrivals */}
       {newArrivals.length > 0 && (
-        <CategoryCarousel title="✨ New Arrivals" categorySlug="all" items={newArrivals} />
+        <CategoryCarousel title="✨ New Arrivals" categorySlug="all" href="/?view=results&sort=newest" items={newArrivals} />
       )}
 
       {/* Lazy-Loaded Per-Category Carousels */}

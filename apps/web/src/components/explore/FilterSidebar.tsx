@@ -65,7 +65,7 @@ export function FilterSidebar({
     }
   };
 
-  const FilterContent = () => (
+  const filterContent = (
     <div className="space-y-6">
       {/* Sidebar Header & Reset */}
       <div className="flex items-center justify-between pb-3 border-b border-border/10">
@@ -191,7 +191,7 @@ export function FilterSidebar({
     <>
       {/* Desktop Sleek Unboxed Sidebar with Vertical Divider */}
       <aside className="hidden md:block w-56 shrink-0 sticky top-[110px] self-start pr-6 border-r border-border/10">
-        <FilterContent />
+        {filterContent}
       </aside>
 
       {/* Mobile Sticky Filter Bar */}
@@ -255,7 +255,7 @@ export function FilterSidebar({
 
               {/* Sheet Body */}
               <div className="p-6 overflow-y-auto flex-1 pb-24">
-                <FilterContent />
+                {filterContent}
               </div>
 
               {/* Sheet Footer CTA */}
