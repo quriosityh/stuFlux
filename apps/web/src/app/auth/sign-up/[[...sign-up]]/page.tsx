@@ -12,7 +12,7 @@ export default function SignUpPage() {
             Start renting and earning today
           </p>
         </div>
-        <SignUp fallbackRedirectUrl="/messages" routing="path" path="/auth/sign-up" signInUrl="/auth/sign-in" />
+        <SignUp fallbackRedirectUrl="/onboarding" routing="path" path="/auth/sign-up" signInUrl="/auth/sign-in" />
       </div>
     </div>
   );

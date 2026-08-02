@@ -112,3 +112,7 @@ export const getPublicProfile = async (targetUserId: string) => {
 export const updateProfile = async (dbUserId: string, payload: UpdateProfileInput) => {
   return usersRepository.updateProfile(dbUserId, payload);
 };
+
+export const updateVerification = async (dbUserId: string, payload: { phone_verified?: boolean; verification_level?: string }) => {
+  await usersRepository.upsertUserVerification(dbUserId, payload);
+};

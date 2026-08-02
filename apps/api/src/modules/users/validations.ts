@@ -6,3 +6,10 @@ export const updateProfileSchema = z.object({
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+export const updateVerificationSchema = z.object({
+  phone_verified: z.boolean().optional(),
+  verification_level: z.string().optional(),
+});
+
+export type UpdateVerificationInput = z.infer<typeof updateVerificationSchema>;

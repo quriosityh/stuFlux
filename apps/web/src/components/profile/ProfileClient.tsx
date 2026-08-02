@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useSignOut } from '@/components/profile/useSignOut';
 import { EditProfileForm } from '@/components/profile/EditProfileForm';
+import { PhoneVerificationModal } from '@/components/profile/PhoneVerificationModal';
 import { useApiClient } from '@/lib/api-client';
 import { format } from 'date-fns';
 import { getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
@@ -103,6 +104,7 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
   const [reviewFilter, setReviewFilter] = useState<'all' | 'as_lender' | 'as_renter'>('all');
   
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
 
   // Load reviews on mount if not pre-fetched
@@ -732,7 +734,6 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                 <ChevronRight size={16} className="text-[var(--foreground)]/30" />
               </button>
 
-              {/* Verification Status Row */}
               <div className="p-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
@@ -747,13 +748,23 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                     </p>
                   </div>
                 </div>
-                <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                  profile?.phone_verified
-                    ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'bg-amber-500/10 text-amber-400'
-                }`}>
-                  {profile?.phone_verified ? 'Verified' : 'Pending'}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                    profile?.phone_verified
+                      ? 'bg-emerald-500/10 text-emerald-400'
+                      : 'bg-amber-500/10 text-amber-400'
+                  }`}>
+                    {profile?.phone_verified ? 'Verified' : 'Pending'}
+                  </span>
+                  {!profile?.phone_verified && (
+                    <button
+                      onClick={() => setIsVerificationModalOpen(true)}
+                      className="px-3 py-1.5 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors"
+                    >
+                      Verify Now
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Appearance / Theme Selector Row */}
@@ -811,6 +822,16 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
               </button>
             </div>
           </div>
+        )}
+
+        {isVerificationModalOpen && (
+          <PhoneVerificationModal
+            onSuccess={() => {
+              setProfile((prev) => (prev ? { ...prev, phone_verified: true } : prev));
+              setIsVerificationModalOpen(false);
+            }}
+            onCancel={() => setIsVerificationModalOpen(false)}
+          />
         )}
 
       </div>
