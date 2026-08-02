@@ -8,7 +8,7 @@ export function TopSpacer() {
 
   useEffect(() => {
     const measure = () => {
-      const nav = document.querySelector('nav');
+      const nav = document.querySelector('[data-nav-spacer="true"]');
       if (nav) {
         const h = nav.getBoundingClientRect().height;
         document.documentElement.style.setProperty('--nav-expanded-h', `${h}px`);
@@ -16,7 +16,7 @@ export function TopSpacer() {
     };
 
     measure();
-    const nav = document.querySelector('nav');
+    const nav = document.querySelector('[data-nav-spacer="true"]');
     if (!nav) return;
     const ro = new ResizeObserver(measure);
     ro.observe(nav);
@@ -24,7 +24,7 @@ export function TopSpacer() {
   }, []);
 
   // Spacer keeps content below fixed nav; height matches expanded nav height
-  return <div className="hidden md:block" style={{ height: 'var(--nav-expanded-h, 160px)' }} />;
+  return <div className="block w-full shrink-0" style={{ height: 'var(--nav-expanded-h, 96px)' }} />;
 }
 
 export function BottomSpacer() {

@@ -124,6 +124,7 @@ export function NavHeader() {
 
   return (
     <nav
+      data-nav-spacer="true"
       className="!fixed top-0 left-0 right-0 z-50 bg-zinc-50 dark:bg-zinc-900 border-b border-border/10 shadow-sm transition-all duration-300"
       style={{ transform: hiddenByPDP ? 'translateY(-100%)' : 'translateY(0)' }}
     >
