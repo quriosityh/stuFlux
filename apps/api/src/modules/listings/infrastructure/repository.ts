@@ -1,5 +1,5 @@
 import { db } from '../../../infra/db/client.js';
-import { listings, listingPhotos, users, categories, listingBlockedDates } from '../../../../db/schema.js';
+import { listings, listingPhotos, users, categories, listingBlockedDates, reviews } from '../../../../db/schema.js';
 import {
   and,
   asc,
@@ -13,6 +13,19 @@ import {
   isNull,
 } from 'drizzle-orm';
 import type { CreateListingInput, UpdateListingInput, ListFiltersInput, PhotoInput } from '../interfaces/validations.js';
+
+// A listing is rated by its renters. Owner-to-renter reviews are deliberately
+// excluded: they describe the borrower, not the item or its lender.
+const listingRatingStats = db
+  .select({
+    listingId: reviews.listingId,
+    rating: sql<number>`round(avg(${reviews.rating})::numeric, 1)`.as('rating'),
+    reviewCount: count().as('review_count'),
+  })
+  .from(reviews)
+  .where(and(eq(reviews.role, 'as_lender'), isNull(reviews.deletedAt)))
+  .groupBy(reviews.listingId)
+  .as('listing_rating_stats');
 
 export const listingsRepository = {
   async countByOwner(ownerId: string) {
@@ -30,7 +43,7 @@ export const listingsRepository = {
     const where = buildWhere(filters);
     const orderBy = buildSort(sort);
 
-    const rows = await db
+    const rowsQuery = db
       .select({
         id: listings.id,
         title: listings.title,
@@ -40,6 +53,10 @@ export const listingsRepository = {
         area: listings.area,
         status: listings.status,
         view_count: listings.view_count,
+        booking_count: listings.booking_count,
+        rating: listingRatingStats.rating,
+        review_count: listingRatingStats.reviewCount,
+        delivery_available: listings.delivery_available,
         created_at: listings.created_at,
         category: {
           id: categories.id,
@@ -61,6 +78,7 @@ export const listingsRepository = {
       .from(listings)
       .leftJoin(categories, eq(categories.id, listings.category_id))
       .leftJoin(users, eq(users.id, listings.owner_id))
+      .leftJoin(listingRatingStats, eq(listingRatingStats.listingId, listings.id))
       .leftJoin(
         listingPhotos,
         and(
@@ -74,13 +92,20 @@ export const listingsRepository = {
       .limit(limit)
       .offset(offset);
 
-    const [{ total }] = await db
+    const countQuery = db
       .select({ total: count() })
       .from(listings)
+      .leftJoin(categories, eq(categories.id, listings.category_id))
       .where(where);
+
+    // Run both queries in parallel — cuts latency roughly in half
+    const [rows, [{ total }]] = await Promise.all([rowsQuery, countQuery]);
 
     return { rows, total: Number(total ?? 0) };
   },
+
+
+
 
   async findById(id: string) {
     const [row] = await db
@@ -100,6 +125,8 @@ export const listingsRepository = {
         delivery_fee: listings.delivery_fee,
         security_deposit: listings.security_deposit,
         view_count: listings.view_count,
+        rating: listingRatingStats.rating,
+        review_count: listingRatingStats.reviewCount,
         created_at: listings.created_at,
         updated_at: listings.updated_at,
         category: {
@@ -119,6 +146,7 @@ export const listingsRepository = {
       .from(listings)
       .leftJoin(categories, eq(categories.id, listings.category_id))
       .leftJoin(users, eq(users.id, listings.owner_id))
+      .leftJoin(listingRatingStats, eq(listingRatingStats.listingId, listings.id))
       .where(eq(listings.id, id));
 
     if (!row) return null;
@@ -428,6 +456,12 @@ function buildSort(sort: ListFiltersInput['sort']) {
       return [asc(listings.daily_rate), desc(listings.created_at)];
     case 'rate_desc':
       return [desc(listings.daily_rate), desc(listings.created_at)];
+    case 'rating_desc':
+      return [
+        desc(sql`COALESCE(${listingRatingStats.rating}, 0)`),
+        desc(listingRatingStats.reviewCount),
+        desc(listings.created_at),
+      ];
     case 'popular':
     default:
       return [

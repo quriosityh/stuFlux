@@ -11,7 +11,7 @@ interface ListingMetaProps {
 
 export function ListingMeta({ title, city, reviewCount = 0, rating = 0 }: ListingMetaProps) {
   const isZeroReviews = reviewCount === 0;
-  const isFullRating = reviewCount >= 3;
+  const hasRating = reviewCount > 0;
 
   // Calculate percentage width for the filled stars layer
   const fillPercentage = (rating / 5) * 100;
@@ -40,7 +40,7 @@ export function ListingMeta({ title, city, reviewCount = 0, rating = 0 }: Listin
         <div className="w-px h-full bg-border/20 row-span-2" />
 
         {/* Rating Top */}
-        {!isFullRating ? (
+        {!hasRating ? (
           <span className="text-lg sm:text-xl font-bold font-syne leading-none text-foreground/50">New</span>
         ) : (
           <span className="text-xl sm:text-2xl font-bold font-syne leading-none">{rating.toFixed(2)}</span>
@@ -62,7 +62,7 @@ export function ListingMeta({ title, city, reviewCount = 0, rating = 0 }: Listin
         </span>
 
         {/* Rating Bottom (Stars) */}
-        {!isFullRating ? (
+        {!hasRating ? (
           <Star className="w-3 h-3 sm:w-4 sm:h-4 text-border/30" />
         ) : (
           <div className="relative inline-flex items-center justify-center scale-90 sm:scale-100">

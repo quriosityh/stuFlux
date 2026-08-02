@@ -1,8 +1,9 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextRequest } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-export const maxDuration = 300;
+// Allow Next.js to cache GET responses for 60 s; POST/PUT/DELETE bypass cache naturally.
+export const revalidate = 60;
+export const maxDuration = 60;
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:4000/api/v1';
 

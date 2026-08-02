@@ -168,7 +168,7 @@ export function NavHeader() {
                     return (
                       <Link 
                         key={item.name} 
-                        href={item.href}
+                        href={item.href as any}
                         className={cn(
                           "relative px-1 py-2 transition-colors glitch-text",
                           isActive ? "text-[var(--accent)]" : "text-foreground/70 hover:text-foreground"

@@ -1,132 +1,187 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Filter } from 'lucide-react';
+import { X, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { searchAreas, LAHORE_AREAS_DATA, LahoreArea } from '@stuflux/types';
 
-export function FilterSidebar() {
-  const [isOpenMobile, setIsOpenMobile] = useState(false);
+export type ListingSort = 'popular' | 'newest' | 'rating_desc' | 'rate_asc' | 'rate_desc';
 
-  const [areas, setAreas] = useState<LahoreArea[]>([]);
-  const [areaSearch, setAreaSearch] = useState('');
-  const [includeNearby, setIncludeNearby] = useState(false);
+export interface FilterSidebarProps {
+  sort: ListingSort;
+  onSortChange: (sort: ListingSort) => void;
+  minRate: string;
+  maxRate: string;
+  onApplyPrice: (min: string, max: string) => void;
+  deliveryOnly: boolean;
+  onToggleDelivery: (val: boolean) => void;
+  activeFilterCount: number;
+  onClearAll: () => void;
+  isOpenMobile: boolean;
+  setIsOpenMobile: (open: boolean) => void;
+  totalResults: number;
+}
 
-  const filteredAreas = useMemo(() => {
-    if (!areaSearch.trim()) return [];
-    return searchAreas(areaSearch, LAHORE_AREAS_DATA, 5);
-  }, [areaSearch]);
+const SORT_CHIPS: { value: ListingSort; label: string; icon: string }[] = [
+  { value: 'popular', label: 'Trending', icon: '🔥' },
+  { value: 'newest', label: 'Newest', icon: '✨' },
+  { value: 'rating_desc', label: 'Top Rated', icon: '⭐' },
+  { value: 'rate_asc', label: 'Price: Low to High', icon: '🏷️' },
+  { value: 'rate_desc', label: 'Price: High to Low', icon: '💎' },
+];
+
+export function FilterSidebar({
+  sort,
+  onSortChange,
+  minRate,
+  maxRate,
+  onApplyPrice,
+  deliveryOnly,
+  onToggleDelivery,
+  activeFilterCount,
+  onClearAll,
+  isOpenMobile,
+  setIsOpenMobile,
+  totalResults,
+}: FilterSidebarProps) {
+  const [localMin, setLocalMin] = useState(minRate);
+  const [localMax, setLocalMax] = useState(maxRate);
+
+  useEffect(() => {
+    setLocalMin(minRate);
+  }, [minRate]);
+
+  useEffect(() => {
+    setLocalMax(maxRate);
+  }, [maxRate]);
+
+  const handlePriceBlur = () => {
+    onApplyPrice(localMin, localMax);
+  };
+
+  const handlePriceKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      onApplyPrice(localMin, localMax);
+    }
+  };
 
   const FilterContent = () => (
-    <div className="space-y-8">
-      {/* Category */}
-      <div>
-        <h3 className="text-sm font-bold tracking-wider uppercase text-foreground/60 mb-4">Category</h3>
-        <div className="space-y-3">
-          {['All Categories', 'Cameras', 'Tools', 'Music', 'Vehicles'].map((cat, i) => (
-            <label key={cat} className="flex items-center gap-3 cursor-pointer group">
-              <div className="relative flex items-center justify-center">
-                <input 
-                  type="radio" 
-                  name="category" 
-                  defaultChecked={i === 1}
-                  className="peer appearance-none w-5 h-5 rounded-full border border-border/20 checked:border-[var(--accent)] transition-all"
-                />
-                <div className="absolute w-2.5 h-2.5 rounded-full bg-[var(--accent)] scale-0 peer-checked:scale-100 transition-transform" />
-              </div>
-              <span className="text-sm font-medium group-hover:text-[var(--accent)] transition-colors">{cat}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* City/Area */}
-      <div>
-        <h3 className="text-sm font-bold tracking-wider uppercase text-foreground/60 mb-4">Area</h3>
-        
-        {/* Selected Area Chips */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {areas.map(area => (
-            <div key={area.id} className="flex items-center gap-1 bg-accent/10 text-accent px-3 py-1.5 rounded-full border border-accent/20 text-sm">
-              <span>{area.name}</span>
-              <button 
-                onClick={() => setAreas(areas.filter(a => a.id !== area.id))}
-                className="hover:text-red-400 transition-colors ml-1"
-              ><X size={14} /></button>
-            </div>
-          ))}
-        </div>
-
-        {/* Area Search Input */}
-        <div className="relative">
-          <input
-            type="text"
-            value={areaSearch}
-            onChange={(e) => setAreaSearch(e.target.value)}
-            placeholder="+ Add area..."
-            className="w-full bg-surface px-4 py-2 rounded-xl border border-border/20 text-sm focus:outline-none focus:border-accent"
-          />
-          {areaSearch && filteredAreas.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-background/85 backdrop-blur-2xl border border-border/20 rounded-xl shadow-xl overflow-hidden z-10">
-              {filteredAreas.map(area => (
-                <button
-                  key={area.id}
-                  onClick={() => {
-                    if (!areas.find(a => a.id === area.id)) {
-                      setAreas([...areas, area]);
-                    }
-                    setAreaSearch('');
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-border/10 transition-colors"
-                >
-                  {area.name}
-                </button>
-              ))}
-            </div>
+    <div className="space-y-6">
+      {/* Sidebar Header & Reset */}
+      <div className="flex items-center justify-between pb-3 border-b border-border/10">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal size={14} className="text-[var(--accent)]" />
+          <h3 className="font-syne font-bold text-xs uppercase tracking-wider text-foreground">Filters</h3>
+          {activeFilterCount > 0 && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
+              {activeFilterCount}
+            </span>
           )}
         </div>
-
-        {/* Nearby Toggle */}
-        {areas.length > 0 && (
-          <label className="flex items-center gap-2 mt-4 cursor-pointer group">
-            <div className="relative flex items-center justify-center">
-              <input 
-                type="checkbox" 
-                checked={includeNearby}
-                onChange={(e) => setIncludeNearby(e.target.checked)}
-                className="peer appearance-none w-4 h-4 rounded border border-border/20 checked:border-[var(--accent)] transition-all"
-              />
-              <div className="absolute w-2 h-2 rounded-sm bg-[var(--accent)] scale-0 peer-checked:scale-100 transition-transform" />
-            </div>
-            <span className="text-xs text-foreground/70 group-hover:text-foreground transition-colors">
-              Include nearby areas (3km)
-            </span>
-          </label>
+        {activeFilterCount > 0 && (
+          <button
+            onClick={onClearAll}
+            className="text-xs font-semibold text-foreground/50 hover:text-[var(--accent)] transition-colors flex items-center gap-1"
+          >
+            <RefreshCw size={11} />
+            <span>Reset</span>
+          </button>
         )}
       </div>
 
-      {/* Price Range */}
+      {/* FILTER GROUP 1: Sort Options */}
       <div>
-        <h3 className="text-sm font-bold tracking-wider uppercase text-foreground/60 mb-4">Price Range</h3>
-        <div className="space-y-4">
-          <input type="range" className="w-full accent-[var(--accent)]" min="0" max="10000" />
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <label className="text-xs text-foreground/50">Min</label>
-              <div className="bg-surface px-3 py-2 rounded-xl border border-border/10 text-sm">Rs. 0</div>
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-foreground/50">Max</label>
-              <div className="bg-surface px-3 py-2 rounded-xl border border-border/10 text-sm">Rs. 5,000+</div>
-            </div>
+        <h4 className="text-[10px] font-bold tracking-wider uppercase text-foreground/50 mb-2">
+          Sort By
+        </h4>
+        <div className="flex flex-col gap-1">
+          {SORT_CHIPS.map((chip) => {
+            const isActive = sort === chip.value;
+            return (
+              <button
+                key={chip.value}
+                onClick={() => onSortChange(chip.value)}
+                className={cn(
+                  'w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer border',
+                  isActive
+                    ? 'bg-[var(--accent)]/12 text-[var(--accent)] border-[var(--accent)]/30 font-bold shadow-sm'
+                    : 'bg-transparent border-transparent text-foreground/70 hover:bg-surface/60 hover:text-foreground'
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">{chip.icon}</span>
+                  <span>{chip.label}</span>
+                </div>
+                {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* FILTER GROUP 2: Price Range (PKR) */}
+      <div>
+        <h4 className="text-[10px] font-bold tracking-wider uppercase text-foreground/50 mb-2">
+          Daily Rate (Rs.)
+        </h4>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-[10px] font-medium text-foreground/40 block mb-1">Min (Rs.)</label>
+            <input
+              type="number"
+              min="0"
+              placeholder="0"
+              value={localMin}
+              onChange={(e) => setLocalMin(e.target.value)}
+              onBlur={handlePriceBlur}
+              onKeyDown={handlePriceKeyDown}
+              className="w-full bg-surface/50 px-3 py-2 rounded-xl border border-border/10 text-xs font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-[var(--accent)]/50 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-medium text-foreground/40 block mb-1">Max (Rs.)</label>
+            <input
+              type="number"
+              min="0"
+              placeholder="Any"
+              value={localMax}
+              onChange={(e) => setLocalMax(e.target.value)}
+              onBlur={handlePriceBlur}
+              onKeyDown={handlePriceKeyDown}
+              className="w-full bg-surface/50 px-3 py-2 rounded-xl border border-border/10 text-xs font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-[var(--accent)]/50 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
           </div>
         </div>
       </div>
 
-      <div className="pt-4 border-t border-border/10">
-        <button className="text-sm font-bold text-foreground/50 hover:text-foreground hover:underline transition-all">
-          Clear all filters
+      {/* FILTER GROUP 3: Fulfilment Options */}
+      <div>
+        <h4 className="text-[10px] font-bold tracking-wider uppercase text-foreground/50 mb-2">
+          Fulfilment
+        </h4>
+        <button
+          onClick={() => onToggleDelivery(!deliveryOnly)}
+          className={cn(
+            'w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-all border cursor-pointer',
+            deliveryOnly
+              ? 'bg-[var(--accent)]/12 text-[var(--accent)] border-[var(--accent)]/30 font-bold'
+              : 'bg-surface/40 border-border/10 text-foreground/70 hover:bg-surface/80 hover:text-foreground'
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm">🚚</span>
+            <span>Delivery Available</span>
+          </div>
+          <div
+            className={cn(
+              'w-3.5 h-3.5 rounded flex items-center justify-center transition-all border',
+              deliveryOnly
+                ? 'bg-[var(--accent)] border-[var(--accent)] text-black'
+                : 'border-border/30 bg-background/50'
+            )}
+          >
+            {deliveryOnly && <span className="text-[9px] font-black">✓</span>}
+          </div>
         </button>
       </div>
     </div>
@@ -134,23 +189,38 @@ export function FilterSidebar() {
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-64 shrink-0 sticky top-[140px] chrome-card rounded-3xl p-6 self-start max-h-[calc(100vh-160px)] overflow-y-auto scrollbar-hide">
+      {/* Desktop Sleek Unboxed Sidebar with Vertical Divider */}
+      <aside className="hidden md:block w-56 shrink-0 sticky top-[110px] self-start pr-6 border-r border-border/10">
         <FilterContent />
       </aside>
 
-      {/* Mobile Sticky Button */}
-      <div className="md:hidden sticky top-[120px] z-40 w-full flex justify-center pb-4">
-        <button 
+      {/* Mobile Sticky Filter Bar */}
+      <div className="md:hidden sticky top-[100px] z-40 w-full flex items-center justify-between gap-3 bg-background/80 backdrop-blur-lg px-4 py-3 border-b border-border/10 mb-4">
+        <button
           onClick={() => setIsOpenMobile(true)}
-          className="chrome-card rounded-full px-6 py-2.5 flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all text-sm font-bold"
+          className="chrome-card rounded-full px-5 py-2 flex items-center gap-2 shadow-md hover:scale-105 active:scale-95 transition-all text-xs font-bold border border-border/20"
         >
-          <Filter size={16} />
-          Filters (3)
+          <SlidersHorizontal size={14} className="text-[var(--accent)]" />
+          <span>Filters</span>
+          {activeFilterCount > 0 && (
+            <span className="ml-1 w-4 h-4 rounded-full bg-[var(--accent)] text-black text-[10px] font-black flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
         </button>
+
+        {activeFilterCount > 0 && (
+          <button
+            onClick={onClearAll}
+            className="text-xs font-bold text-[var(--accent)] hover:underline flex items-center gap-1"
+          >
+            <RefreshCw size={11} />
+            <span>Reset</span>
+          </button>
+        )}
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Bottom Sheet Drawer */}
       <AnimatePresence>
         {isOpenMobile && (
           <>
@@ -158,7 +228,7 @@ export function FilterSidebar() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 md:hidden"
+              className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 md:hidden"
               onClick={() => setIsOpenMobile(false)}
             />
             <motion.div
@@ -166,21 +236,45 @@ export function FilterSidebar() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed bottom-0 left-0 right-0 h-[80vh] bg-background chrome-card !rounded-t-3xl !rounded-b-none z-50 md:hidden flex flex-col"
+              className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-background chrome-card !rounded-t-3xl !rounded-b-none z-50 md:hidden flex flex-col border-t border-border/20 shadow-2xl"
             >
+              {/* Sheet Header */}
               <div className="flex items-center justify-between p-4 border-b border-border/10">
-                <button onClick={() => setIsOpenMobile(false)} className="p-2 -ml-2 rounded-full hover:bg-surface">
-                  <X size={20} />
+                <div className="w-10" />
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-1 rounded-full bg-foreground/20 mx-auto" />
+                  <span className="font-syne font-bold text-sm">Filters & Sorting</span>
+                </div>
+                <button
+                  onClick={() => setIsOpenMobile(false)}
+                  className="p-2 -mr-2 rounded-full hover:bg-surface text-foreground/70"
+                >
+                  <X size={18} />
                 </button>
-                <span className="font-syne font-bold">Filters</span>
-                <button className="text-sm font-bold text-foreground/50 hover:text-foreground">Clear</button>
               </div>
+
+              {/* Sheet Body */}
               <div className="p-6 overflow-y-auto flex-1 pb-24">
                 <FilterContent />
               </div>
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-md border-t border-border/10">
-                <button className="liquid-button w-full py-4 text-black font-bold rounded-xl shadow-[0_0_20px_-5px_var(--accent)]">
-                  Show 24 items
+
+              {/* Sheet Footer CTA */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-background/90 backdrop-blur-md border-t border-border/10 flex items-center gap-3">
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={() => {
+                      onClearAll();
+                    }}
+                    className="px-4 py-3 text-xs font-bold text-foreground/60 hover:text-foreground border border-border/20 rounded-xl"
+                  >
+                    Reset
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsOpenMobile(false)}
+                  className="hyper-liquid flex-1 py-3 text-black font-bold rounded-xl shadow-lg text-center text-xs"
+                >
+                  Show {totalResults} items
                 </button>
               </div>
             </motion.div>

@@ -111,6 +111,8 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
             <ListingMeta 
               title={listing.title}
               city={listing.area ?? listing.city} 
+              rating={listing.rating == null ? 0 : Number(listing.rating)}
+              reviewCount={Number(listing.review_count ?? 0)}
             />
 
             <LenderSnapshot owner={listing.owner} />

@@ -87,13 +87,13 @@ export function CategoryCarousel({ title, categorySlug, items }: CategoryCarouse
         className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-4 px-4 md:mx-0 md:px-0"
       >
         {items.map((item, index) => (
-          <motion.div key={item.id || index} variants={itemVariants} className="snap-start shrink-0 w-[72vw] md:w-[calc(20%-13px)]">
+          <motion.div key={item.id || index} variants={itemVariants} className="snap-start shrink-0 w-[calc(50%-8px)] md:w-[calc(20%-13px)]">
             <ListingCard item={item} />
           </motion.div>
         ))}
         
         {/* See All Card */}
-        <motion.div variants={itemVariants} className="snap-start shrink-0 w-[72vw] md:w-[calc(20%-13px)]">
+        <motion.div variants={itemVariants} className="snap-start shrink-0 w-[calc(50%-8px)] md:w-[calc(20%-13px)]">
           <Link 
             href={`/?category=${categorySlug}`}
             className="w-full h-full min-h-[220px] rounded-2xl border-2 border-dashed border-border/15 bg-transparent flex flex-col items-center justify-center gap-4 hover:border-[var(--accent)]/50 hover:bg-[var(--accent)]/5 hover:shadow-sm transition-all duration-300 group/card cursor-pointer"

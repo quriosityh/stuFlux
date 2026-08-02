@@ -36,7 +36,7 @@ export function DesktopNav() {
                 return (
                   <Link
                     key={item.name}
-                    href={item.href}
+                    href={item.href as any}
                     className={cn(
                       "group flex items-center rounded-full transition-all duration-300 cursor-pointer active:scale-90 active:[text-shadow:-2px_0_rgba(255,0,0,0.7),2px_0_rgba(0,255,255,0.7)]",
                       isActive ? "text-[var(--accent)]" : "text-[var(--foreground)] opacity-70 hover:opacity-100",
