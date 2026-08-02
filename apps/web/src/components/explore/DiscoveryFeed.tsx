@@ -36,7 +36,7 @@ const BY_NEWEST   = [...ALL_SAMPLE].reverse();
 
 function DiscoverySkeleton() {
   return (
-    <div className="space-y-14 animate-pulse">
+    <div className="space-y-8 sm:space-y-10 lg:space-y-12 animate-pulse">
       {Array.from({ length: 2 }).map((_, r) => (
         <div key={r} className="space-y-5">
           <div className="h-8 w-48 rounded-xl bg-surface" />
@@ -98,7 +98,7 @@ function LazyCategoryRow({ title, slug }: { title: string; slug: string }) {
   }, [inView, slug]);
 
   return (
-    <div ref={setRef} className="min-h-[280px]">
+    <div ref={setRef} className="min-h-[220px] sm:min-h-[260px]">
       {loading ? (
         <div className="space-y-5 animate-pulse pt-2">
           <div className="h-8 w-48 rounded-xl bg-surface" />
@@ -153,7 +153,7 @@ export function DiscoveryFeed() {
   }
 
   return (
-    <div className="space-y-14">
+    <div className="space-y-8 sm:space-y-10 lg:space-y-12">
       {/* 🔥 Trending */}
       {trending.length > 0 && (
         <CategoryCarousel title="🔥 Trending" categorySlug="all" items={trending} />

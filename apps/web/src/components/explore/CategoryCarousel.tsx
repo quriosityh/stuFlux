@@ -49,12 +49,12 @@ export function CategoryCarousel({ title, categorySlug, items }: CategoryCarouse
   return (
     <section className="w-full relative group">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
         <Link 
           href={`/?category=${categorySlug}`} 
           className="group/link flex items-center gap-2"
         >
-          <h2 className="font-syne text-3xl md:text-4xl font-extrabold tracking-tighter hover:opacity-80 transition-opacity py-1 leading-normal">
+          <h2 className="font-syne text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tighter hover:opacity-80 transition-opacity py-1 leading-normal">
             {title}
           </h2>
           <ArrowRight size={20} className="text-foreground/50 group-hover/link:text-[var(--accent)] group-hover/link:translate-x-1 transition-all" />
@@ -84,16 +84,16 @@ export function CategoryCarousel({ title, categorySlug, items }: CategoryCarouse
         initial="hidden"
         whileInView="show"
         viewport={{ once: true, margin: "-50px" }}
-        className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 -mx-4 px-4 md:mx-0 md:px-0"
+        className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-2 pb-3 sm:px-0 sm:pb-4"
       >
         {items.map((item, index) => (
-          <motion.div key={item.id || index} variants={itemVariants} className="snap-start shrink-0 w-[calc(50%-8px)] md:w-[calc(20%-13px)]">
+          <motion.div key={item.id || index} variants={itemVariants} className="snap-start shrink-0 w-[calc(50%-6px)] sm:w-[calc(50%-8px)] md:w-[calc(20%-13px)]">
             <ListingCard item={item} />
           </motion.div>
         ))}
         
         {/* See All Card */}
-        <motion.div variants={itemVariants} className="snap-start shrink-0 w-[calc(50%-8px)] md:w-[calc(20%-13px)]">
+        <motion.div variants={itemVariants} className="snap-start shrink-0 w-[calc(50%-6px)] sm:w-[calc(50%-8px)] md:w-[calc(20%-13px)]">
           <Link 
             href={`/?category=${categorySlug}`}
             className="w-full h-full min-h-[220px] rounded-2xl border-2 border-dashed border-border/15 bg-transparent flex flex-col items-center justify-center gap-4 hover:border-[var(--accent)]/50 hover:bg-[var(--accent)]/5 hover:shadow-sm transition-all duration-300 group/card cursor-pointer"

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import apiClient from '@/lib/api-client';
 import { CategoryStrip, CATEGORIES_LIST, CategoryItem } from './CategoryStrip';
 import { DiscoveryFeed } from './DiscoveryFeed';
@@ -181,9 +181,9 @@ function ExploreContent() {
         <CategoryStrip activeCategory={category} onCategoryChange={setCategory} />
       )}
 
-      <main className="w-[92%] md:w-[86%] max-w-[1600px] mx-auto pt-4 md:pt-8 pb-16">
+      <main className="w-[92%] sm:w-[90%] md:w-[86%] max-w-[1600px] mx-auto pt-3 sm:pt-4 md:pt-5 pb-12 sm:pb-14">
         {mode === 'discovery' ? (
-          <div className="space-y-12">
+          <div className="space-y-10 sm:space-y-12">
             <DiscoveryFeed />
             <HowItWorks />
             <LenderCTA />
@@ -193,16 +193,24 @@ function ExploreContent() {
             {/* Top Section: Category Header (Spans cleanly at top) */}
             {activeCategoryMeta && (
               <div className="mb-8">
-                {/* Standard Professional Back Button */}
-                <button
-                  onClick={() => setCategory('all')}
-                  className="group inline-flex items-center gap-2 text-xs font-semibold text-foreground/50 hover:text-[var(--accent)] transition-colors mb-4 cursor-pointer"
-                >
-                  <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                  <span>Back to categories</span>
-                </button>
+                <nav aria-label="Breadcrumb" className="mb-4">
+                  <ol className="flex items-center gap-2 text-xs font-semibold">
+                    <li>
+                      <Link
+                        href="/"
+                        className="text-foreground/55 transition-colors hover:text-[var(--accent)]"
+                      >
+                        Explore
+                      </Link>
+                    </li>
+                    <li aria-hidden="true" className="text-foreground/30">&gt;</li>
+                    <li aria-current="page" className="truncate text-foreground/75">
+                      {activeCategoryMeta.label}
+                    </li>
+                  </ol>
+                </nav>
 
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-7">
+                <div className="mx-auto flex max-w-4xl flex-col items-center gap-5 text-center sm:flex-row sm:items-center sm:gap-7 sm:text-left md:ml-40 md:mr-0">
                   {/* Round Category Image */}
                   <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full overflow-hidden shrink-0 shadow-lg border-2 border-border/15">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -215,7 +223,7 @@ function ExploreContent() {
 
                   {/* Title, Icon & Description */}
                   <div className="min-w-0 flex-1 space-y-1.5">
-                    <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
                       <span className="text-xl sm:text-2xl">{activeCategoryMeta.icon}</span>
                       <h1 className="font-syne text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                         {activeCategoryMeta.label}
@@ -226,13 +234,13 @@ function ExploreContent() {
                       {activeFilterCount > 0 && (
                         <button
                           onClick={handleClearAll}
-                          className="text-xs font-semibold text-[var(--accent)] hover:underline ml-auto"
+                          className="text-xs font-semibold text-[var(--accent)] hover:underline sm:ml-auto"
                         >
                           Reset filters
                         </button>
                       )}
                     </div>
-                    <p className="text-sm sm:text-base text-foreground/65 max-w-3xl leading-relaxed">
+                    <p className="mx-auto max-w-3xl text-sm leading-relaxed text-foreground/65 sm:mx-0 sm:text-base">
                       {activeCategoryMeta.description}
                     </p>
                   </div>
