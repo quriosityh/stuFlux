@@ -31,7 +31,7 @@ export function CategoryStrip({ activeCategory, onCategoryChange }: CategoryStri
   return (
     <div className="w-full border-b border-border/5 bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="w-full px-4 sm:px-6 md:w-[82%] md:px-0 mx-auto">
-        <div className="flex w-full gap-4 sm:gap-5 md:gap-0 overflow-x-auto md:overflow-visible scrollbar-hide py-3 sm:py-4 md:py-5 px-1 sm:px-2 md:px-0 snap-x justify-start md:justify-between">
+        <div className="flex w-full gap-4 sm:gap-5 md:gap-0 overflow-x-auto md:overflow-visible scrollbar-hide py-1.5 sm:py-4 md:py-5 px-1 sm:px-2 md:px-0 snap-x justify-start md:justify-between">
           {CATEGORIES_LIST.map((cat, i) => {
             const isActive = activeCategory === cat.id;
             return (

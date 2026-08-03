@@ -1,8 +1,9 @@
 'use client';
-
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import type { Route } from 'next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Calendar, Camera, X, Loader } from 'lucide-react';
+import { Search, X, Loader } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { searchAreas, POPULAR_AREA_IDS, getAreaById, LAHORE_AREAS_DATA, LahoreArea } from '@stuflux/types';
@@ -44,6 +45,14 @@ const panelStyle: React.CSSProperties = {
 };
 
 export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedArea, whatSearch, setWhatSearch, selectedDates, setSelectedDates }: SearchBarProps) {
+  const router = useRouter();
+  const currentSearchParams = useSearchParams();
+  const whereInputRef = useRef<HTMLInputElement | null>(null);
+  // FIX #1: ref for the "When" segment so we can programmatically focus it.
+  // Previously nothing ever called .focus() on this div, so its onKeyDown
+  // (which handles Enter/Escape) never fired because it never had focus.
+  const whenSegmentRef = useRef<HTMLDivElement | null>(null);
+
   const handleTabClick = (tab: ActiveTab) => {
     const isOpeningWhen = tab === 'when' && activeTab !== 'when';
     // If we are opening the WHEN panel and there's only a start selected (no end), clear it
@@ -53,8 +62,22 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
     setActiveTab(activeTab === tab ? null : tab);
   };
 
+  // Navigate between sections: Where → When → What
+  const advanceToNext = (currentTab: ActiveTab) => {
+    if (currentTab === 'where') setActiveTab('when');
+    else if (currentTab === 'when') setActiveTab('what');
+    // 'what' Enter triggers runSearch (handled separately)
+  };
+
   const api = useApiClient();
   const [areaSearch, setAreaSearch] = useState('');
+
+  // Clear area search text when dropdown closes
+  useEffect(() => {
+    if (activeTab === null) {
+      setAreaSearch('');
+    }
+  }, [activeTab]);
 
   const filteredAreas = useMemo(() => {
     if (!areaSearch.trim()) {
@@ -73,33 +96,92 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  const runSearch = () => {
+    // Merge search-bar values onto the EXISTING URL params so that
+    // category, sort, min_rate, max_rate, and delivery_available are
+    // preserved when the user refines their search query.
+    const params = new URLSearchParams(currentSearchParams.toString());
+
+    const query = whatSearch.trim();
+    if (query) {
+      params.set('q', query);
+    } else {
+      params.delete('q');
+    }
+
+    if (selectedArea) {
+      params.set('area', selectedArea.id);
+    } else {
+      params.delete('area');
+    }
+
+    if (selectedDates.start && selectedDates.end) {
+      params.set('start_date', format(selectedDates.start, 'yyyy-MM-dd'));
+      params.set('end_date', format(selectedDates.end, 'yyyy-MM-dd'));
+    } else {
+      params.delete('start_date');
+      params.delete('end_date');
+    }
+
+    params.set('view', 'results');
+    router.push(`/?${params.toString()}`);
+    setActiveTab(null);
+  };
+
   // Fetch search results when whatSearch changes
   useEffect(() => {
     if (!whatSearch.trim()) {
       setSearchResults([]);
       return;
     }
-
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
         const response = await api.get('listings', {
-          searchParams: { q: whatSearch, limit: 8, sort: 'popular' }
+          searchParams: { q: whatSearch.trim(), limit: 8, sort: 'popular' },
+          signal: controller.signal,
         }).json<{ data: SearchResult[] }>();
         setSearchResults(response.data || []);
       } catch (error) {
-        console.error('Search error:', error);
-        setSearchResults([]);
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Search error:', error);
+          setSearchResults([]);
+        }
       } finally {
-        setIsSearching(false);
+        if (!controller.signal.aborted) setIsSearching(false);
       }
-    }, 300); // Debounce 300ms
-
-    return () => clearTimeout(timer);
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [whatSearch, api]);
 
-  // Ensure the WHAT input has focus when the WHAT tab is opened
+  // Ensure the correct input/segment has focus when a tab is opened
   useEffect(() => {
+    if (activeTab === 'where') {
+      const t = setTimeout(() => {
+        try {
+          whereInputRef.current?.focus();
+        } catch {
+          // ignore
+        }
+      }, 80);
+      return () => clearTimeout(t);
+    }
+    if (activeTab === 'when') {
+      // FIX #1 (continued): give the When segment div real keyboard focus
+      // so its Enter/Escape handler actually fires, same as Where/What.
+      const t = setTimeout(() => {
+        try {
+          whenSegmentRef.current?.focus();
+        } catch {
+          // ignore
+        }
+      }, 80);
+      return () => clearTimeout(t);
+    }
     if (activeTab === 'what') {
       // small timeout to wait for animation/DOM to settle
       const t = setTimeout(() => {
@@ -108,7 +190,7 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
           // place cursor at end
           const el = whatInputRef.current as HTMLInputElement | null;
           if (el) el.setSelectionRange(el.value.length, el.value.length);
-        } catch (err) {
+        } catch {
           // ignore
         }
       }, 80);
@@ -143,7 +225,7 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
           onClick={() => handleTabClick('where')}
           className={cn(
             "flex-1 min-w-0 px-6 py-3.5 rounded-full cursor-pointer transition-all duration-300 relative group",
-            activeTab === 'where' ? "bg-background shadow-md" : "hover:bg-border/5",
+            activeTab === 'where' ? "bg-background shadow-none" : "hover:bg-border/5",
             activeTab && activeTab !== 'where' && "opacity-60"
           )}
         >
@@ -152,6 +234,7 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
             {activeTab === 'where' ? (
               <>
                 <input
+                  ref={whereInputRef}
                   autoFocus
                   type="text"
                   value={areaSearch}
@@ -159,36 +242,61 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
                     setAreaSearch(e.target.value);
                     setSelectedArea(null);
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      // FIX #2: if the user typed an area but never clicked a
+                      // suggestion, don't silently drop it — adopt the top
+                      // filtered match so it actually reaches runSearch().
+                      // Empty input still advances freely (no query is allowed).
+                      if (!selectedArea && areaSearch.trim() && filteredAreas.length > 0) {
+                        setSelectedArea(filteredAreas[0]);
+                      }
+                      advanceToNext('where');
+                    }
+                    if (e.key === 'Escape') setActiveTab(null);
+                  }}
                   placeholder="Search areas in Lahore"
                   className="bg-transparent text-sm text-foreground placeholder-foreground/40 focus:outline-none w-full min-w-0 pr-6"
                 />
-                {areaSearch && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setAreaSearch('');
-                      setSelectedArea(null);
-                    }}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center transition-colors"
-                  >
-                    <X size={10} className="text-foreground/70" />
-                  </button>
-                )}
               </>
             ) : (
-              <div className="text-sm text-foreground/60 w-full truncate">
-                {selectedArea ? selectedArea.name : (areaSearch || 'Search areas in Lahore')}
-              </div>
+              <>
+                <div className="text-sm text-foreground/60 w-full truncate">
+                  {selectedArea ? selectedArea.name : (areaSearch || 'Search areas in Lahore')}
+                </div>
+              </>
+            )}
+            {activeTab === 'where' && (areaSearch || selectedArea) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAreaSearch('');
+                  setSelectedArea(null);
+                }}
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center transition-colors"
+              >
+                <X size={10} className="text-foreground/70" />
+              </button>
             )}
           </div>
-          {activeTab !== 'where' && activeTab !== 'when' && (
+          {activeTab !== 'where' && activeTab !== 'when' && !(areaSearch || selectedArea) && (
             <div className="absolute right-0 top-3 bottom-3 w-px bg-border/40 dark:bg-border/60 transition-opacity group-hover:opacity-0" />
           )}
         </div>
 
         {/* WHEN Segment */}
         <div
+          ref={whenSegmentRef}
           onClick={() => handleTabClick('when')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              advanceToNext('when');
+            }
+            if (e.key === 'Escape') setActiveTab(null);
+          }}
+          tabIndex={0}
           className={cn(
             "flex-1 px-6 py-3.5 rounded-full cursor-pointer transition-all duration-300 relative group",
             activeTab === 'when' ? "bg-background shadow-md" : "hover:bg-border/5",
@@ -196,12 +304,25 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
           )}
         >
           <div className="text-xs font-bold tracking-wider uppercase text-foreground/80 mb-0.5">When</div>
-          <div className="text-sm text-foreground/60 truncate">
-            {selectedDates.start && selectedDates.end
-              ? `${format(selectedDates.start, 'MMM d')} - ${format(selectedDates.end, 'MMM d')}`
-              : 'Add dates'}
+          <div className="h-5 flex items-center pr-6 relative w-full">
+            <div className="text-sm text-foreground/60 truncate w-full">
+              {selectedDates.start && selectedDates.end
+                ? `${format(selectedDates.start, 'MMM d')} - ${format(selectedDates.end, 'MMM d')}`
+                : 'Add dates'}
+            </div>
+            {activeTab === 'when' && selectedDates.start && selectedDates.end && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedDates({ start: null, end: null });
+                }}
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center transition-colors"
+              >
+                <X size={10} className="text-foreground/70" />
+              </button>
+            )}
           </div>
-          {activeTab !== 'when' && activeTab !== 'what' && (
+          {activeTab !== 'when' && activeTab !== 'what' && !(selectedDates.start && selectedDates.end) && (
             <div className="absolute right-0 top-3 bottom-3 w-px bg-border/40 dark:bg-border/60 transition-opacity group-hover:opacity-0" />
           )}
         </div>
@@ -226,11 +347,15 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
                   value={whatSearch}
                   onChange={(e) => setWhatSearch(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => { e.stopPropagation(); }}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') runSearch();
+                    if (e.key === 'Escape') setActiveTab(null);
+                  }}
                   placeholder="Search listings..."
                   className="bg-transparent text-sm text-foreground placeholder-foreground/40 focus:outline-none w-full min-w-0 pr-6"
                 />
-                {whatSearch && (
+                {activeTab === 'what' && whatSearch.trim() && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setWhatSearch(''); }}
                     className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-foreground/10 hover:bg-foreground/20 flex items-center justify-center transition-colors"
@@ -240,22 +365,25 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
                 )}
               </div>
             ) : (
-              <div className="text-sm text-foreground/60 truncate">{whatSearch || 'Cameras, tools, etc...'}</div>
+              <div className="h-5 flex items-center relative w-full">
+                <div className="text-sm text-foreground/60 truncate w-full">
+                  {whatSearch || 'Cameras, tools, etc...'}
+                </div>
+              </div>
             )}
           </div>
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setActiveTab(null);
+              runSearch();
             }}
-            className="hyper-liquid h-12 w-12 rounded-full flex items-center justify-center shrink-0"
+            className="hyper-liquid h-12 w-12 !rounded-full flex items-center justify-center shrink-0"
           >
             <Search size={20} strokeWidth={3} className="relative z-10" />
           </button>
         </div>
       </div>
 
-      {/* DROPDOWN PANELS */}
       <AnimatePresence mode="wait">
         {/* WHERE panel */}
         {activeTab === 'where' && (
@@ -274,7 +402,6 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
               <p className="text-[10px] font-bold tracking-widest uppercase text-foreground/30 mb-3 px-1">
                 {areaSearch ? 'Search Results' : 'Popular Areas'}
               </p>
-
               <div className="space-y-0.5 max-h-[280px] overflow-y-auto -mx-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10">
                 {filteredAreas.length === 0 ? (
                   <div className="text-sm text-foreground/30 py-6 text-center">No areas found</div>
@@ -333,41 +460,25 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-            className="absolute top-[80px] left-1/2 -translate-x-1/2 w-[95vw] max-w-[500px] rounded-3xl overflow-hidden shadow-2xl origin-top"
+            className="absolute top-[80px] left-1/2 -translate-x-1/2 w-[90vw] max-w-[350px] rounded-3xl overflow-hidden shadow-2xl origin-top"
             style={panelStyle}
           >
             {/* Top subtle highlight line */}
             <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            <div className="p-6">
-              <div
-                className="flex items-center justify-center gap-1 p-1 rounded-full w-max mx-auto mb-6"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                <button
-                  className="px-6 py-2 rounded-full text-sm font-bold"
-                  style={{ background: 'rgba(255,255,255,0.09)', boxShadow: '0 1px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.12)' }}
-                >Dates</button>
-                <button className="px-6 py-2 rounded-full text-foreground/40 hover:text-foreground text-sm font-bold transition-colors">
-                  Flexible
-                </button>
+            <div className="p-4">
+              <div className="mb-2 text-center">
+                <h3 className="font-display text-sm font-bold text-foreground">Select dates</h3>
+                <p className="mt-0.5 text-[11px] text-foreground/45">Choose any range within the next 2 months</p>
               </div>
-              <div className="mx-auto w-full max-w-[680px]">
+              <div className="mx-auto w-full">
                 <AvailabilityCalendar
                   mode="renter"
                   blockedDates={[]}
                   selectedDates={selectedDates}
                   onSelectDates={handleSelectDates}
                   monthsToShow={1}
+                  compact={true}
                 />
-              </div>
-              <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                {['Exact dates', '± 1 day', '± 2 days', '± 1 week'].map(opt => (
-                  <button
-                    key={opt}
-                    className="px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all hover:text-accent hover:border-accent/30"
-                    style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}
-                  >{opt}</button>
-                ))}
               </div>
             </div>
           </motion.div>
@@ -388,14 +499,12 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
             <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             <div className="p-5">
               {/* Results only — input lives in the main search bar */}
-
               {/* Loading State */}
               {isSearching && (
                 <div className="flex items-center justify-center py-8">
                   <Loader size={20} className="animate-spin text-accent" />
                 </div>
               )}
-
               {/* Search Results */}
               {!isSearching && whatSearch.trim() && (
                 <div className="space-y-2 max-h-[320px] overflow-y-auto -mx-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10">
@@ -403,16 +512,15 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
                     <div className="text-sm text-foreground/30 py-6 text-center">No results found</div>
                   ) : (
                     searchResults.map((result) => {
-                      // Highlight search term in title
-                      const regex = new RegExp(`(${whatSearch})`, 'gi');
+                      const escapedQuery = whatSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                      const regex = new RegExp(`(${escapedQuery})`, 'gi');
                       const titleParts = result.title.split(regex);
                       const descSnippet = result.description.substring(0, 60) + (result.description.length > 60 ? '...' : '');
-
                       return (
                         <div
                           key={result.id}
                           className="px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150"
-                          style={{ 
+                          style={{
                             border: '1px solid transparent',
                           }}
                           onMouseEnter={e => {
@@ -422,6 +530,10 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
                           onMouseLeave={e => {
                             (e.currentTarget as HTMLElement).style.background = '';
                             (e.currentTarget as HTMLElement).style.border = '1px solid transparent';
+                          }}
+                          onClick={() => {
+                            router.push(`/listings/${result.id}` as Route);
+                            setActiveTab(null);
                           }}
                         >
                           {/* Title with highlighted search term */}
@@ -435,10 +547,8 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
                               </span>
                             ))}
                           </div>
-
                           {/* Description snippet */}
                           <div className="text-xs text-foreground/50 mb-2 line-clamp-2">{descSnippet}</div>
-
                           {/* Category & Condition */}
                           <div className="flex items-center gap-2 flex-wrap">
                             <span
@@ -459,7 +569,6 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
                   )}
                 </div>
               )}
-
               {/* Empty state when no search query */}
               {!whatSearch.trim() && !isSearching && (
                 <div className="text-center py-6">

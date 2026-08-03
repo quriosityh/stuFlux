@@ -4,13 +4,14 @@ import { useRef } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import type { Route } from 'next';
 import { ListingCard } from './ListingCard';
 
 interface CategoryCarouselProps {
   title: string;
   categorySlug: string;
   items: any[]; // We'll refine this type later
-  href?: string;
+  href?: Route;
 }
 
 const containerVariants = {
@@ -39,7 +40,7 @@ const itemVariants = {
 
 export function CategoryCarousel({ title, categorySlug, items, href }: CategoryCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const targetHref = href ?? (categorySlug === 'all' ? '/?view=results' : `/?category=${categorySlug}`);
+  const targetHref = (href ?? (categorySlug === 'all' ? '/?view=results' : `/?category=${categorySlug}`)) as Route;
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {

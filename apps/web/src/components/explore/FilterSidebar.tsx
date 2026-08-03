@@ -194,32 +194,6 @@ export function FilterSidebar({
         {filterContent}
       </aside>
 
-      {/* Mobile Sticky Filter Bar */}
-      <div className="md:hidden sticky top-[100px] z-40 w-full flex items-center justify-between gap-3 bg-background/80 backdrop-blur-lg px-4 py-3 border-b border-border/10 mb-4">
-        <button
-          onClick={() => setIsOpenMobile(true)}
-          className="chrome-card rounded-full px-5 py-2 flex items-center gap-2 shadow-md hover:scale-105 active:scale-95 transition-all text-xs font-bold border border-border/20"
-        >
-          <SlidersHorizontal size={14} className="text-[var(--accent)]" />
-          <span>Filters</span>
-          {activeFilterCount > 0 && (
-            <span className="ml-1 w-4 h-4 rounded-full bg-[var(--accent)] text-black text-[10px] font-black flex items-center justify-center">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
-
-        {activeFilterCount > 0 && (
-          <button
-            onClick={onClearAll}
-            className="text-xs font-bold text-[var(--accent)] hover:underline flex items-center gap-1"
-          >
-            <RefreshCw size={11} />
-            <span>Reset</span>
-          </button>
-        )}
-      </div>
-
       {/* Mobile Bottom Sheet Drawer */}
       <AnimatePresence>
         {isOpenMobile && (
@@ -236,13 +210,13 @@ export function FilterSidebar({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-background chrome-card !rounded-t-3xl !rounded-b-none z-50 md:hidden flex flex-col border-t border-border/20 shadow-2xl"
+              className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-background chrome-card !rounded-t-3xl !rounded-b-none z-[60] md:hidden flex flex-col border-t border-border/20 shadow-2xl"
             >
               {/* Sheet Header */}
-              <div className="flex items-center justify-between p-4 border-b border-border/10">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border/10 shrink-0">
                 <div className="w-10" />
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-1 rounded-full bg-foreground/20 mx-auto" />
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-10 h-1 rounded-full bg-foreground/20" />
                   <span className="font-syne font-bold text-sm">Filters & Sorting</span>
                 </div>
                 <button
@@ -253,19 +227,17 @@ export function FilterSidebar({
                 </button>
               </div>
 
-              {/* Sheet Body */}
-              <div className="p-6 overflow-y-auto flex-1 pb-24">
+              {/* Sheet Body — flex-1 + min-h-0 is required for overflow-y-auto to work inside flex column */}
+              <div className="px-6 py-5 overflow-y-auto flex-1 min-h-0">
                 {filterContent}
               </div>
 
-              {/* Sheet Footer CTA */}
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-background/90 backdrop-blur-md border-t border-border/10 flex items-center gap-3">
+              {/* Sheet Footer CTA — in normal flow (not absolute) so it doesn't overlap content */}
+              <div className="shrink-0 px-5 py-4 bg-background border-t border-border/10 flex items-center gap-3">
                 {activeFilterCount > 0 && (
                   <button
-                    onClick={() => {
-                      onClearAll();
-                    }}
-                    className="px-4 py-3 text-xs font-bold text-foreground/60 hover:text-foreground border border-border/20 rounded-xl"
+                    onClick={onClearAll}
+                    className="px-4 py-3 text-xs font-bold text-foreground/60 hover:text-foreground border border-border/20 rounded-xl transition-colors"
                   >
                     Reset
                   </button>
@@ -274,7 +246,7 @@ export function FilterSidebar({
                   onClick={() => setIsOpenMobile(false)}
                   className="hyper-liquid flex-1 py-3 text-black font-bold rounded-xl shadow-lg text-center text-xs"
                 >
-                  Show {totalResults} items
+                  Apply
                 </button>
               </div>
             </motion.div>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { SlidersHorizontal, X } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { CategoryStrip, CATEGORIES_LIST, CategoryItem } from './CategoryStrip';
 import { DiscoveryFeed } from './DiscoveryFeed';
@@ -141,8 +142,21 @@ function ExploreContent() {
       setTotal(res.meta?.total ?? 0);
     } catch (err) {
       console.warn('API error fetching listings, falling back to demo data', err);
-      // Fallback local filtering
+      // Fallback local filtering (mirrors backend buildWhere logic)
       let filtered = [...ALL_SAMPLE_FALLBACK];
+      if (search) {
+        const q = search.toLowerCase();
+        filtered = filtered.filter(
+          (item) =>
+            item.title.toLowerCase().includes(q) ||
+            item.description?.toLowerCase().includes(q)
+        );
+      }
+      if (area) {
+        filtered = filtered.filter(
+          (item) => item.area?.toLowerCase() === area.toLowerCase()
+        );
+      }
       if (category && category !== 'all') {
         filtered = filtered.filter((item) => item.category.slug === category);
       }
@@ -177,12 +191,16 @@ function ExploreContent() {
 
   return (
     <div className="min-h-screen bg-background pb-16">
-      {/* Category Strip is hidden when a category is selected */}
-      {!isCategorySelected && (
+      {/* Keep category browsing available only in the unfiltered discovery view. */}
+      {!isFiltering && (
         <CategoryStrip activeCategory={category} onCategoryChange={setCategory} />
       )}
 
-      <main className="w-[92%] sm:w-[90%] md:w-[86%] max-w-[1600px] mx-auto pt-1 sm:pt-2 md:pt-3 pb-12 sm:pb-14">
+      <main
+        className={`w-[92%] sm:w-[90%] md:w-[86%] max-w-[1600px] mx-auto ${
+          isFiltering ? 'pt-2 sm:pt-6 md:pt-10' : 'pt-1 sm:pt-2 md:pt-3'
+        } pb-12 sm:pb-14`}
+      >
         {mode === 'discovery' ? (
           <div className="space-y-10 sm:space-y-12">
             <DiscoveryFeed />
@@ -264,22 +282,50 @@ function ExploreContent() {
                 {!activeCategoryMeta && (
                   /* Compact Results Bar for general search (when no category selected) */
                   <div className="flex items-center justify-between mb-6 pb-3 border-b border-border/10">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-wider text-foreground/60">
-                        Results
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-semibold text-foreground/60">
+                        {total} {total === 1 ? 'result' : 'results'} found
                       </span>
-                      <span className="text-xs font-bold text-foreground/80 bg-surface px-3 py-1 rounded-full border border-border/10">
-                        {total}
-                      </span>
+                      {activeFilterCount > 0 && (
+                        <span className="hidden sm:inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
+                          {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
-                    {activeFilterCount > 0 && (
+                    <div className="flex items-center gap-2">
+                      {/* Clear icon — only when filters active */}
+                      {isFiltering && (
+                        <button
+                          onClick={handleClearAll}
+                          aria-label="Clear all filters"
+                          className="md:hidden p-2 rounded-full bg-foreground/8 hover:bg-foreground/15 border border-border/15 flex items-center justify-center transition-all active:scale-95"
+                        >
+                          <X size={13} className="text-foreground/60" />
+                        </button>
+                      )}
+                      {/* Filter icon — always visible on mobile */}
                       <button
-                        onClick={handleClearAll}
-                        className="text-xs font-semibold text-[var(--accent)] hover:underline"
+                        onClick={() => setIsOpenMobile(true)}
+                        aria-label="Open filters"
+                        className="md:hidden relative p-2 rounded-full bg-surface border border-border/20 shadow-sm flex items-center justify-center text-foreground hover:border-[var(--accent)]/40 active:scale-95 transition-all"
                       >
-                        Reset filters
+                        <SlidersHorizontal size={14} className="text-[var(--accent)]" />
+                        {activeFilterCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[var(--accent)] text-black text-[9px] font-black flex items-center justify-center shadow-sm">
+                            {activeFilterCount}
+                          </span>
+                        )}
                       </button>
-                    )}
+                      {/* Desktop clear all text */}
+                      {isFiltering && (
+                        <button
+                          onClick={handleClearAll}
+                          className="hidden md:inline-flex text-xs font-semibold text-foreground/50 hover:text-[var(--accent)] transition-colors"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -291,7 +337,7 @@ function ExploreContent() {
                     ))}
                   </div>
                 ) : (
-                  <ListingGrid items={items} />
+                  <ListingGrid items={items} total={total} />
                 )}
               </div>
             </div>

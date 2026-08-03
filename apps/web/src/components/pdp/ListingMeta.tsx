@@ -7,87 +7,83 @@ interface ListingMetaProps {
   city: string;
   reviewCount?: number;
   rating?: number;
+  condition?: string | null;
 }
 
-export function ListingMeta({ title, city, reviewCount = 0, rating = 0 }: ListingMetaProps) {
-  const isZeroReviews = reviewCount === 0;
+const CONDITION_MAP: Record<string, { label: string; emoji: string }> = {
+  like_new:  { label: 'Like New',  emoji: '✨' },
+  good:      { label: 'Good',      emoji: '👍' },
+  fair:      { label: 'Fair',      emoji: '👌' },
+  well_used: { label: 'Well Used', emoji: '🔧' },
+};
+
+export function ListingMeta({ title, city, reviewCount = 0, rating = 0, condition }: ListingMetaProps) {
   const hasRating = reviewCount > 0;
-
-  // Calculate percentage width for the filled stars layer
-  const fillPercentage = (rating / 5) * 100;
-
-  const gridColsClass = isZeroReviews 
-    ? "grid-cols-[1fr_1px_1fr]" 
-    : "grid-cols-[1fr_1px_1fr_1px_1fr]";
+  const conditionInfo = condition ? CONDITION_MAP[condition] : null;
 
   return (
     <div className="w-full my-4 md:mb-8" id="details-section">
-      
+
       {/* MOBILE TITLE */}
-      <div className="md:hidden pt-2 pb-6">
-        <h1 className="text-3xl font-bold font-syne leading-tight text-foreground text-center">
+      <div className="md:hidden pt-2 pb-5">
+        <h1 className="text-2xl font-bold font-syne leading-tight text-foreground">
           {title}
         </h1>
       </div>
 
-      {/* STATS GRID (Shared Mobile + Desktop) */}
-      <div className={`grid ${gridColsClass} grid-rows-2 gap-x-2 sm:gap-x-6 gap-y-2 sm:gap-y-3 items-center justify-items-center py-5 sm:py-6 px-2 sm:px-8 border border-border/20 rounded-2xl sm:rounded-3xl w-full`}>
-        
-        {/* ROW 1: Top Elements */}
-        <MapPin className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
+      {/* THREE-COLUMN STATS BAR */}
+      <div className="grid grid-cols-3 divide-x divide-border/15 border border-border/15 rounded-2xl overflow-hidden">
 
-        {/* First Divider */}
-        <div className="w-px h-full bg-border/20 row-span-2" />
+        {/* ── Col 1: Condition ── */}
+        <div className="flex flex-col items-center justify-center gap-1 py-4 px-3">
+          {conditionInfo ? (
+            <>
+              <span className="text-lg leading-none">
+                {conditionInfo.emoji}
+              </span>
+              <span className="text-[11px] font-semibold leading-none text-foreground/80">
+                {conditionInfo.label}
+              </span>
+              <span className="text-[10px] text-foreground/40 font-medium mt-0.5">Condition</span>
+            </>
+          ) : (
+            <>
+              <span className="text-lg leading-none text-foreground/25">—</span>
+              <span className="text-[10px] text-foreground/40 font-medium mt-0.5">Condition</span>
+            </>
+          )}
+        </div>
 
-        {/* Rating Top */}
-        {!hasRating ? (
-          <span className="text-lg sm:text-xl font-bold font-syne leading-none text-foreground/50">New</span>
-        ) : (
-          <span className="text-xl sm:text-2xl font-bold font-syne leading-none">{rating.toFixed(2)}</span>
-        )}
+        {/* ── Col 2: Location ── */}
+        <div className="flex flex-col items-center justify-center gap-1 py-4 px-3">
+          <MapPin className="w-4 h-4 text-foreground/70 shrink-0" />
+          <span className="text-[12px] font-semibold text-foreground/80 text-center leading-tight line-clamp-1 max-w-[90px]">
+            {city || '—'}
+          </span>
+          <span className="text-[10px] text-foreground/40 font-medium">Location</span>
+        </div>
 
-        {/* Second Divider */}
-        {!isZeroReviews && (
-          <div className="w-px h-full bg-border/20 row-span-2" />
-        )}
-
-        {/* Reviews Top */}
-        {!isZeroReviews && (
-          <span className="text-xl sm:text-2xl font-bold font-syne leading-none">{reviewCount}</span>
-        )}
-
-        {/* ROW 2: Bottom Elements */}
-        <span className="text-xs sm:text-sm font-semibold text-center leading-tight text-foreground/80 max-w-[100px]">
-          {city}
-        </span>
-
-        {/* Rating Bottom (Stars) */}
-        {!hasRating ? (
-          <Star className="w-3 h-3 sm:w-4 sm:h-4 text-border/30" />
-        ) : (
-          <div className="relative inline-flex items-center justify-center scale-90 sm:scale-100">
-            <div className="flex text-border/30">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star key={i} className="w-3 h-3 sm:w-4 sm:h-4 fill-current" />
-              ))}
-            </div>
-            <div 
-              className="absolute top-0 left-0 flex text-accent overflow-hidden"
-              style={{ width: `${fillPercentage}%` }}
-            >
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star key={i} className="w-3 h-3 sm:w-4 sm:h-4 shrink-0 fill-current" />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Reviews Bottom */}
-        {!isZeroReviews && (
-          <button className="text-xs sm:text-sm text-foreground/60 underline decoration-border/50 underline-offset-4 font-medium hover:text-foreground transition-colors">
-            {reviewCount === 1 ? 'Review' : 'Reviews'}
-          </button>
-        )}
+        {/* ── Col 3: Rating ── */}
+        <div className="flex flex-col items-center justify-center gap-1 py-4 px-3">
+          {hasRating ? (
+            <>
+              <div className="flex items-baseline gap-1">
+                <span className="text-lg font-bold font-syne leading-none">{rating.toFixed(1)}</span>
+                <Star className="w-3 h-3 text-amber-400 fill-amber-400 mb-0.5" />
+              </div>
+              <span className="text-[11px] text-foreground/60 font-medium leading-none">
+                {reviewCount} {reviewCount === 1 ? 'review' : 'reviews'}
+              </span>
+              <span className="text-[10px] text-foreground/40 font-medium mt-0.5">Rating</span>
+            </>
+          ) : (
+            <>
+              <span className="text-sm font-bold font-syne text-foreground/40">New</span>
+              <span className="text-[11px] text-foreground/30 leading-none">No reviews</span>
+              <span className="text-[10px] text-foreground/40 font-medium mt-0.5">Rating</span>
+            </>
+          )}
+        </div>
 
       </div>
     </div>

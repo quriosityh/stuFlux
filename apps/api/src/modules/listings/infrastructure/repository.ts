@@ -9,6 +9,7 @@ import {
   gte,
   ilike,
   lte,
+  or,
   sql,
   isNull,
 } from 'drizzle-orm';
@@ -41,7 +42,7 @@ export const listingsRepository = {
     const offset = (page - 1) * limit;
     
     const where = buildWhere(filters);
-    const orderBy = buildSort(sort);
+    const orderBy = buildSort(sort, filters.q);
 
     const rowsQuery = db
       .select({
@@ -141,6 +142,7 @@ export const listingsRepository = {
           area: users.area,
           avatar_url: users.avatar_url,
           email: users.email,
+          created_at: users.created_at,
         },
       })
       .from(listings)
@@ -384,39 +386,47 @@ function preparePhotosForInsert(listingId: string, photos: PhotoInput[]) {
 
 /**
  * Builds a SQL WHERE clause based on the provided listing filters.
- * 
- * @param filters - The listing filter criteria to apply
- * @param filters.q - Optional search query string to match against listing titles (case-insensitive partial match)
- * @param filters.category_id - Optional category ID to filter listings by exact match
- * @param filters.area - Optional area name to filter listings by
- * @param filters.delivery_available - Optional boolean flag to filter listings that offer delivery
- * @param filters.min_rate - Optional minimum daily rate threshold (inclusive)
- * @param filters.max_rate - Optional maximum daily rate threshold (inclusive)
- * 
- * @returns A SQL WHERE clause condition. Always includes an 'active' status filter combined with any additional
- * filter clauses using AND logic. Returns a single condition if only the status filter is applied, or an AND
- * expression combining all applicable conditions. The status is hardcasted to 'any' to bypass type checking.
- * 
- * @remarks
- * - The function dynamically builds the WHERE clause by checking which filters are provided
- * - Only non-empty/truthy filter values are included in the final clause
- * - All string-based searches (title, city) use case-insensitive ILIKE matching with wildcard patterns
- * - Rate filters use numeric comparison operators (gte for minimum, lte for maximum)
- * - The function optimizes the return by avoiding an unnecessary AND wrapper when only one clause exists
+ *
+ * Text search strategy (q parameter):
+ *   Stage 1 — plainto_tsquery full-text match on title + description (handles natural
+ *             language, stops words, and stemming; broader than websearch_to_tsquery).
+ *   Stage 2 — ILIKE fallback on title, description, and category name (catches brand
+ *             names, model numbers, and short tokens that the English dictionary drops).
+ *   Both stages are combined with OR so any match qualifies a listing.
+ *
+ * All other filters (category, area, price range, delivery, dates) narrow the results
+ * further with AND logic.
  */
 function buildWhere(filters: ListFiltersInput) {
   const clauses = [eq(listings.status, 'active' as any)];
 
   if (filters.q) {
-    const like = `%${filters.q}%`;
-    // Search title, description, and category name with OR logic
-    clauses.push(
-      sql`(${listings.title} ILIKE ${like} OR ${listings.description} ILIKE ${like} OR ${categories.name} ILIKE ${like})`
-    );
+    const query = filters.q.trim();
+    if (query) {
+      const likeTerm = `%${query}%`;
+      // Two-stage OR: full-text first (ranked by relevance in buildSort),
+      // then a plain ILIKE sweep so model numbers / brand names are never dropped.
+      clauses.push(
+        or(
+          // Stage 1: plainto_tsquery is more permissive than websearch_to_tsquery —
+          // it doesn't parse operators so arbitrary tokens are accepted.
+          sql`to_tsvector('english', coalesce(${listings.title}, '') || ' ' || coalesce(${listings.description}, ''))
+              @@ plainto_tsquery('english', ${query})`,
+          // Stage 2: literal substring match on every relevant text column.
+          ilike(listings.title, likeTerm),
+          ilike(listings.description, likeTerm),
+          ilike(categories.name, likeTerm)
+        )!
+      );
+    }
   }
+
   if (filters.category_id) clauses.push(eq(listings.category_id, filters.category_id));
-  if (filters.category) clauses.push(eq(categories.slug, filters.category));
-  if (filters.area) clauses.push(eq(listings.area, filters.area));
+  // Category slug filter — case-insensitive for robustness.
+  if (filters.category) clauses.push(ilike(categories.slug, filters.category));
+  // Area filter — listings store lowercase hyphenated slugs; use ilike so any
+  // casing variation from the frontend still resolves correctly.
+  if (filters.area) clauses.push(ilike(listings.area, filters.area));
   if (filters.delivery_available !== undefined) clauses.push(eq(listings.delivery_available, filters.delivery_available));
   if (filters.min_rate) clauses.push(gte(listings.daily_rate, filters.min_rate));
   if (filters.max_rate) clauses.push(lte(listings.daily_rate, filters.max_rate));
@@ -448,16 +458,31 @@ function buildWhere(filters: ListFiltersInput) {
   return clauses.length === 1 ? clauses[0]! : and(...clauses);
 }
 
-function buildSort(sort: ListFiltersInput['sort']) {
+function buildSort(sort: ListFiltersInput['sort'], query?: string) {
+  // When a text query is present, prepend a ts_rank relevance score so that
+  // full-text matches bubble to the top within each sort bucket.
+  // We use plainto_tsquery here to stay consistent with buildWhere.
+  // Listings that only matched via ILIKE (not the tsvector) will receive a
+  // rank of 0 but still appear — they are sorted by the secondary criteria.
+  const relevance = query?.trim()
+    ? [
+        desc(sql`COALESCE(ts_rank(
+          to_tsvector('english', coalesce(${listings.title}, '') || ' ' || coalesce(${listings.description}, '')),
+          plainto_tsquery('english', ${query.trim()})
+        ), 0)`),
+      ]
+    : [];
+
   switch (sort) {
     case 'newest':
-      return [desc(listings.created_at)];
+      return [...relevance, desc(listings.created_at)];
     case 'rate_asc':
-      return [asc(listings.daily_rate), desc(listings.created_at)];
+      return [...relevance, asc(listings.daily_rate), desc(listings.created_at)];
     case 'rate_desc':
-      return [desc(listings.daily_rate), desc(listings.created_at)];
+      return [...relevance, desc(listings.daily_rate), desc(listings.created_at)];
     case 'rating_desc':
       return [
+        ...relevance,
         desc(sql`COALESCE(${listingRatingStats.rating}, 0)`),
         desc(listingRatingStats.reviewCount),
         desc(listings.created_at),
@@ -465,6 +490,7 @@ function buildSort(sort: ListFiltersInput['sort']) {
     case 'popular':
     default:
       return [
+        ...relevance,
         desc(
           sql`(${listings.booking_count} * 3 + ${listings.view_count}) / (EXTRACT(EPOCH FROM (NOW() - ${listings.created_at})) / 86400 + 2)`
         ),

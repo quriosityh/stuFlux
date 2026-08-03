@@ -37,7 +37,7 @@ interface AvailabilityCalendarProps {
   minRentalDays?: number
   maxRentalDays?: number
   monthsToShow?: number
-
+  compact?: boolean
 }
 
 export function AvailabilityCalendar({
@@ -49,6 +49,7 @@ export function AvailabilityCalendar({
   minRentalDays = 1,
   maxRentalDays = 30,
   monthsToShow = 2,
+  compact = false,
  }: AvailabilityCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()))
 
@@ -208,19 +209,16 @@ export function AvailabilityCalendar({
   
 
   return (
-    <div className="py-8" id="availability-section">
-      <div className="mb-6 flex flex-col items-center lg:flex-row lg:items-center justify-between gap-2">
-          <h2 className="font-display text-xl font-bold text-center lg:text-left">
-            Select date range
+    <div className={cn(compact ? 'py-0' : 'py-4')} id="availability-section">
+      {!compact && (
+        <div className="mb-3 flex flex-col items-center lg:flex-row lg:items-center justify-between gap-2">
+          <h2 className="font-display text-lg font-bold text-center lg:text-left">
+            Select dates
           </h2>
-          {mode === 'owner' && (
-            <p className="text-foreground/45 text-xs text-center lg:text-left">
-              Tap a blocked date to unblock it
-            </p>
-          )}
-      </div>
+        </div>
+      )}
 
-      <div className="chrome-card relative rounded-3xl p-6">
+      <div className={cn('relative rounded-3xl', compact ? 'p-2' : 'chrome-card p-4')}>
         <div className="flex flex-col justify-center gap-8 md:flex-row">
           {renderMonth(currentMonth)}
           {monthsToShow >= 2 && (
@@ -233,40 +231,40 @@ export function AvailabilityCalendar({
 
         <button
           onClick={prevMonth}
-          className="hover:bg-border/10 absolute top-6 left-6 rounded-full p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-30"
+          className="hover:bg-border/10 absolute top-2 left-2 rounded-full p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-30"
           disabled={isBefore(currentMonth, startOfMonth(today))}
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft className="h-4 w-4" />
         </button>
 
         <button
           onClick={nextMonth}
-          className="hover:bg-border/10 absolute top-6 right-6 rounded-full p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-30"
+          className="hover:bg-border/10 absolute top-2 right-2 rounded-full p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-30"
           disabled={isBefore(startOfMonth(maxAllowedDate), addMonths(currentMonth, 1))}
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Legend */}
-      <div className="mt-4 flex items-center gap-5 px-1">
-        {mode === 'owner' && (
-          <span className="text-foreground/50 flex items-center gap-2 text-xs">
-            <span className="inline-block h-3 w-3 rounded-full bg-red-500/40" />
-            Blocked — tap to remove
-          </span>
-        )}
-        {mode === 'renter' && (
-          <span className="text-foreground/50 flex items-center gap-2 text-xs">
-            <span className="bg-foreground/20 inline-block h-3 w-3 rounded-full" />
+      {/* Compact Legend (Hidden in compact mode) */}
+      {!compact && (
+        <div className="mt-3 flex items-center gap-4 px-1 text-xs text-foreground/60">
+          <span className="flex items-center gap-2">
+            <span className="bg-foreground/20 inline-block h-2 w-2 rounded-full" />
             Unavailable
           </span>
-        )}
-        <span className="text-foreground/50 flex items-center gap-2 text-xs">
-          <span className="bg-accent inline-block h-3 w-3 rounded-full" />
-          {mode === 'owner' ? 'Selected to block' : 'Your selection'}
-        </span>
-      </div>
+          <span className="flex items-center gap-2">
+            <span className="bg-accent inline-block h-2 w-2 rounded-full" />
+            Selected
+          </span>
+          {mode === 'owner' && (
+            <span className="flex items-center gap-2">
+              <span className="bg-red-500/40 inline-block h-2 w-2 rounded-full" />
+              Blocked
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }

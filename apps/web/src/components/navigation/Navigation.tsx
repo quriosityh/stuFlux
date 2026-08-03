@@ -1,8 +1,10 @@
 'use client';
 
+import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { MobileNav } from './MobileNav';
 import { NavHeader } from './NavHeader';
+import { MobileSearchBar } from '../explore/MobileSearchBar';
 
 export function Navigation() {
   const pathname = usePathname();
@@ -10,11 +12,21 @@ export function Navigation() {
 
   return (
     <>
-      {!isPDP && <MobileNav />}
-      
+      {!isPDP && (
+        <>
+          <Suspense fallback={null}>
+            <MobileSearchBar />
+          </Suspense>
+          <MobileNav />
+        </>
+      )}
+
       <div className="hidden md:block">
-        <NavHeader />
+        <Suspense fallback={<div className="h-[60px]" />}>
+          <NavHeader />
+        </Suspense>
       </div>
     </>
   );
 }
+

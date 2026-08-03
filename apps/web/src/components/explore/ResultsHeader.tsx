@@ -31,27 +31,36 @@ export function ResultsHeader({
 
   return (
     <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/10">
-      {/* Left: Total Count (Clickable on Mobile to open Filter Sheet) */}
-      <button
-        onClick={() => onOpenMobileFilters?.()}
-        className="flex items-center gap-2 group text-left cursor-pointer md:cursor-default"
-      >
-        <span className="font-syne font-bold text-lg md:text-xl tracking-tight text-foreground">
+      {/* Left: Total Count */}
+      <div className="flex items-center gap-2">
+        <span className="font-syne font-bold text-base sm:text-lg md:text-xl tracking-tight text-foreground">
           {count === 1 ? '1 item found' : `${count} items found`}
         </span>
         {activeFilterCount > 0 && (
-          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
+          <span className="hidden sm:inline-flex text-xs font-bold px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
             {activeFilterCount} active filter{activeFilterCount > 1 ? 's' : ''}
           </span>
         )}
-        <span className="md:hidden text-xs text-foreground/40 group-hover:text-[var(--accent)] transition-colors flex items-center gap-1">
-          <SlidersHorizontal size={12} />
-          <span>Filters</span>
-        </span>
-      </button>
+      </div>
 
-      {/* Right: Quick Sort Dropdown */}
-      <div className="flex items-center gap-3">
+      {/* Right: Small Filter Icon Button on Mobile & Sort Dropdown */}
+      <div className="flex items-center gap-2.5">
+        {/* Mobile Small Filter Icon Button (Right side) */}
+        {onOpenMobileFilters && (
+          <button
+            onClick={onOpenMobileFilters}
+            aria-label="Open filters"
+            className="md:hidden relative p-2.5 rounded-full chrome-card border border-border/20 shadow-sm flex items-center justify-center text-foreground hover:border-[var(--accent)]/40 active:scale-95 transition-all"
+          >
+            <SlidersHorizontal size={15} className="text-[var(--accent)]" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[var(--accent)] text-black text-[9px] font-black flex items-center justify-center shadow-sm">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        )}
+
         {activeFilterCount > 0 && onClearAll && (
           <button
             onClick={onClearAll}
@@ -62,7 +71,7 @@ export function ResultsHeader({
         )}
 
         <div className="relative group">
-          <button className="flex items-center gap-2 chrome-card px-4 py-2 rounded-full text-xs font-semibold hover:border-border/30 transition-colors shadow-sm">
+          <button className="flex items-center gap-2 chrome-card px-3.5 py-2 rounded-full text-xs font-semibold hover:border-border/30 transition-colors shadow-sm">
             <span className="text-foreground/50 hidden sm:inline">Sort:</span>
             <span>{selectedOption.icon} {selectedOption.label}</span>
             <ChevronDown size={14} className="text-foreground/50 group-hover:rotate-180 transition-transform duration-200" />

@@ -87,7 +87,7 @@ export const usersRepository = {
     const bookingRes = await db.execute(sql`
       SELECT
         COALESCE(SUM(CASE WHEN owner_id = ${userId}::uuid AND status = 'completed' THEN (total_amount + delivery_fee) ELSE 0 END), 0)::int AS total_earned,
-        COALESCE(SUM(CASE WHEN owner_id = ${userId}::uuid AND status IN ('confirmed', 'ongoing') THEN (total_amount + delivery_fee) ELSE 0 END), 0)::int AS pending_earnings,
+        COALESCE(SUM(CASE WHEN owner_id = ${userId}::uuid AND status = 'confirmed' THEN (total_amount + delivery_fee) ELSE 0 END), 0)::int AS pending_earnings,
         COALESCE(COUNT(CASE WHEN owner_id = ${userId}::uuid AND status = 'completed' THEN 1 END), 0)::int AS completed_lent,
         COALESCE(COUNT(CASE WHEN renter_id = ${userId}::uuid AND status = 'completed' THEN 1 END), 0)::int AS completed_borrowed
       FROM bookings
