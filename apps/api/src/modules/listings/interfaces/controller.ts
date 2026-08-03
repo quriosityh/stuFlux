@@ -38,7 +38,6 @@ export const getListingBlockedDatesHandler = asyncHandler(async (req: Request, r
 
 export const updateListingBlockedDatesHandler = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const { blocked_dates } = req.body;
-  const result = await updateListingBlockedDates(id, blocked_dates || [], req.auth!.userId);
+  const result = await updateListingBlockedDates(id, req.body, req.auth!.userId);
   res.json({ data: result });
 });

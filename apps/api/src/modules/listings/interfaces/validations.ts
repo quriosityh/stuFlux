@@ -74,7 +74,20 @@ export const listFiltersSchema = z.object({
   }
 });
 
+export const blockedDateRangeSchema = z.object({
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD'),
+  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD'),
+}).refine((d) => d.start_date <= d.end_date, {
+  message: 'start_date must be on or before end_date',
+  path: ['start_date'],
+});
+
+export const blockedDatesSchema = z.object({
+  blocked_dates: z.array(blockedDateRangeSchema).max(100).default([]),
+});
+
 export type PhotoInput = z.infer<typeof photoSchema>;
 export type CreateListingInput = z.infer<typeof createListingSchema>;
 export type UpdateListingInput = z.infer<typeof updateListingSchema>;
 export type ListFiltersInput = z.infer<typeof listFiltersSchema>;
+export type BlockedDateRangeInput = z.infer<typeof blockedDateRangeSchema>;

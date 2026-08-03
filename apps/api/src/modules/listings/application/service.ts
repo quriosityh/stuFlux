@@ -1,9 +1,11 @@
 import { listingsRepository } from '../infrastructure/repository.js';
 import { categoriesRepository } from '../../categories/repository.js';
+import { bookingsRepository } from '../../bookings/repository.js';
 import {
   createListingSchema,
   updateListingSchema,
   listFiltersSchema,
+  blockedDatesSchema,
   type CreateListingInput,
   type UpdateListingInput,
   type ListFiltersInput,
@@ -28,11 +30,13 @@ export const listListings = async (filters: unknown) => {
   };
 };
 
-export const getListing = async (id: string) => {
+export const getListing = async (id: string, options?: { incrementView?: boolean }) => {
   if (!id) throw new AppError('Listing id is required', 400, 'LISTING_ID_REQUIRED');
   const listing = await listingsRepository.findById(id);
   if (!listing) throw ErrorUtils.notFound('Listing', id);
-  await listingsRepository.incrementViewCount(id);
+  if (options?.incrementView !== false) {
+    await listingsRepository.incrementViewCount(id);
+  }
   return listing;
 };
 
@@ -66,7 +70,7 @@ export const createListing = async (payload: unknown, ownerId: string) => {
     assertPublishable({ ...data, photos: normalizedPhotos });
   }
   const id = await listingsRepository.create({ ...data, ownerId, photos: normalizedPhotos });
-  return getListing(id);
+  return getListing(id, { incrementView: false });
 };
 
 export const updateListing = async (id: string, payload: unknown, ownerId: string) => {
@@ -74,28 +78,75 @@ export const updateListing = async (id: string, payload: unknown, ownerId: strin
   const data = updateListingSchema.parse(payload);
   assertSpecsSize(data.specs as any);
 
-  const existing = await listingsRepository.findByIdForOwner(id, ownerId);
-  if (!existing) throw ErrorUtils.notFound('Listing', id);
+  const existing = await listingsRepository.findById(id);
+  if (!existing || existing.owner.id !== ownerId) {
+    throw ErrorUtils.notFound('Listing', id);
+  }
 
   if (existing.status === 'archived') {
     throw new AppError('Archived listings cannot be modified', 400, 'LISTING_ARCHIVED');
   }
 
+  const nextStatus = data.status ?? existing.status;
+
+  if (nextStatus === 'archived') {
+    const hasBookings = await bookingsRepository.hasActiveOrUpcomingConfirmed(id);
+    if (hasBookings) {
+      throw new AppError(
+        'Cannot delete item with active or upcoming bookings',
+        400,
+        'LISTING_HAS_ACTIVE_BOOKINGS'
+      );
+    }
+  }
+
+  if (nextStatus === 'inactive' && existing.status === 'active') {
+    const outOnRental = await bookingsRepository.isCurrentlyOutOnRental(id);
+    if (outOnRental) {
+      throw new AppError(
+        'Cannot pause listing while item is out on rental',
+        400,
+        'LISTING_OUT_ON_RENTAL'
+      );
+    }
+  }
+
   const normalizedPhotos = normalizePhotos(data.photos ?? []);
 
-  const nextStatus = data.status ?? existing.status;
   if (nextStatus === 'active') {
     const snapshot: CreateListingInput = {
-      ...existing,
+      title: existing.title,
+      description: existing.description,
+      category_id: existing.category?.id ?? data.category_id!,
+      daily_rate: existing.daily_rate,
+      area: existing.area,
+      condition: existing.condition ?? undefined,
+      rental_rules: existing.rental_rules ?? undefined,
+      specs: (existing.specs as Record<string, unknown>) ?? {},
+      min_rental_days: existing.min_rental_days,
+      max_rental_days: existing.max_rental_days,
+      delivery_available: existing.delivery_available,
+      delivery_fee: existing.delivery_fee,
+      security_deposit: existing.security_deposit,
+      status: nextStatus,
+      photos: data.photos ? normalizedPhotos : existing.photos.map((p) => ({
+        url: p.url,
+        thumbnail_url: p.thumbnail_url ?? undefined,
+        width: p.width ?? undefined,
+        height: p.height ?? undefined,
+        size_kb: p.size_kb ?? undefined,
+        mime_type: p.mime_type ?? undefined,
+        position: p.position ?? undefined,
+        is_primary: p.is_primary ?? undefined,
+      })),
       ...data,
-      photos: normalizedPhotos,
-    } as any;
-    assertPublishable({ ...snapshot, photos: normalizedPhotos });
+    };
+    assertPublishable({ ...snapshot, photos: snapshot.photos ?? [] });
   }
 
   const updatedId = await listingsRepository.update(id, ownerId, { ...data, photos: data.photos ? normalizedPhotos : undefined });
   if (!updatedId) throw ErrorUtils.notFound('Listing', id);
-  return getListing(updatedId);
+  return getListing(updatedId, { incrementView: false });
 };
 
 export const getListingBlockedDates = async (listingId: string) => {
@@ -105,14 +156,34 @@ export const getListingBlockedDates = async (listingId: string) => {
 
 export const updateListingBlockedDates = async (
   listingId: string,
-  blockedDates: Array<{ start_date: string; end_date: string }>,
+  payload: unknown,
   ownerId: string
 ) => {
   if (!listingId) throw new AppError('Listing id is required', 400, 'LISTING_ID_REQUIRED');
-  
+
+  const { blocked_dates: blockedDates } = blockedDatesSchema.parse(payload ?? {});
+
   // Verify ownership
   const existing = await listingsRepository.findByIdForOwner(listingId, ownerId);
   if (!existing) throw ErrorUtils.notFound('Listing', listingId);
+
+  if (existing.status === 'archived') {
+    throw new AppError('Archived listings cannot be modified', 400, 'LISTING_ARCHIVED');
+  }
+
+  const confirmedBookings = await bookingsRepository.getAvailability(listingId);
+  for (const blocked of blockedDates) {
+    const overlapsBooking = confirmedBookings.some(
+      (booking) => blocked.start_date <= booking.end_date && blocked.end_date >= booking.start_date
+    );
+    if (overlapsBooking) {
+      throw new AppError(
+        'Blocked dates cannot overlap confirmed bookings',
+        400,
+        'BLOCKED_DATES_CONFLICT'
+      );
+    }
+  }
 
   return listingsRepository.updateBlockedDates(listingId, blockedDates);
 };

@@ -176,4 +176,37 @@ export const bookingsRepository = {
       .where(and(eq(bookings.listing_id, listingId), eq(bookings.status, 'confirmed')))
       .orderBy(bookings.start_date);
   },
+
+  /** Confirmed bookings that haven't ended yet (ongoing or upcoming). */
+  async hasActiveOrUpcomingConfirmed(listingId: string) {
+    const today = new Date().toISOString().split('T')[0];
+    const [row] = await db
+      .select({
+        exists: sql<boolean>`EXISTS (
+          SELECT 1 FROM ${bookings}
+          WHERE ${bookings.listing_id} = ${listingId}
+            AND ${bookings.status} = 'confirmed'
+            AND ${bookings.end_date} >= ${today}
+        )`,
+      })
+      .from(bookings);
+    return !!row?.exists;
+  },
+
+  /** Confirmed booking where today falls within the rental window. */
+  async isCurrentlyOutOnRental(listingId: string) {
+    const today = new Date().toISOString().split('T')[0];
+    const [row] = await db
+      .select({
+        exists: sql<boolean>`EXISTS (
+          SELECT 1 FROM ${bookings}
+          WHERE ${bookings.listing_id} = ${listingId}
+            AND ${bookings.status} = 'confirmed'
+            AND ${bookings.start_date} <= ${today}
+            AND ${bookings.end_date} >= ${today}
+        )`,
+      })
+      .from(bookings);
+    return !!row?.exists;
+  },
 };

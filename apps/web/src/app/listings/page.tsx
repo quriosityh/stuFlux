@@ -1,7 +1,9 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { createServerApiClient } from '@/lib/api-client';
+import { fetchOwnerBookings, fetchOwnerListings } from '@/lib/listings/api';
 import { ListingsClient } from '@/components/listings/ListingsClient';
+import type { OwnerBookingSnapshot, OwnerListing } from '@/lib/listings/types';
 
 export const metadata = {
   title: 'My Listings · StuFlux',
@@ -13,21 +15,32 @@ export default async function ListingsPage() {
   if (!userId) redirect('/auth/sign-in' as any);
 
   const token = await getToken();
+
+  if (!token) {
+    return (
+      <ListingsClient
+        initialListings={[]}
+        initialBookings={[]}
+        initialError={null}
+      />
+    );
+  }
+
   const api = await createServerApiClient(token ?? undefined);
 
-  let listings: any[] = [];
-  let bookings: any[] = [];
+  let listings: OwnerListing[] = [];
+  let bookings: OwnerBookingSnapshot[] = [];
+  let loadError: string | null = null;
 
   try {
-    const listingsRes = await api.get('listings/owner/my?limit=100').json<{ data: any[] }>();
-    listings = listingsRes.data || [];
+    listings = await fetchOwnerListings(api);
   } catch (err) {
     console.error('Error fetching owner listings on server:', err);
+    loadError = 'Could not load your listings. Please refresh the page.';
   }
 
   try {
-    const bookingsRes = await api.get('bookings?role=owner&limit=200').json<{ data: any[] }>();
-    bookings = bookingsRes.data || [];
+    bookings = await fetchOwnerBookings(api);
   } catch (err) {
     console.error('Error fetching owner bookings on server:', err);
   }
@@ -36,6 +49,7 @@ export default async function ListingsPage() {
     <ListingsClient
       initialListings={listings}
       initialBookings={bookings}
+      initialError={loadError}
     />
   );
 }

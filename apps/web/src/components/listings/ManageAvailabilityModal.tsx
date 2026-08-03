@@ -3,13 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useApiClient } from '@/lib/api-client';
 import { AvailabilityCalendar } from '../pdp/AvailabilityCalendar';
-import { X, Loader2, Save } from 'lucide-react';
-import { format, startOfDay } from 'date-fns';
-
-interface BlockedRange {
-  start_date: string;
-  end_date: string;
-}
+import { X, Loader2, Save, CalendarClock } from 'lucide-react';
+import { format } from 'date-fns';
+import {
+  fetchBlockedDates,
+  fetchListingAvailability,
+  readApiError,
+  saveBlockedDates,
+} from '@/lib/listings/api';
+import { rangeOverlapsAnyConfirmedBooking } from '@/lib/listings/booking-utils';
+import type { BlockedDateRange } from '@/lib/listings/types';
 
 interface ManageAvailabilityModalProps {
   listingId: string;
@@ -25,7 +28,8 @@ export function ManageAvailabilityModal({
   const api = useApiClient();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [blockedDates, setBlockedDates] = useState<BlockedRange[]>([]);
+  const [blockedDates, setBlockedDates] = useState<BlockedDateRange[]>([]);
+  const [confirmedBookings, setConfirmedBookings] = useState<BlockedDateRange[]>([]);
   const [selectedRange, setSelectedRange] = useState<{ start: Date | null; end: Date | null }>({
     start: null,
     end: null,
@@ -33,60 +37,89 @@ export function ManageAvailabilityModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchBlockedDates() {
+    let cancelled = false;
+
+    async function loadAvailability() {
       try {
-        const res = await api.get(`listings/${listingId}/blocked-dates`).json<{ data: BlockedRange[] }>();
-        setBlockedDates(res.data || []);
+        const [manualBlocks, availability] = await Promise.all([
+          fetchBlockedDates(api, listingId),
+          fetchListingAvailability(api, listingId),
+        ]);
+
+        if (cancelled) return;
+
+        setBlockedDates(manualBlocks);
+        setConfirmedBookings(
+          availability
+            .filter((range) => range.status === 'confirmed')
+            .map(({ start_date, end_date }) => ({ start_date, end_date }))
+        );
       } catch (err) {
-        console.error('Error fetching blocked dates:', err);
-        setError('Failed to load availability. Please try again.');
+        console.error('Error fetching availability:', err);
+        if (!cancelled) {
+          setError(await readApiError(err, 'Failed to load availability. Please try again.'));
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
-    fetchBlockedDates();
+
+    loadAvailability();
+    return () => {
+      cancelled = true;
+    };
   }, [listingId, api]);
 
   const handleSelectDates = (range: { start: Date | null; end: Date | null }) => {
     setSelectedRange(range);
+    setError(null);
   };
 
-  const handleUnblockRange = (rangeToRemove: BlockedRange) => {
+  const handleUnblockRange = (rangeToRemove: BlockedDateRange) => {
     setBlockedDates(prev =>
       prev.filter(
         r => !(r.start_date === rangeToRemove.start_date && r.end_date === rangeToRemove.end_date)
       )
     );
+    setError(null);
   };
 
   const handleBlockSelection = () => {
     if (!selectedRange.start) return;
+
     const startStr = format(selectedRange.start, 'yyyy-MM-dd');
     const endStr = selectedRange.end ? format(selectedRange.end, 'yyyy-MM-dd') : startStr;
+    const nextRange = { start_date: startStr, end_date: endStr };
 
-    setBlockedDates(prev => [
-      ...prev,
-      { start_date: startStr, end_date: endStr }
-    ]);
+    if (rangeOverlapsAnyConfirmedBooking(nextRange, confirmedBookings)) {
+      setError('Cannot block dates that overlap a confirmed booking.');
+      return;
+    }
+
+    setBlockedDates(prev => [...prev, nextRange]);
     setSelectedRange({ start: null, end: null });
+    setError(null);
   };
 
   const handleSave = async () => {
+    const overlapsConfirmed = blockedDates.some((range) =>
+      rangeOverlapsAnyConfirmedBooking(range, confirmedBookings)
+    );
+    if (overlapsConfirmed) {
+      setError('Blocked dates cannot overlap confirmed bookings.');
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
-      await api.put(`listings/${listingId}/blocked-dates`, {
-        json: {
-          blocked_dates: blockedDates.map(d => ({
-            start_date: d.start_date,
-            end_date: d.end_date
-          }))
-        }
-      }).json();
+      await saveBlockedDates(api, listingId, blockedDates);
       onClose();
     } catch (err) {
       console.error('Error updating blocked dates:', err);
-      setError('Failed to save availability. Please try again.');
+      setError(await readApiError(err, 'Failed to save availability. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -119,6 +152,24 @@ export function ManageAvailabilityModal({
           </div>
         ) : (
           <div className="space-y-6">
+            {confirmedBookings.length > 0 && (
+              <div className="flex items-start gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-3 text-xs text-amber-300">
+                <CalendarClock size={14} className="mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-semibold">Confirmed bookings are locked</p>
+                  <p className="mt-1 text-[var(--foreground)]/60">
+                    {confirmedBookings
+                      .map((range) =>
+                        range.start_date === range.end_date
+                          ? format(new Date(range.start_date), 'MMM d, yyyy')
+                          : `${format(new Date(range.start_date), 'MMM d')} – ${format(new Date(range.end_date), 'MMM d, yyyy')}`
+                      )
+                      .join(' · ')}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {error && (
               <p className="text-xs text-red-400 bg-red-400/8 border border-red-400/20 rounded-xl px-4 py-2.5">
                 {error}

@@ -3,42 +3,24 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useApiClient } from '@/lib/api-client';
-import { 
+import {
   Package, Pencil, Eye, AlertCircle, Edit, MoreVertical, ChevronDown,
-  Pause, Play, Calendar, Trash2, Check, Loader2 
+  Pause, Play, Calendar, Trash2, Check, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
-
-interface ListingPhoto {
-  url: string;
-  thumbnail_url?: string;
-  is_primary?: boolean;
-}
-
-interface ListingCategory {
-  id: number;
-  name: string;
-  slug: string;
-  icon: string;
-}
-
-interface MyListing {
-  id: string;
-  title: string;
-  daily_rate: number; // in paisa
-  area: string;
-  status: 'draft' | 'active' | 'inactive' | 'archived';
-  view_count: number;
-  category?: ListingCategory;
-  photo?: ListingPhoto | null;
-}
+import {
+  readApiError,
+  updateListingDailyRate,
+  updateListingStatus,
+} from '@/lib/listings/api';
+import type { OwnerListing } from '@/lib/listings/types';
 
 interface MyListingCardProps {
-  listing: MyListing;
+  listing: OwnerListing;
   pendingRequestsCount: number;
   isOutOnRental: boolean;
-  onRefresh: () => void;
+  onListingUpdated: (listingId: string, patch: Partial<OwnerListing>) => void;
   onManageAvailability: (id: string, title: string) => void;
   onDelete: (id: string, title: string) => void;
 }
@@ -47,7 +29,7 @@ export function MyListingCard({
   listing,
   pendingRequestsCount,
   isOutOnRental,
-  onRefresh,
+  onListingUpdated,
   onManageAvailability,
   onDelete,
 }: MyListingCardProps) {
@@ -57,11 +39,15 @@ export function MyListingCard({
   const [newPrice, setNewPrice] = useState(Math.round(listing.daily_rate / 100).toString());
   const [savingPrice, setSavingPrice] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
-  
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const priceEditRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown and price edit on click outside
+  useEffect(() => {
+    setNewPrice(Math.round(listing.daily_rate / 100).toString());
+  }, [listing.daily_rate]);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -78,19 +64,19 @@ export function MyListingCard({
   const handlePriceSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const parsed = parseInt(newPrice, 10);
-    if (isNaN(parsed) || parsed <= 0) return;
+    if (isNaN(parsed) || parsed <= 0) {
+      setActionError('Enter a valid daily rate in PKR.');
+      return;
+    }
 
     setSavingPrice(true);
+    setActionError(null);
     try {
-      await api.put(`listings/${listing.id}`, {
-        json: {
-          daily_rate: parsed * 100, // convert back to paisa
-        },
-      }).json();
+      await updateListingDailyRate(api, listing.id, parsed * 100);
       setPriceEditOpen(false);
-      onRefresh();
+      onListingUpdated(listing.id, { daily_rate: parsed * 100 });
     } catch (err) {
-      console.error('Error saving price:', err);
+      setActionError(await readApiError(err, 'Failed to update price. Please try again.'));
     } finally {
       setSavingPrice(false);
     }
@@ -100,16 +86,13 @@ export function MyListingCard({
     if (isOutOnRental) return;
     setTogglingStatus(true);
     setDropdownOpen(false);
+    setActionError(null);
     const nextStatus = listing.status === 'active' ? 'inactive' : 'active';
     try {
-      await api.put(`listings/${listing.id}`, {
-        json: {
-          status: nextStatus,
-        },
-      }).json();
-      onRefresh();
+      await updateListingStatus(api, listing.id, nextStatus);
+      onListingUpdated(listing.id, { status: nextStatus });
     } catch (err) {
-      console.error('Error toggling listing status:', err);
+      setActionError(await readApiError(err, 'Failed to update listing status.'));
     } finally {
       setTogglingStatus(false);
     }
@@ -118,7 +101,6 @@ export function MyListingCard({
   const areaName = getAreaById(listing.area, LAHORE_AREAS_DATA)?.name ?? listing.area;
   const imageUrl = listing.photo?.thumbnail_url || listing.photo?.url;
 
-  // Derive status presentation
   let statusBadge = null;
   if (isOutOnRental) {
     statusBadge = (
@@ -143,9 +125,8 @@ export function MyListingCard({
   return (
     <div className="group relative overflow-hidden rounded-[28px] border border-[var(--border-color)]/70 bg-[var(--surface)]/82 shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent)]/60 to-transparent" />
-      
+
       <div className="p-4 sm:p-5 flex gap-4 items-start relative min-h-[126px]">
-        {/* Square Thumbnail Photo */}
         <div className="w-20 h-20 rounded-2xl overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.06))] flex-shrink-0 flex items-center justify-center text-[var(--foreground)]/30 border border-[var(--border-color)]/50 relative shadow-inner">
           {imageUrl ? (
             <img src={imageUrl} alt={listing.title} className="w-full h-full object-cover" />
@@ -154,7 +135,6 @@ export function MyListingCard({
           )}
         </div>
 
-        {/* Info Column */}
         <div className="flex-1 min-w-0 pr-16">
           <h4 className="font-display font-bold text-[15px] text-[var(--foreground)] truncate leading-tight">
             {listing.title}
@@ -169,7 +149,6 @@ export function MyListingCard({
             <span className="truncate">{areaName}</span>
           </p>
 
-          {/* Interactive Price Display */}
           <div className="relative mt-2 flex items-center gap-1.5" ref={priceEditRef}>
             <button
               onClick={() => setPriceEditOpen(prev => !prev)}
@@ -180,7 +159,7 @@ export function MyListingCard({
             </button>
 
             {priceEditOpen && (
-              <form 
+              <form
                 onSubmit={handlePriceSave}
                 className="absolute left-0 top-full mt-2 z-20 flex items-center gap-1.5 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] p-2.5 shadow-2xl animate-in fade-in slide-in-from-top-1 duration-150"
               >
@@ -204,7 +183,6 @@ export function MyListingCard({
             )}
           </div>
 
-          {/* View Metrics & Pending Requests */}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border-color)]/50 bg-[var(--background)]/45 px-2.5 py-1 text-[10px] font-semibold text-[var(--foreground)]/50">
               <Eye size={12} />
@@ -221,15 +199,17 @@ export function MyListingCard({
               </Link>
             )}
           </div>
+
+          {actionError && (
+            <p className="mt-2 text-[10px] font-medium text-red-400">{actionError}</p>
+          )}
         </div>
 
-        {/* Dynamic Status Badge (Top-Right) */}
         <div className="absolute top-4 right-4">
           {statusBadge}
         </div>
       </div>
 
-      {/* 2. 50/50 Action Bar (Divider + Two Equal Buttons) */}
       <div className="grid grid-cols-2 border-t border-[var(--border-color)]/70 bg-[var(--background)]/35">
         <Link
           href={`/listings/${listing.id}/edit` as any}
@@ -239,7 +219,6 @@ export function MyListingCard({
           Edit Listing
         </Link>
 
-        {/* Actions Dropdown Wrapper */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(prev => !prev)}
@@ -259,15 +238,14 @@ export function MyListingCard({
 
           {dropdownOpen && (
             <div className="absolute right-3 bottom-full z-30 mb-2 w-52 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] p-1.5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150">
-              
               <button
                 onClick={handleToggleStatus}
                 disabled={isOutOnRental}
                 className={cn(
                   'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all hover:bg-[var(--foreground)]/5',
-                  isOutOnRental ? "opacity-40 cursor-not-allowed" : "text-[var(--foreground)]/80 hover:text-[var(--foreground)]"
+                  isOutOnRental ? 'opacity-40 cursor-not-allowed' : 'text-[var(--foreground)]/80 hover:text-[var(--foreground)]'
                 )}
-                title={isOutOnRental ? "Cannot pause listing while item is out on rental" : undefined}
+                title={isOutOnRental ? 'Cannot pause listing while item is out on rental' : undefined}
               >
                 {listing.status === 'active' ? (
                   <>
@@ -299,7 +277,6 @@ export function MyListingCard({
                 <Trash2 size={14} />
                 Delete Listing
               </button>
-
             </div>
           )}
         </div>

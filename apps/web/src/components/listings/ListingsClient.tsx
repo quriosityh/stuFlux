@@ -1,129 +1,49 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Package, Loader2, Sparkles, ArrowRight, ChevronLeft } from 'lucide-react';
+import { Plus, Package, Loader2, Sparkles, ArrowRight, ChevronLeft, AlertCircle } from 'lucide-react';
 import { MyListingCard } from './MyListingCard';
 import { ManageAvailabilityModal } from './ManageAvailabilityModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
-import { useApiClient } from '@/lib/api-client';
+import { useOwnerListings } from '@/hooks/useOwnerListings';
+import type { OwnerBookingSnapshot, OwnerListing } from '@/lib/listings/types';
 import { cn } from '@/lib/utils';
 
-interface ListingPhoto {
-  url: string;
-  thumbnail_url?: string;
-}
-
-interface ListingCategory {
-  id: number;
-  name: string;
-  slug: string;
-  icon: string;
-}
-
-interface MyListing {
-  id: string;
-  title: string;
-  daily_rate: number;
-  area: string;
-  status: 'draft' | 'active' | 'inactive' | 'archived';
-  view_count: number;
-  category?: ListingCategory;
-  photo?: ListingPhoto | null;
-}
-
-interface Booking {
-  id: string;
-  listing_id: string;
-  status: string;
-  start_date: string;
-  end_date: string;
-}
-
 interface ListingsClientProps {
-  initialListings: MyListing[];
-  initialBookings: Booking[];
+  initialListings: OwnerListing[];
+  initialBookings: OwnerBookingSnapshot[];
+  initialError?: string | null;
 }
 
-export function ListingsClient({ initialListings, initialBookings }: ListingsClientProps) {
+export function ListingsClient({
+  initialListings,
+  initialBookings,
+  initialError = null,
+}: ListingsClientProps) {
   const router = useRouter();
-  const api = useApiClient();
-  const [listings, setListings] = useState<MyListing[]>(initialListings);
-  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
-  const [loading, setLoading] = useState(false);
-  
-  // Filter chips: 'all' | 'active' | 'paused'
-  const [filter, setFilter] = useState<'all' | 'active' | 'paused'>('all');
-  
-  // Modal states
+  const {
+    loading,
+    error,
+    filter,
+    setFilter,
+    refresh,
+    patchListing,
+    removeListing,
+    filteredListings,
+    pendingCountsMap,
+    outOnRentalMap,
+    activeCount,
+    pausedCount,
+    pendingRequestsTotal,
+    bookings,
+  } = useOwnerListings({ initialListings, initialBookings });
+
   const [availabilityModal, setAvailabilityModal] = useState<{ id: string; title: string } | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ id: string; title: string } | null>(null);
 
-  const fetchLatestData = async () => {
-    setLoading(true);
-    try {
-      const [listingsRes, bookingsRes] = await Promise.all([
-        api.get('listings/owner/my?limit=100').json<{ data: MyListing[] }>(),
-        api.get('bookings?role=owner&limit=200').json<{ data: Booking[] }>()
-      ]);
-      setListings(listingsRes.data || []);
-      setBookings(bookingsRes.data || []);
-    } catch (err) {
-      console.error('Error refreshing listings data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Derive active / pending requests for each listing
-  const pendingCountsMap = useMemo(() => {
-    const counts: Record<string, number> = {};
-    bookings.forEach((b) => {
-      if (b.status === 'pending') {
-        counts[b.listing_id] = (counts[b.listing_id] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [bookings]);
-
-  // Derive ongoing / Out on rental state for each listing
-  const outOnRentalMap = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const map: Record<string, boolean> = {};
-    bookings.forEach((b) => {
-      if (b.status === 'confirmed') {
-        const start = new Date(b.start_date);
-        const end = new Date(b.end_date);
-        start.setHours(0, 0, 0, 0);
-        end.setHours(0, 0, 0, 0);
-        if (today >= start && today <= end) {
-          map[b.listing_id] = true;
-        }
-      }
-    });
-    return map;
-  }, [bookings]);
-
-  // Filter listings (exclude archived)
-  const filteredListings = useMemo(() => {
-    return listings
-      .filter((l) => l.status !== 'archived')
-      .filter((l) => {
-        if (filter === 'active') return l.status === 'active';
-        if (filter === 'paused') return l.status === 'inactive';
-        return true;
-      });
-  }, [listings, filter]);
-
-  const activeCount = useMemo(() => listings.filter((l) => l.status === 'active').length, [listings]);
-  const pausedCount = useMemo(() => listings.filter((l) => l.status === 'inactive').length, [listings]);
-  const pendingRequestsTotal = useMemo(
-    () => bookings.filter((booking) => booking.status === 'pending').length,
-    [bookings]
-  );
+  const displayError = initialError ?? error;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[var(--background)] pb-24 text-[var(--foreground)]">
@@ -140,7 +60,6 @@ export function ListingsClient({ initialListings, initialBookings }: ListingsCli
                       router.back();
                       return;
                     }
-
                     router.push('/explore');
                   }}
                   className="inline-flex items-center gap-1 text-xs font-medium text-[var(--foreground)]/45 transition-colors hover:text-[var(--foreground)]"
@@ -198,6 +117,22 @@ export function ListingsClient({ initialListings, initialBookings }: ListingsCli
               </p>
             </div>
           </div>
+
+          {displayError && (
+            <div className="mt-6 flex items-start gap-2 rounded-2xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-400">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p>{displayError}</p>
+                <button
+                  type="button"
+                  onClick={refresh}
+                  className="mt-1 text-xs font-semibold underline underline-offset-2 hover:opacity-80"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="mt-7 flex flex-wrap items-center gap-2 rounded-3xl border border-[var(--border-color)]/60 bg-[var(--background)]/55 p-2.5 sm:p-3">
             <button
@@ -269,7 +204,7 @@ export function ListingsClient({ initialListings, initialBookings }: ListingsCli
                   listing={listing}
                   pendingRequestsCount={pendingCountsMap[listing.id] || 0}
                   isOutOnRental={!!outOnRentalMap[listing.id]}
-                  onRefresh={fetchLatestData}
+                  onListingUpdated={patchListing}
                   onManageAvailability={(id, title) => setAvailabilityModal({ id, title })}
                   onDelete={(id, title) => setDeleteModal({ id, title })}
                 />
@@ -278,7 +213,6 @@ export function ListingsClient({ initialListings, initialBookings }: ListingsCli
           )}
         </div>
 
-        {/* Modals */}
         {availabilityModal && (
           <ManageAvailabilityModal
             listingId={availabilityModal.id}
@@ -291,14 +225,14 @@ export function ListingsClient({ initialListings, initialBookings }: ListingsCli
           <DeleteConfirmationModal
             listingId={deleteModal.id}
             listingTitle={deleteModal.title}
+            ownerBookings={bookings}
             onClose={() => setDeleteModal(null)}
             onDeleted={() => {
+              removeListing(deleteModal.id);
               setDeleteModal(null);
-              fetchLatestData();
             }}
           />
         )}
-
       </div>
     </div>
   );

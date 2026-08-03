@@ -3,10 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useApiClient } from '@/lib/api-client';
 import { X, Loader2, AlertTriangle } from 'lucide-react';
+import {
+  fetchListingOwnerBookings,
+  readApiError,
+  updateListingStatus,
+} from '@/lib/listings/api';
+import { listingHasActiveOrUpcomingBookings } from '@/lib/listings/booking-utils';
+import type { OwnerBookingSnapshot } from '@/lib/listings/types';
 
 interface DeleteConfirmationModalProps {
   listingId: string;
   listingTitle: string;
+  ownerBookings?: OwnerBookingSnapshot[];
   onClose: () => void;
   onDeleted: () => void;
 }
@@ -14,6 +22,7 @@ interface DeleteConfirmationModalProps {
 export function DeleteConfirmationModal({
   listingId,
   listingTitle,
+  ownerBookings,
   onClose,
   onDeleted,
 }: DeleteConfirmationModalProps) {
@@ -24,46 +33,47 @@ export function DeleteConfirmationModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function checkBookings() {
-      try {
-        const res = await api.get('bookings', {
-          searchParams: {
-            listing_id: listingId,
-            role: 'owner',
-          },
-        }).json<{ data: any[] }>();
+    let cancelled = false;
 
-        // Check if any booking has 'confirmed' status (representing confirmed or ongoing)
-        const active = res.data.some(
-          (b) => b.status === 'confirmed'
-        );
-        setHasActiveBookings(active);
+    async function checkBookings() {
+      if (ownerBookings) {
+        setHasActiveBookings(listingHasActiveOrUpcomingBookings(listingId, ownerBookings));
+        setChecking(false);
+        return;
+      }
+
+      try {
+        const bookings = await fetchListingOwnerBookings(api, listingId);
+        if (!cancelled) {
+          setHasActiveBookings(listingHasActiveOrUpcomingBookings(listingId, bookings));
+        }
       } catch (err) {
         console.error('Error checking bookings:', err);
-        setError('Failed to verify active bookings. Please try again.');
+        if (!cancelled) {
+          setError(await readApiError(err, 'Failed to verify active bookings. Please try again.'));
+        }
       } finally {
-        setChecking(false);
+        if (!cancelled) {
+          setChecking(false);
+        }
       }
     }
 
     checkBookings();
-  }, [listingId, api]);
+    return () => {
+      cancelled = true;
+    };
+  }, [listingId, api, ownerBookings]);
 
   const handleDelete = async () => {
     if (hasActiveBookings) return;
     setDeleting(true);
     setError(null);
     try {
-      // Deleting is done by setting status to 'archived'
-      await api.put(`listings/${listingId}`, {
-        json: {
-          status: 'archived',
-        },
-      }).json();
+      await updateListingStatus(api, listingId, 'archived');
       onDeleted();
-    } catch (err: any) {
-      console.error('Error archiving listing:', err);
-      setError('Failed to delete listing. Please try again.');
+    } catch (err) {
+      setError(await readApiError(err, 'Failed to delete listing. Please try again.'));
     } finally {
       setDeleting(false);
     }
