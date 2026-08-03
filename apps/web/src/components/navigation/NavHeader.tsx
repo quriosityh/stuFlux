@@ -102,6 +102,7 @@ export function NavHeader() {
 
   const navItems: { name: string; href: string }[] = [
     { name: 'Explore', href: '/' },
+    { name: 'Listings', href: '/listings' },
     { name: 'Chats', href: '/messages' },
     { name: 'Activity', href: '/bookings' },
   ];

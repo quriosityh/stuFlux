@@ -3,9 +3,9 @@ import { getMe, updateMe, updateMyVerification, getUserById } from './controller
 
 const router: Router = Router();
 
-router.get('/me', ...getMe);
-router.put('/me', ...updateMe);
-router.put('/me/verification', ...updateMyVerification);
+router.get('/users/me', ...getMe);
+router.put('/users/me', ...updateMe);
+router.put('/users/me/verification', ...updateMyVerification);
 router.get('/users/:id', ...getUserById);
 
 export default router;

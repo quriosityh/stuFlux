@@ -15,18 +15,26 @@ export default async function ProfilePage() {
   const token = await getToken();
   const api = await createServerApiClient(token ?? undefined);
 
-  let profile = null;
-  let listings: { data: any[]; meta: { total: number } } = { data: [], meta: { total: 0 } };
-  let bookings: { data: any[] } = { data: [] };
+  const profilePromise = api.get('users/me').json<{ data: any }>().catch(() => null);
+  const listingsPromise = api.get('listings/owner/my?limit=50').json<any>().catch(() => null);
+  const ownerBookingsPromise = api.get('bookings?role=owner&limit=100').json<any>().catch(() => null);
+  const renterBookingsPromise = api.get('bookings?role=renter&limit=100').json<any>().catch(() => null);
+
+  const [profileRes, listingsRes, ownerRes, renterRes] = await Promise.all([
+    profilePromise,
+    listingsPromise,
+    ownerBookingsPromise,
+    renterBookingsPromise
+  ]);
+
+  const profile = profileRes?.data ?? null;
+  const listings = listingsRes || { data: [], meta: { total: 0 } };
+  
+  const ownerData = ownerRes?.data ? ownerRes.data.map((b: any) => ({ ...b, role: 'owner' })) : [];
+  const renterData = renterRes?.data ? renterRes.data.map((b: any) => ({ ...b, role: 'renter' })) : [];
+  const bookings = { data: [...ownerData, ...renterData] };
+
   let reviews: any[] = [];
-
-  try {
-    const res = await api.get('users/me').json<{ data: any }>();
-    profile = res.data ?? null;
-  } catch {
-    // fallback
-  }
-
   if (profile?.id) {
     try {
       const res = await api.get(`users/${profile.id}/reviews`).json<any>();
@@ -34,26 +42,6 @@ export default async function ProfilePage() {
     } catch {
       reviews = [];
     }
-  }
-
-  try {
-    const res = await api.get('listings/owner/my?limit=50').json<any>();
-    listings = res;
-  } catch {
-    // empty state
-  }
-
-  try {
-    // Fetch both roles for accurate stats
-    const [ownerRes, renterRes] = await Promise.allSettled([
-      api.get('bookings?role=owner&limit=100').json<any>(),
-      api.get('bookings?role=renter&limit=100').json<any>(),
-    ]);
-    const ownerData = ownerRes.status === 'fulfilled' ? (ownerRes.value?.data ?? []).map((b: any) => ({ ...b, role: 'owner' })) : [];
-    const renterData = renterRes.status === 'fulfilled' ? (renterRes.value?.data ?? []).map((b: any) => ({ ...b, role: 'renter' })) : [];
-    bookings = { data: [...ownerData, ...renterData] };
-  } catch {
-    // empty state
   }
 
   return (

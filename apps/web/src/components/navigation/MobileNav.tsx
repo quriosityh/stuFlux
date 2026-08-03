@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Compass, Send, Plus, Activity, UserRound } from 'lucide-react';
+import { Compass, Send, Package, Activity, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function MobileNav() {
@@ -12,7 +12,7 @@ export function MobileNav() {
   const navItems: { name: string; href: string; icon: React.ElementType; isDrop?: boolean }[] = [
     { name: 'Discover', href: '/', icon: Compass },
     { name: 'DMs', href: '/messages', icon: Send },
-    { name: 'Drop', href: '/listings/new', icon: Plus, isDrop: true },
+    { name: 'Listings', href: '/listings', icon: Package, isDrop: true },
     { name: 'Activity', href: '/bookings', icon: Activity },
     { name: 'You', href: '/profile', icon: UserRound },
   ];
