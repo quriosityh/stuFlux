@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getMe, updateMe, getUserById } from './controller.js';
+import { getMe, updateMe, getUserById, syncMyPhoneVerification } from './controller.js';
 
 const router: Router = Router();
 
@@ -8,6 +8,7 @@ const router: Router = Router();
 
 router.get('/users/me',  ...getMe);     // GET  /api/v1/users/me  (authenticated own profile)
 router.put('/users/me',  ...updateMe);  // PUT  /api/v1/users/me  (update own profile)
+router.post('/users/me/phone-verification', ...syncMyPhoneVerification);
 router.get('/users/:id', ...getUserById); // GET /api/v1/users/:id (public profile by DB UUID)
 
 export default router;

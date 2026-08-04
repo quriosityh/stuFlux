@@ -13,7 +13,7 @@ export interface AuthenticatedRequest extends Request {
     clerkUserId: string; // Clerk user ID (e.g. user_...)
     sessionId: string;
     claims: any;
-    userRow: any;        // Full user DB row — avoids redundant findById in controllers
+    userRow?: any;       // Full user DB row — available when authentication succeeds
   };
 }
 

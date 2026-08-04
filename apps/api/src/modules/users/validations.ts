@@ -7,3 +7,9 @@ export const updateProfileSchema = z.object({
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+export const syncPhoneVerificationSchema = z.object({
+  phone_number_id: z.string().min(1).max(100),
+});
+
+export type SyncPhoneVerificationInput = z.infer<typeof syncPhoneVerificationSchema>;

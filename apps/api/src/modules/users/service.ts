@@ -1,5 +1,7 @@
 import { createClerkClient } from '@clerk/backend';
+import { AppError } from '../../common/errors.js';
 import { usersRepository } from './repository.js';
+import type { SyncPhoneVerificationInput } from './validations.js';
 import type { UpdateProfileInput } from './validations.js';
 
 const DEFAULT_AREA = 'johar-town';
@@ -84,6 +86,22 @@ export const getProfile = async (userRow: any) => {
     phone_verified: phoneVerified,
     stats,
   };
+};
+
+/** Confirms the phone belongs to the authenticated Clerk user before persisting its verified state. */
+export const syncPhoneVerification = async (
+  userRow: { id: string; clerk_user_id: string },
+  input: SyncPhoneVerificationInput
+) => {
+  const clerkUser = await clerkClient.users.getUser(userRow.clerk_user_id);
+  const phone = clerkUser.phoneNumbers.find((item) => item.id === input.phone_number_id);
+
+  if (!phone || phone.verification?.status !== 'verified') {
+    throw new AppError('Phone number has not been verified', 400, 'PHONE_NOT_VERIFIED');
+  }
+
+  await usersRepository.setPhoneVerified(userRow.id);
+  return { phone_verified: true };
 };
 
 /**

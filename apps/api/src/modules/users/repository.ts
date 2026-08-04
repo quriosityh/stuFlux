@@ -1,5 +1,5 @@
 import { db } from '../../infra/db/client.js';
-import { users } from '../../../db/schema.js';
+import { users, userVerifications } from '../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import type { UpdateProfileInput } from './validations.js';
 
@@ -88,6 +88,18 @@ export const usersRepository = {
       // No row in user_verifications yet — treat as unverified
       return false;
     }
+  },
+
+  async setPhoneVerified(userId: string) {
+    const [row] = await db
+      .insert(userVerifications)
+      .values({ user_id: userId, phone_verified: true, verification_level: 'phone_verified' })
+      .onConflictDoUpdate({
+        target: userVerifications.user_id,
+        set: { phone_verified: true, verification_level: 'phone_verified' },
+      })
+      .returning({ phone_verified: userVerifications.phone_verified });
+    return Boolean(row?.phone_verified);
   },
 
   /**

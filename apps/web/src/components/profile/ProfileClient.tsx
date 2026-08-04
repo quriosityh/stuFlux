@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSignOut } from '@/components/profile/useSignOut';
 import { EditProfileForm } from '@/components/profile/EditProfileForm';
+import { PhoneVerification } from '@/components/profile/PhoneVerification';
 import { useApiClient } from '@/lib/api-client';
 import { format } from 'date-fns';
 import { getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
@@ -774,13 +775,12 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                     </p>
                   </div>
                 </div>
-                <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                  profile?.phone_verified
-                    ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'bg-amber-500/10 text-amber-400'
-                }`}>
-                  {profile?.phone_verified ? 'Verified' : 'Pending'}
-                </span>
+              </div>
+              <div className="px-5 pb-5">
+                <PhoneVerification
+                  verified={Boolean(profile?.phone_verified)}
+                  onVerified={() => setProfile((current) => current ? { ...current, phone_verified: true } : current)}
+                />
               </div>
 
               {/* Appearance / Theme Selector Row */}
