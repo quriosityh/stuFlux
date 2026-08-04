@@ -71,6 +71,14 @@ export async function seedListings(ownerIds: string[]) {
     .select({ id: categories.id, slug: categories.slug })
     .from(categories);
   const categoryIdsBySlug = new Map(seededCategories.map((category) => [category.slug, category.id]));
+  const expectedCategoryIdByTitle = new Map(
+    listingsSeed.map(({ title, category_id }) => {
+      const categorySlug = CATEGORY_SLUGS[category_id - 1];
+      const resolvedCategoryId = categorySlug ? categoryIdsBySlug.get(categorySlug) : undefined;
+      if (!resolvedCategoryId) throw new Error(`Missing seeded category for listing: ${title}`);
+      return [title, resolvedCategoryId];
+    }),
+  );
 
   const existingListings = await db
     .select({ title: listings.title })
@@ -98,6 +106,24 @@ export async function seedListings(ownerIds: string[]) {
     .select()
     .from(listings)
     .where(inArray(listings.title, listingsSeed.map((listing) => listing.title)));
+
+  // Older seed runs stored category IDs directly. Reconcile those existing rows
+  // so an idempotent seed run also repairs listings moved to the current categories.
+  const categoryCorrections = seededListings.filter(
+    (listing) => listing.category_id !== expectedCategoryIdByTitle.get(listing.title),
+  );
+  if (categoryCorrections.length) {
+    // Keep this on one connection. Parallel updates can exhaust the small pool
+    // available on hosted development databases.
+    await db.transaction(async (tx) => {
+      for (const listing of categoryCorrections) {
+        await tx
+          .update(listings)
+          .set({ category_id: expectedCategoryIdByTitle.get(listing.title)! })
+          .where(eq(listings.id, listing.id));
+      }
+    });
+  }
 
   const existingPhotos = await db
     .select({ id: listingPhotos.id, listing_id: listingPhotos.listing_id, url: listingPhotos.url, position: listingPhotos.position })
@@ -130,5 +156,6 @@ export async function seedListings(ownerIds: string[]) {
   });
   if (photos.length) await db.insert(listingPhotos).values(photos);
 
-  return seededListings;
+  // Keep dependent seed data (bookings/reviews) aligned with listingsSeed indexes.
+  return listingsSeed.map((seed) => seededListings.find((listing) => listing.title === seed.title)!);
 }

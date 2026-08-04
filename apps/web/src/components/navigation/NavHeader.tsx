@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Bell, User, Plus, Menu, Search, Moon, Sun } from 'lucide-react';
@@ -14,6 +14,7 @@ const transitionConfig = { duration: 0.4, ease: [0.16, 1, 0.3, 1] as [number, nu
 
 export function NavHeader() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isExplorePage = pathname === '/';
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>(null);
@@ -22,27 +23,33 @@ export function NavHeader() {
   const [selectedDates, setSelectedDates] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
+  // Sync search bar state with URL params (source of truth for applied filters)
   useEffect(() => {
-    // Load persisted search state from localStorage (if available)
-    try {
-      const rawWhat = localStorage.getItem('search:what');
-      if (rawWhat) setWhatSearch(rawWhat);
+    if (activeTab === null) {
+      const urlQ = searchParams.get('q') || '';
+      const urlAreaId = searchParams.get('area') || '';
+      const urlStartDate = searchParams.get('start_date') || '';
+      const urlEndDate = searchParams.get('end_date') || '';
 
-      const rawDates = localStorage.getItem('search:dates');
-      if (rawDates) {
-        const parsed = JSON.parse(rawDates);
-        setSelectedDates({ start: parsed.start ? new Date(parsed.start) : null, end: parsed.end ? new Date(parsed.end) : null });
+      setWhatSearch(urlQ);
+
+      if (urlAreaId) {
+        const area = getAreaById(urlAreaId, LAHORE_AREAS_DATA);
+        setSelectedArea(area ? (area as LahoreArea) : null);
+      } else {
+        setSelectedArea(null);
       }
 
-      const rawAreaId = localStorage.getItem('search:areaId');
-      if (rawAreaId) {
-        const area = getAreaById(rawAreaId, LAHORE_AREAS_DATA);
-        if (area) setSelectedArea(area as LahoreArea);
+      if (urlStartDate && urlEndDate) {
+        setSelectedDates({ start: new Date(urlStartDate), end: new Date(urlEndDate) });
+      } else {
+        setSelectedDates({ start: null, end: null });
       }
-    } catch (err) {
-      // ignore parsing errors
     }
+  }, [activeTab, searchParams]);
 
+  // Theme initialization + scroll handling
+  useEffect(() => {
     // Check initial theme from HTML data attribute or OS preference
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
                   document.documentElement.classList.contains('dark') ||
@@ -71,18 +78,6 @@ export function NavHeader() {
     
     return () => window.removeEventListener('scroll', handleScroll);
   }, [activeTab]);
-
-  // Persist search state when it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem('search:what', whatSearch || '');
-      localStorage.setItem('search:dates', JSON.stringify({ start: selectedDates.start?.toISOString() || null, end: selectedDates.end?.toISOString() || null }));
-      if (selectedArea) localStorage.setItem('search:areaId', String(selectedArea.id));
-      else localStorage.removeItem('search:areaId');
-    } catch (err) {
-      // ignore
-    }
-  }, [whatSearch, selectedDates, selectedArea]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -124,6 +119,7 @@ export function NavHeader() {
 
   return (
     <nav
+      data-nav-spacer="true"
       className="!fixed top-0 left-0 right-0 z-50 bg-zinc-50 dark:bg-zinc-900 border-b border-border/10 shadow-sm transition-all duration-300"
       style={{ transform: hiddenByPDP ? 'translateY(-100%)' : 'translateY(0)' }}
     >
@@ -167,7 +163,7 @@ export function NavHeader() {
                     return (
                       <Link 
                         key={item.name} 
-                        href={item.href}
+                        href={item.href as any}
                         className={cn(
                           "relative px-1 py-2 transition-colors glitch-text",
                           isActive ? "text-[var(--accent)]" : "text-foreground/70 hover:text-foreground"

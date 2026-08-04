@@ -48,11 +48,11 @@ export const listFiltersSchema = z.object({
     (val) => (val === 'true' || val === '1' ? true : val === 'false' || val === '0' ? false : undefined),
     z.boolean().optional()
   ),
-  min_rate: z.coerce.number().int().positive().optional(),
-  max_rate: z.coerce.number().int().positive().optional(),
+  min_rate: z.coerce.number().int().min(0).optional(),
+  max_rate: z.coerce.number().int().min(0).optional(),
   start_date: dateString,
   end_date: dateString,
-  sort: z.enum(["popular", "newest", "rate_asc", "rate_desc"]).default("popular"),
+  sort: z.enum(["popular", "newest", "rate_asc", "rate_desc", "rating_desc"]).default("popular"),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 }).superRefine((data, ctx) => {

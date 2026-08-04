@@ -8,7 +8,13 @@ export function TopSpacer() {
 
   useEffect(() => {
     const measure = () => {
-      const nav = document.querySelector('nav');
+      const isMobile = window.innerWidth < 768;
+      if (isMobile) {
+        const isPDP = pathname?.startsWith('/listings/');
+        document.documentElement.style.setProperty('--nav-expanded-h', isPDP ? '0px' : '56px');
+        return;
+      }
+      const nav = document.querySelector('[data-nav-spacer="true"]');
       if (nav) {
         const h = nav.getBoundingClientRect().height;
         document.documentElement.style.setProperty('--nav-expanded-h', `${h}px`);
@@ -16,15 +22,21 @@ export function TopSpacer() {
     };
 
     measure();
-    const nav = document.querySelector('nav');
-    if (!nav) return;
+    window.addEventListener('resize', measure);
+    const nav = document.querySelector('[data-nav-spacer="true"]');
+    if (!nav) {
+      return () => window.removeEventListener('resize', measure);
+    }
     const ro = new ResizeObserver(measure);
     ro.observe(nav);
-    return () => ro.disconnect();
-  }, []);
+    return () => {
+      window.removeEventListener('resize', measure);
+      ro.disconnect();
+    };
+  }, [pathname]);
 
-  // Spacer keeps content below fixed nav; height matches expanded nav height
-  return <div className="hidden md:block" style={{ height: 'var(--nav-expanded-h, 160px)' }} />;
+  // Spacer keeps content below fixed desktop nav; hidden on mobile where search header is sticky
+  return <div className="hidden md:block w-full shrink-0" style={{ height: 'var(--nav-expanded-h, 96px)' }} />;
 }
 
 export function BottomSpacer() {

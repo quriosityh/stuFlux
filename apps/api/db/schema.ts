@@ -9,8 +9,10 @@ import {
     serial,
     pgEnum,
     date,
+    index,
     uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ====================== USERS ======================
 
@@ -219,5 +221,8 @@ export const reviews = pgTable(
     },
     (table) => ({
         uniqueBookingReviewer: uniqueIndex('uniq_booking_reviewer').on(table.bookingId, table.reviewerId),
+        listingRatingLookup: index('idx_reviews_listing_public_rating')
+            .on(table.listingId, table.rating)
+            .where(sql`${table.role} = 'as_lender' AND ${table.deletedAt} IS NULL`),
     }),
 );

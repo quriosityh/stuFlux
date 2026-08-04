@@ -55,7 +55,7 @@ export function MobileNav() {
           return (
             <Link
               key={item.name}
-              href={item.href}
+              href={item.href as any}
               className={cn(
                 "flex flex-col items-center relative transition-all duration-200 w-12",
                 isActive

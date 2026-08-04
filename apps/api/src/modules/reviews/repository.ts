@@ -159,7 +159,9 @@ export const updateAnonymityStatus = async (bookingId: string, tx: any = db): Pr
 };
 
 /**
- * Get paginated listing reviews with sorting + category averages
+ * Get paginated listing reviews with sorting + category averages.
+ * Fetches reviewer name/avatar via correlated subquery.
+ * Anonymous reviews have identity fields nulled.
  */
 export const getListingReviews = async (query: GetReviewsQuery) => {
   const page = query.page || 1;
@@ -185,7 +187,7 @@ export const getListingReviews = async (query: GetReviewsQuery) => {
     query.category ? sql`${reviews.categoryRatings}->>${query.category} IS NOT NULL` : sql`TRUE`
   );
 
-  const reviewRows = await db
+  const rawRows = await db
     .select({
       id: reviews.id,
       rating: reviews.rating,
@@ -196,6 +198,13 @@ export const getListingReviews = async (query: GetReviewsQuery) => {
       reviewerId: reviews.reviewerId,
       targetId: reviews.targetId,
       createdAt: reviews.createdAt,
+      // Correlated subqueries — avoids drizzle alias() version dependency
+      reviewer_display_name: sql<string>`(
+        SELECT display_name FROM users WHERE id = ${reviews.reviewerId} LIMIT 1
+      )`,
+      reviewer_avatar_url: sql<string | null>`(
+        SELECT avatar_url FROM users WHERE id = ${reviews.reviewerId} LIMIT 1
+      )`,
     })
     .from(reviews)
     .where(whereClause)
@@ -203,14 +212,26 @@ export const getListingReviews = async (query: GetReviewsQuery) => {
     .limit(limit)
     .offset(offset);
 
+  // Null out identity fields for reviews still in the anonymity window
+  const reviewRows = rawRows.map((r) => ({
+    id: r.id,
+    rating: r.rating,
+    categoryRatings: r.categoryRatings,
+    comment: r.comment,
+    role: r.role,
+    anonymous: r.anonymous,
+    reviewerId: r.reviewerId,
+    targetId: r.targetId,
+    createdAt: r.createdAt,
+    reviewer: r.anonymous
+      ? { display_name: 'Anonymous', avatar_url: null }
+      : { display_name: r.reviewer_display_name ?? 'User', avatar_url: r.reviewer_avatar_url ?? null },
+  }));
+
   const statsRow = await db
     .select({
       total: sql<number>`count(*)`,
       avgRating: sql<number>`avg(${reviews.rating}::numeric)`,
-      avgCleanliness: sql<number>`avg((${reviews.categoryRatings}->>'cleanliness')::numeric)`,
-      avgCommunication: sql<number>`avg((${reviews.categoryRatings}->>'communication')::numeric)`,
-      avgAccuracy: sql<number>`avg((${reviews.categoryRatings}->>'accuracy')::numeric)`,
-      avgValue: sql<number>`avg((${reviews.categoryRatings}->>'value')::numeric)`,
     })
     .from(reviews)
     .where(whereClause)
@@ -221,12 +242,6 @@ export const getListingReviews = async (query: GetReviewsQuery) => {
     pagination: { page, limit, total: Number(statsRow?.total || 0) },
     ratings: {
       average: parseFloat(statsRow?.avgRating ? Number(statsRow.avgRating).toFixed(1) : '0'),
-      category: {
-        cleanliness: parseFloat(statsRow?.avgCleanliness ? Number(statsRow.avgCleanliness).toFixed(1) : '0'),
-        communication: parseFloat(statsRow?.avgCommunication ? Number(statsRow.avgCommunication).toFixed(1) : '0'),
-        accuracy: parseFloat(statsRow?.avgAccuracy ? Number(statsRow.avgAccuracy).toFixed(1) : '0'),
-        value: parseFloat(statsRow?.avgValue ? Number(statsRow.avgValue).toFixed(1) : '0'),
-      },
     },
   };
 };

@@ -23,13 +23,37 @@ const bookingSeed = [
 ] as const;
 
 export async function seedBookings(userIds: string[], listingRefs: ListingRef[]) {
-  const rows = bookingSeed.map((seed) => {
+  const seededRows = bookingSeed.map((seed) => {
     const listing = listingRefs[seed.listingIndex];
     const renterId = userIds[seed.renterIndex] === listing.owner_id
       ? userIds[(seed.renterIndex + 1) % userIds.length]
       : userIds[seed.renterIndex];
     return { ...seed, listing, renterId, total_days: Number(new Date(seed.end_date).getTime() - new Date(seed.start_date).getTime()) / 86_400_000 };
   });
+  const listingsWithCompletedBooking = new Set(
+    seededRows.filter((row) => row.status === 'completed').map((row) => row.listing.id),
+  );
+
+  // Give every demo listing a genuine historical rental so its displayed rating
+  // is backed by a completed booking and a review, not fabricated from popularity.
+  const reviewCoverageRows = listingRefs
+    .filter((listing) => !listingsWithCompletedBooking.has(listing.id))
+    .map((listing, index) => {
+      let renterId = userIds[(index + 1) % userIds.length]!;
+      if (renterId === listing.owner_id) renterId = userIds[(index + 2) % userIds.length]!;
+      return {
+        listing,
+        renterId,
+        start_date: '2026-04-10',
+        end_date: '2026-04-12',
+        total_days: 2,
+        status: 'completed' as const,
+        message: 'Completed demo rental used to populate listing reviews.',
+        security_deposit: 0,
+        delivery_fee: 0,
+      };
+    });
+  const rows = [...seededRows, ...reviewCoverageRows];
   const existing = await db.select().from(bookings).where(inArray(bookings.listing_id, listingRefs.map((listing) => listing.id)));
   const existingKeys = new Set(existing.map((booking) => `${booking.listing_id}:${booking.renter_id}:${booking.start_date}`));
   const missing = rows.filter((row) => !existingKeys.has(`${row.listing.id}:${row.renterId}:${row.start_date}`));

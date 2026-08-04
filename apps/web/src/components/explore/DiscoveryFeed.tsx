@@ -15,7 +15,7 @@ const CATEGORIES = [
   { title: '⛺ Travel & Outdoors',       slug: 'travel-outdoors' },
 ];
 
-// Seed-matching sample data with real picsum photos
+// Fallback sample data (used when API returns no results)
 const ALL_SAMPLE: any[] = [
   { id: 's1',  title: 'Honda EU22i Portable Generator', daily_rate: 2200, area: 'Gulberg',     condition: 'good',     delivery_available: true,  booking_count: 6,  category: { id: 1, slug: 'power-energy'     }, photos: [{ url: 'https://picsum.photos/seed/honda-eu22i-generator-1-1/800/600',   thumbnail_url: 'https://picsum.photos/seed/honda-eu22i-generator-1-1/400/300',   is_primary: true }] },
   { id: 's2',  title: 'Bosch Drill Set with Bits',      daily_rate: 650,  area: 'Johar Town',  condition: 'good',     delivery_available: false, booking_count: 11, category: { id: 2, slug: 'tools-home-fix'   }, photos: [{ url: 'https://picsum.photos/seed/bosch-drill-set-1-1/800/600',         thumbnail_url: 'https://picsum.photos/seed/bosch-drill-set-1-1/400/300',         is_primary: true }] },
@@ -34,68 +34,140 @@ const ALL_SAMPLE: any[] = [
 const BY_POPULAR  = [...ALL_SAMPLE].sort((a, b) => b.booking_count - a.booking_count);
 const BY_NEWEST   = [...ALL_SAMPLE].reverse();
 
-export function DiscoveryFeed() {
-  const [trending,    setTrending]    = useState<any[]>([]);
-  const [popular,     setPopular]     = useState<any[]>([]);
-  const [newArrivals, setNewArrivals] = useState<any[]>([]);
-  const [categoryData, setCategoryData] = useState<Record<string, any[]>>({});
+function DiscoverySkeleton() {
+  return (
+    <div className="space-y-8 sm:space-y-10 lg:space-y-12 animate-pulse">
+      {Array.from({ length: 2 }).map((_, r) => (
+        <div key={r} className="space-y-5">
+          <div className="h-8 w-48 rounded-xl bg-surface" />
+          <div className="flex gap-4 overflow-hidden">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="shrink-0 w-[calc(20%-13px)] space-y-3">
+                <div className="aspect-[4/3] rounded-2xl bg-surface" />
+                <div className="h-4 w-3/4 rounded-lg bg-surface" />
+                <div className="h-3 w-1/2 rounded-lg bg-surface" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LazyCategoryRow({ title, slug }: { title: string; slug: string }) {
+  const [inView, setInView] = useState(false);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [ref, setRef] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    // Trending (popular-sorted)
-    apiClient.get('listings?sort=popular&limit=12&status=active').json<{ data: any[] }>()
-      .then(res => setTrending(res.data?.length ? res.data : BY_POPULAR))
-      .catch(() => setTrending(BY_POPULAR));
+    if (!ref) return;
 
-    // Most Popular (by booking_count)
-    apiClient.get('listings?sort=popular&limit=12&status=active').json<{ data: any[] }>()
-      .then(res => setPopular(res.data?.length ? res.data : BY_POPULAR))
-      .catch(() => setPopular(BY_POPULAR));
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
 
-    // New Arrivals
-    apiClient.get('listings?sort=newest&limit=12&status=active').json<{ data: any[] }>()
-      .then(res => setNewArrivals(res.data?.length ? res.data : BY_NEWEST))
+    observer.observe(ref);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  useEffect(() => {
+    if (!inView) return;
+
+    apiClient
+      .get(`listings?category=${slug}&sort=popular&limit=10&status=active`)
+      .json<{ data: any[] }>()
+      .then((res) => {
+        const data = res.data?.length
+          ? res.data
+          : ALL_SAMPLE.filter((i) => i.category.slug === slug);
+        setItems(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setItems(ALL_SAMPLE.filter((i) => i.category.slug === slug));
+        setLoading(false);
+      });
+  }, [inView, slug]);
+
+  return (
+    <div ref={setRef} className="min-h-[220px] sm:min-h-[260px]">
+      {loading ? (
+        <div className="space-y-5 animate-pulse pt-2">
+          <div className="h-8 w-48 rounded-xl bg-surface" />
+          <div className="flex gap-4 overflow-hidden">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="shrink-0 w-[calc(20%-13px)] space-y-3">
+                <div className="aspect-[4/3] rounded-2xl bg-surface" />
+                <div className="h-4 w-3/4 rounded-lg bg-surface" />
+                <div className="h-3 w-1/2 rounded-lg bg-surface" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : items.length > 0 ? (
+        <CategoryCarousel title={title} categorySlug={slug} items={items} />
+      ) : null}
+    </div>
+  );
+}
+
+export function DiscoveryFeed() {
+  const [trending,    setTrending]    = useState<any[]>([]);
+  const [newArrivals, setNewArrivals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // ── Request 1: Popular listings (Trending row)
+    const fetchPopular = apiClient
+      .get('listings?sort=popular&limit=12&status=active')
+      .json<{ data: any[] }>()
+      .then((res) => {
+        setTrending(res.data?.length ? res.data : BY_POPULAR);
+      })
+      .catch(() => {
+        setTrending(BY_POPULAR);
+      });
+
+    // ── Request 2: New Arrivals
+    const fetchNewest = apiClient
+      .get('listings?sort=newest&limit=12&status=active')
+      .json<{ data: any[] }>()
+      .then((res) => setNewArrivals(res.data?.length ? res.data : BY_NEWEST))
       .catch(() => setNewArrivals(BY_NEWEST));
 
-    // Per-category rows — filter sample by category slug
-    CATEGORIES.forEach(async ({ slug }) => {
-      try {
-        const res = await apiClient.get(`listings?category=${slug}&sort=popular&limit=10`).json<{ data: any[] }>();
-        const data = res.data?.length ? res.data : ALL_SAMPLE.filter(i => i.category.slug === slug);
-        setCategoryData(prev => ({ ...prev, [slug]: data }));
-      } catch {
-        setCategoryData(prev => ({
-          ...prev,
-          [slug]: ALL_SAMPLE.filter(i => i.category.slug === slug),
-        }));
-      }
+    Promise.allSettled([fetchPopular, fetchNewest]).then(() => {
+      setLoading(false);
     });
   }, []);
 
+  if (loading) {
+    return <DiscoverySkeleton />;
+  }
+
   return (
-    <div className="space-y-14">
-      {/* 🔥 Trending — Always visible */}
+    <div className="space-y-8 sm:space-y-10 lg:space-y-12">
+      {/* 🔥 Trending */}
       {trending.length > 0 && (
-        <CategoryCarousel title="🔥 Trending" categorySlug="all" items={trending} />
+        <CategoryCarousel title="🔥 Trending" categorySlug="all" href="/?view=results" items={trending} />
       )}
 
-      {/* ⭐ Most Popular */}
-      {popular.length > 0 && (
-        <CategoryCarousel title="⭐ Most Popular" categorySlug="all" items={popular} />
-      )}
-
-      {/* ✨ New Arrivals — Always visible */}
+      {/* ✨ New Arrivals */}
       {newArrivals.length > 0 && (
-        <CategoryCarousel title="✨ New Arrivals" categorySlug="all" items={newArrivals} />
+        <CategoryCarousel title="✨ New Arrivals" categorySlug="all" href="/?view=results&sort=newest" items={newArrivals} />
       )}
 
-      {/* Per-Category Carousels */}
-      {CATEGORIES.map(({ title, slug }) => {
-        const items = categoryData[slug] ?? [];
-        if (items.length === 0) return null;
-        return (
-          <CategoryCarousel key={slug} title={title} categorySlug={slug} items={items} />
-        );
-      })}
+      {/* Lazy-Loaded Per-Category Carousels */}
+      {CATEGORIES.map(({ title, slug }) => (
+        <LazyCategoryRow key={slug} title={title} slug={slug} />
+      ))}
     </div>
   );
 }

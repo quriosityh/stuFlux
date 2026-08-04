@@ -1,62 +1,38 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-const CATEGORIES = [
-  { id: 'power-energy',      label: 'Power & Energy',      image: '/images/categories/power-energy.jpg' },
-  { id: 'tools-home-fix',   label: 'Tools & Home Fix',    image: '/images/categories/tools-home-fix.jpg' },
-  { id: 'cameras-creators', label: 'Cameras & Creators',  image: '/images/categories/cameras-creators.jpg' },
-  { id: 'music-audio',      label: 'Music & Audio',       image: '/images/categories/music-audio.jpg' },
-  { id: 'clothing-fashion', label: 'Clothing & Fashion',  image: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=160&h=160&q=90' },
-  { id: 'hosting-party',    label: 'Hosting & Party',     image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=160&h=160&q=90' },
-  { id: 'bikes-boards',     label: 'Bikes & Boards',      image: 'https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?auto=format&fit=crop&w=160&h=160&q=90' },
-  { id: 'travel-outdoors',  label: 'Travel & Outdoors',   image: 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?auto=format&fit=crop&w=160&h=160&q=90' },
-];
+export interface CategoryItem {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  image: string;
+}
 
-const itemVariants = {
-  hidden: { opacity: 0, x: -10 },
-  show: {
-    opacity: 1,
-    x: 0,
-    transition: { type: 'spring' as const, stiffness: 200, damping: 25 },
-  },
-};
+export const CATEGORIES_LIST: CategoryItem[] = [
+  { id: 'power-energy',      label: 'Power & Energy',      description: 'Generators, UPS units, solar lamps, extension setups, inverters', icon: '⚡', image: '/images/categories/power.jpeg' },
+  { id: 'tools-home-fix',   label: 'Tools & Home Fix',    description: 'Power drills, ladders, pressure washers, paint rollers, tile cutters', icon: '🔧', image: '/images/categories/tools.png' },
+  { id: 'cameras-creators', label: 'Cameras & Creators',  description: 'DSLRs, lenses, tripods, ring lights, mics, audio interfaces, gimbals', icon: '📷', image: '/images/categories/camera.png' },
+  { id: 'music-audio',      label: 'Music & Audio',       description: 'Guitars, keyboards, DJ controllers, amps, portable speakers', icon: '🎸', image: '/images/categories/music1.jpeg' },
+  { id: 'clothing-fashion', label: 'Clothing & Fashion',  description: 'Sherwani, lehenga, formal suits, cultural dress, accessories', icon: '👕', image: '/images/categories/clothing.jpeg' },
+  { id: 'hosting-party',    label: 'Hosting & Party',     description: 'Speakers, projectors, decoration sets, fairy lights, crockery', icon: '🎉', image: '/images/categories/hosting.jpeg' },
+  { id: 'bikes-boards',     label: 'Bikes & Boards',      description: 'Bicycles, e-scooters, skateboards, rollerblades', icon: '🚲', image: '/images/categories/cycle.jpeg' },
+  { id: 'travel-outdoors',  label: 'Travel & Outdoors',   description: 'Tents, hiking backpacks, sleeping bags, camping gear', icon: '⛺', image: '/images/categories/travel.jpg' },
+];
 
 interface CategoryStripProps {
   activeCategory: string | null;
   onCategoryChange: (cat: string) => void;
 }
 
-// Collapsed header height (after search bar folds away on scroll)
-const COLLAPSED_NAV_H = 72;
-// Scroll threshold after which the nav is considered collapsed
-const SCROLL_THRESHOLD = 80;
-
 export function CategoryStrip({ activeCategory, onCategoryChange }: CategoryStripProps) {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > SCROLL_THRESHOLD);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
   return (
-    // sticky — always in the flow. top changes based on whether header is expanded or collapsed.
-    <div
-      className={cn(
-        'w-full border-b border-border/5 bg-background z-40 shadow-sm sticky transition-[top] duration-300'
-      )}
-      // When at page top: header is ~160px tall, strip sits below it naturally.
-      // When scrolled: header collapses to 72px, strip sticks at 72px.
-      style={{ top: scrolled ? COLLAPSED_NAV_H : 'var(--nav-expanded-h, 160px)' }}
-    >
-      <div className="w-[85%] mx-auto">
-        <div className="flex gap-8 overflow-x-auto scrollbar-hide py-4 snap-x">
-          {CATEGORIES.map((cat, i) => {
+    <div className="w-full border-b border-border/5 bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="w-full px-4 sm:px-6 md:w-[82%] md:px-0 mx-auto">
+        <div className="flex w-full gap-4 sm:gap-5 md:gap-0 overflow-x-auto md:overflow-visible scrollbar-hide py-1.5 sm:py-4 md:py-5 px-1 sm:px-2 md:px-0 snap-x justify-start md:justify-between">
+          {CATEGORIES_LIST.map((cat, i) => {
             const isActive = activeCategory === cat.id;
             return (
               <motion.button
@@ -64,15 +40,15 @@ export function CategoryStrip({ activeCategory, onCategoryChange }: CategoryStri
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.04, type: 'spring', stiffness: 200, damping: 25 }}
-                onClick={() => onCategoryChange(cat.id)}
+                onClick={() => onCategoryChange(isActive ? 'all' : cat.id)}
                 className={cn(
-                  'relative flex flex-col items-center gap-2.5 min-w-max pb-3 transition-colors snap-start hover:text-foreground',
+                  'relative flex shrink-0 flex-col items-center gap-2 min-w-max pb-2.5 transition-colors snap-start hover:text-foreground group',
                   isActive ? 'text-foreground font-semibold' : 'text-foreground/60'
                 )}
               >
                 <div
                   className={cn(
-                    'w-[72px] h-[72px] rounded-full overflow-hidden mb-1 transition-all duration-300 shadow-md border-2',
+                    'w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] md:w-[88px] md:h-[88px] rounded-full overflow-hidden mb-1.5 transition-all duration-300 shadow-md border-2 relative',
                     isActive
                       ? 'scale-110 border-[var(--accent)] ring-2 ring-[var(--accent)]/30 ring-offset-2 ring-offset-background'
                       : 'border-border/10 opacity-90 hover:opacity-100 hover:scale-105 hover:border-[var(--accent)]/40 hover:shadow-lg'
@@ -80,8 +56,11 @@ export function CategoryStrip({ activeCategory, onCategoryChange }: CategoryStri
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={cat.image} alt={cat.label} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
                 </div>
-                <span className="text-xs font-medium tracking-wide">{cat.label}</span>
+                <span className="max-w-[88px] text-center text-[11px] sm:text-sm font-medium leading-tight tracking-wide flex items-center justify-center gap-1">
+                  <span>{cat.label}</span>
+                </span>
 
                 {isActive && (
                   <motion.div
