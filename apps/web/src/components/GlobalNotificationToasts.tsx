@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CheckCircle2,
   XCircle,
+  Ban,
   X,
   ArrowRight,
 } from 'lucide-react';
@@ -48,6 +49,16 @@ function getConfig(n: InAppNotification) {
         body: `Your request for "${n.listingTitle}" was declined`,
         href: null,
         cta: null,
+      };
+    case 'booking_cancelled':
+      return {
+        Icon: Ban,
+        accent: '#f97316',
+        bg: 'rgba(249,115,22,0.08)',
+        title: 'Booking Cancelled',
+        body: `${n.cancelledBy} cancelled "${n.listingTitle}"`,
+        href: '/bookings',
+        cta: 'View Bookings',
       };
     case 'new_message':
       return {
@@ -101,7 +112,7 @@ function Toast({
           <p className="mt-1 text-[12px] text-white/50 leading-relaxed line-clamp-2">{cfg.body}</p>
           {cfg.href && (
             <Link
-              href={cfg.href as any}
+              href={cfg.href as never}
               onClick={() => onClose(item.id)}
               className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold rounded-md px-2.5 py-1 transition-opacity hover:opacity-80"
               style={{ background: cfg.accent + '22', color: cfg.accent }}

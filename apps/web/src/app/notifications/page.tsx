@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CheckCircle2,
   XCircle,
+  Ban,
   ArrowRight,
   BellOff,
   Check,
@@ -49,6 +50,17 @@ function getConfig(n: InAppNotification) {
         body: `Your request for "${n.listingTitle}" was declined`,
         href: null,
         cta: null,
+        tag: 'Booking',
+      };
+    case 'booking_cancelled':
+      return {
+        Icon: Ban,
+        accent: '#f97316',
+        bg: 'rgba(249,115,22,0.10)',
+        label: 'Booking Cancelled',
+        body: `${n.cancelledBy} cancelled "${n.listingTitle}"`,
+        href: '/bookings',
+        cta: 'View Bookings',
         tag: 'Booking',
       };
     case 'new_message':
@@ -113,7 +125,7 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id
           </span>
           {cfg.href && (
             <Link
-              href={cfg.href as any}
+              href={cfg.href as never}
               onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center gap-1 text-[11px] font-semibold transition-opacity hover:opacity-70"
               style={{ color: cfg.accent }}
@@ -149,7 +161,7 @@ export default function NotificationsPage() {
               )}
             </div>
             <p className="text-sm text-foreground/40 pl-[52px]">
-              SSE · Push · Email — all in one place
+              Your booking and message updates, saved in one inbox
             </p>
           </div>
 
@@ -176,7 +188,7 @@ export default function NotificationsPage() {
                 <div className="p-4 rounded-2xl bg-foreground/5 mb-4">
                   <BellOff size={28} className="text-foreground/25" />
                 </div>
-                <p className="text-sm font-medium text-foreground/40">You're all caught up</p>
+                <p className="text-sm font-medium text-foreground/40">You&apos;re all caught up</p>
                 <p className="text-xs text-foreground/25 mt-1">
                   New notifications will appear here in real-time
                 </p>

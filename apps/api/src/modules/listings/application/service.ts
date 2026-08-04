@@ -30,13 +30,22 @@ export const listListings = async (filters: unknown) => {
   };
 };
 
-export const getListing = async (id: string, options?: { incrementView?: boolean }) => {
+export const getListing = async (id: string, options?: { incrementView?: boolean; viewerId?: string }) => {
   if (!id) throw new AppError('Listing id is required', 400, 'LISTING_ID_REQUIRED');
   const listing = await listingsRepository.findById(id);
   if (!listing) throw ErrorUtils.notFound('Listing', id);
-  if (options?.incrementView !== false) {
+  const isOwner = Boolean(options?.viewerId && listing.owner?.id === options.viewerId);
+  if (listing.status !== 'active' && !isOwner) throw ErrorUtils.notFound('Listing', id);
+  if (options?.incrementView !== false && !isOwner) {
     await listingsRepository.incrementViewCount(id);
   }
+  return listing;
+};
+
+export const getListingForOwner = async (id: string, ownerId: string) => {
+  if (!id) throw new AppError('Listing id is required', 400, 'LISTING_ID_REQUIRED');
+  const listing = await listingsRepository.findById(id);
+  if (!listing?.owner || listing.owner.id !== ownerId) throw ErrorUtils.notFound('Listing', id);
   return listing;
 };
 
@@ -79,7 +88,7 @@ export const updateListing = async (id: string, payload: unknown, ownerId: strin
   assertSpecsSize(data.specs as any);
 
   const existing = await listingsRepository.findById(id);
-  if (!existing || existing.owner.id !== ownerId) {
+  if (!existing?.owner || existing.owner.id !== ownerId) {
     throw ErrorUtils.notFound('Listing', id);
   }
 
@@ -118,16 +127,16 @@ export const updateListing = async (id: string, payload: unknown, ownerId: strin
       title: existing.title,
       description: existing.description,
       category_id: existing.category?.id ?? data.category_id!,
-      daily_rate: existing.daily_rate,
+      daily_rate: existing.daily_rate ?? data.daily_rate ?? 1,
       area: existing.area,
       condition: existing.condition ?? undefined,
       rental_rules: existing.rental_rules ?? undefined,
       specs: (existing.specs as Record<string, unknown>) ?? {},
-      min_rental_days: existing.min_rental_days,
-      max_rental_days: existing.max_rental_days,
-      delivery_available: existing.delivery_available,
-      delivery_fee: existing.delivery_fee,
-      security_deposit: existing.security_deposit,
+      min_rental_days: existing.min_rental_days ?? data.min_rental_days ?? 1,
+      max_rental_days: existing.max_rental_days ?? data.max_rental_days ?? 30,
+      delivery_available: existing.delivery_available ?? data.delivery_available ?? false,
+      delivery_fee: existing.delivery_fee ?? data.delivery_fee ?? 0,
+      security_deposit: existing.security_deposit ?? data.security_deposit ?? 0,
       status: nextStatus,
       photos: data.photos ? normalizedPhotos : existing.photos.map((p) => ({
         url: p.url,

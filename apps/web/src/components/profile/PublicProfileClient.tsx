@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
 import {
-  User, MapPin, Calendar, ShieldCheck, Star,
+  User, MapPin, Calendar, Star,
   TrendingUp, ShoppingBag, PackageCheck, MessageSquare, ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
@@ -24,7 +24,6 @@ export type PublicUserProfile = {
   display_name: string;
   avatar_url?: string | null;
   area?: string;
-  phone_verified?: boolean;
   stats?: PublicUserStats;
   created_at?: string;
 };
@@ -118,12 +117,6 @@ export function PublicProfileClient({ profile, listings, reviews }: Props) {
                   <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight truncate">
                     {profile.display_name}
                   </h1>
-                  {profile.phone_verified && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                      <ShieldCheck size={13} />
-                      Verified
-                    </span>
-                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-[var(--foreground)]/60 font-medium">

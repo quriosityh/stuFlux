@@ -1,5 +1,6 @@
 import ky from 'ky';
 import { useAuth } from '@clerk/nextjs';
+import { useMemo } from 'react';
 
 // ── Server-side: direct connection (no CORS, runs inside Node.js)
 const SERVER_API_URL = process.env.API_BASE_URL || 'http://localhost:4000/api/v1';
@@ -22,7 +23,7 @@ const apiClient = ky.create({
 export function useApiClient() {
   const { getToken } = useAuth();
 
-  return apiClient.extend({
+  return useMemo(() => apiClient.extend({
     hooks: {
       beforeRequest: [
         async (request) => {
@@ -33,7 +34,7 @@ export function useApiClient() {
         },
       ],
     },
-  });
+  }), [getToken]);
 }
 
 // ── Server Component API client (direct to Express, no proxy needed)

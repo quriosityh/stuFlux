@@ -4,6 +4,7 @@ import {
   browseListings,
   getListingById,
   getOwnerListingsHandler,
+  getOwnerListingByIdHandler,
   createListingHandler,
   updateListingHandler,
   getListingBlockedDatesHandler,
@@ -13,6 +14,7 @@ import {
 const router: Router = Router();
 
 router.get('/owner/my', requireAuth, getOwnerListingsHandler);
+router.get('/owner/:id', requireAuth, getOwnerListingByIdHandler);
 router.get('/', optionalAuth, browseListings);
 router.get('/:id', optionalAuth, getListingById);
 router.post('/', requireAuth, createListingHandler);

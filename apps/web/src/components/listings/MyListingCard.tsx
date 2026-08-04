@@ -114,10 +114,16 @@ export function MyListingCard({
         Live ●
       </span>
     );
-  } else {
+  } else if (listing.status === 'inactive') {
     statusBadge = (
       <span className="flex items-center gap-1 text-[11px] font-bold text-[var(--foreground)]/40 bg-[var(--foreground)]/5 px-2 py-0.5 rounded-full border border-[var(--border-color)]">
         Paused ●
+      </span>
+    );
+  } else {
+    statusBadge = (
+      <span className="flex items-center gap-1 text-[11px] font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20">
+        Draft
       </span>
     );
   }
@@ -191,7 +197,7 @@ export function MyListingCard({
 
             {pendingRequestsCount > 0 && (
               <Link
-                href={"/bookings" as any}
+                href={'/bookings' as never}
                 className="inline-flex items-center gap-1 rounded-full border border-red-400/20 bg-red-400/10 px-2.5 py-1 text-[10px] font-bold text-red-400 transition-all hover:bg-red-400/15"
               >
                 <AlertCircle size={10} />
@@ -212,7 +218,7 @@ export function MyListingCard({
 
       <div className="grid grid-cols-2 border-t border-[var(--border-color)]/70 bg-[var(--background)]/35">
         <Link
-          href={`/listings/${listing.id}/edit` as any}
+          href={`/listings/${listing.id}/edit` as never}
           className="flex items-center justify-center gap-1.5 border-r border-[var(--border-color)]/70 py-3 text-center text-xs font-bold text-[var(--foreground)]/72 transition-all hover:bg-[var(--foreground)]/5 hover:text-[var(--foreground)]"
         >
           <Edit size={13} />
@@ -238,6 +244,14 @@ export function MyListingCard({
 
           {dropdownOpen && (
             <div className="absolute right-3 bottom-full z-30 mb-2 w-52 rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] p-1.5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <Link
+                href={`/listings/${listing.id}` as never}
+                onClick={() => setDropdownOpen(false)}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-[var(--foreground)]/80 transition-all hover:bg-[var(--foreground)]/5 hover:text-[var(--foreground)]"
+              >
+                <Eye size={14} className="text-[var(--foreground)]/50" />
+                View Listing
+              </Link>
               <button
                 onClick={handleToggleStatus}
                 disabled={isOutOnRental}
@@ -252,10 +266,15 @@ export function MyListingCard({
                     <Pause size={14} className="text-[var(--foreground)]/50" />
                     Pause Listing
                   </>
-                ) : (
+                ) : listing.status === 'inactive' ? (
                   <>
                     <Play size={14} className="text-[var(--foreground)]/50" />
                     Resume Listing
+                  </>
+                ) : (
+                  <>
+                    <Play size={14} className="text-[var(--foreground)]/50" />
+                    Publish Listing
                   </>
                 )}
               </button>

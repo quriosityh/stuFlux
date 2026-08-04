@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useApiClient } from '@/lib/api-client';
 import {
   fetchOwnerBookings,
@@ -81,12 +81,6 @@ export function useOwnerListings({
   const removeListing = useCallback((listingId: string) => {
     setListings((prev) => prev.filter((l) => l.id !== listingId));
   }, []);
-
-  useEffect(() => {
-    if (initialListings.length === 0 && initialBookings.length === 0) {
-      void refresh();
-    }
-  }, [initialBookings.length, initialListings.length, refresh]);
 
   return {
     listings,

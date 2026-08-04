@@ -15,6 +15,7 @@ import { Step5Area } from './steps/Step5Area';
 import { Step6Availability } from './steps/Step6Availability';
 import { Step7Review } from './steps/Step7Review';
 import { WizardFooter } from './WizardFooter';
+import { readApiError } from '@/lib/listings/api';
 
 type ListingFormWizardProps = {
   mode: 'create' | 'edit';
@@ -60,7 +61,7 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
   const handleSkip = () => handleNext();
 
   // Build the API payload from form data
-  const buildPayload = (status: 'active' | 'draft') => ({
+  const buildPayload = (status: ListingFormData['status']) => ({
     title: formData.title,
     description: formData.description,
     category_id: formData.category_id,
@@ -97,18 +98,14 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
       if (mode === 'edit' && listingId) {
         // Edit: PUT existing listing
         const res = await api
-          .put(`listings/${listingId}`, { json: buildPayload('active') })
+          .put(`listings/${listingId}`, { json: buildPayload(formData.status) })
           .json<{ data: { id: string } }>();
         finalId = res.data.id;
 
-        // Save blocked dates separately if any were set
-        if (formData.blocked_dates.length > 0) {
-          await api
-            .put(`listings/${listingId}/blocked-dates`, {
-              json: { blocked_dates: formData.blocked_dates },
-            })
-            .json();
-        }
+        // Always save availability in edit mode so removing all blocked dates persists.
+        await api.put(`listings/${listingId}/blocked-dates`, {
+          json: { blocked_dates: formData.blocked_dates },
+        }).json();
       } else {
         // Create: POST new listing
         const res = await api
@@ -126,12 +123,10 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
         }
       }
 
-      router.push(`/listings/${finalId}` as any);
-    } catch (error: any) {
+      router.push((mode === 'edit' ? '/listings' : `/listings/${finalId}`) as never);
+    } catch (error) {
       console.error('Failed to publish listing:', error);
-      setSubmitError(
-        error?.message ?? 'Something went wrong. Please check your details and try again.'
-      );
+      setSubmitError(await readApiError(error, 'Something went wrong. Please check your details and try again.'));
       setIsSubmitting(false);
     }
   };
@@ -157,8 +152,9 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
             </div>
           )}
           <div className="mt-8">
-            <Step7Review
-              data={formData}
+              <Step7Review
+                data={formData}
+                isEdit={mode === 'edit'}
               onBack={handleBack}
               onSubmit={handleSubmit}
               isSubmitting={isSubmitting}

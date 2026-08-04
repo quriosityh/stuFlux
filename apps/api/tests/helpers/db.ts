@@ -9,11 +9,10 @@ import {
   messages,
   bookings,
   listingPhotos,
-  userVerifications,
 } from '../../db/schema.js';
 
 export const resetDb = async () => {
-  await db.execute(sql`TRUNCATE TABLE messages, conversations, bookings, listing_photos, listings, user_verifications, users, categories RESTART IDENTITY CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE messages, conversations, bookings, listing_photos, listings, users, categories RESTART IDENTITY CASCADE`);
 };
 
 export const createUser = async (overrides: Partial<typeof users.$inferInsert> = {}) => {

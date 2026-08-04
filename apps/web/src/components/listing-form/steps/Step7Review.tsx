@@ -21,6 +21,7 @@ type Step7ReviewProps = {
   onBack: () => void;
   onSubmit: () => void;
   isSubmitting: boolean;
+  isEdit?: boolean;
   onEditStep?: (step: number) => void;
 };
 
@@ -36,7 +37,7 @@ const CONDITION_MAP: Record<string, { label: string; badge: string }> = {
   well_used: { label: 'Well Used', badge: '🔧 Well Used' },
 };
 
-export function Step7Review({ data, onBack, onSubmit, isSubmitting, onEditStep }: Step7ReviewProps) {
+export function Step7Review({ data, onBack, onSubmit, isSubmitting, onEditStep, isEdit = false }: Step7ReviewProps) {
   const areaName = getAreaName(data.area, LAHORE_AREAS_DATA) || 'Lahore';
   const categoryName = CATEGORY_MAP[data.category_id] || 'Category';
   const conditionInfo = CONDITION_MAP[data.condition] || { label: data.condition || 'Not specified', badge: data.condition || 'Standard' };
@@ -388,10 +389,12 @@ export function Step7Review({ data, onBack, onSubmit, isSubmitting, onEditStep }
               <span className="text-xs font-bold text-accent uppercase tracking-wider">Ready for Market</span>
             </div>
             <h3 className="font-bold text-lg sm:text-xl text-foreground mb-1">
-              Ready to publish?
+              {isEdit ? 'Ready to save changes?' : 'Ready to publish?'}
             </h3>
             <p className="text-xs sm:text-sm text-foreground/70 mb-5 leading-relaxed">
-              Once published, your item will be active and visible for rental requests on StuFlux.
+              {isEdit
+                ? 'Your updates will be saved while keeping the current listing status.'
+                : 'Once published, your item will be active and visible for rental requests on StuFlux.'}
             </p>
             
             <div className="flex flex-col gap-3">
@@ -403,12 +406,12 @@ export function Step7Review({ data, onBack, onSubmit, isSubmitting, onEditStep }
                 {isSubmitting ? (
                   <>
                     <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                    <span>Publishing...</span>
+                    <span>{isEdit ? 'Saving...' : 'Publishing...'}</span>
                   </>
                 ) : (
                   <>
                     <Sparkles size={18} />
-                    <span>Publish Listing</span>
+                    <span>{isEdit ? 'Save Changes' : 'Publish Listing'}</span>
                   </>
                 )}
               </button>

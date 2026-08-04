@@ -2,53 +2,68 @@ import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { createServerApiClient } from '@/lib/api-client';
 import { ListingFormWizard } from '@/components/listing-form/ListingFormWizard';
+import type { ListingFormData, PhotoObject } from '@/components/listing-form/types';
 
-export default async function EditListingPage({ params }: { params: { id: string } }) {
+type EditableListing = {
+  title: string;
+  description: string;
+  category: { id: number } | null;
+  daily_rate: number;
+  area: string;
+  condition: ListingFormData['condition'] | null;
+  rental_rules: string | null;
+  specs: Record<string, string> | null;
+  min_rental_days: number | null;
+  max_rental_days: number | null;
+  delivery_available: boolean | null;
+  delivery_fee: number | null;
+  security_deposit: number | null;
+  status: ListingFormData['status'] | 'archived' | null;
+  photos: Array<PhotoObject | null>;
+};
+
+type BlockedDate = { start_date: string; end_date: string };
+
+export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { userId, getToken } = await auth();
-  if (!userId) redirect('/auth/sign-in' as any);
+  if (!userId) redirect('/auth/sign-in' as never);
 
   const token = await getToken();
-  const api = await createServerApiClient(token ?? undefined);
+  if (!token) redirect('/auth/sign-in' as never);
 
-  let defaultValues = {};
+  const api = await createServerApiClient(token);
+
   try {
-    const res = await api.get(`listings/${params.id}`).json<{ data: any }>();
-    const l = res.data;
-    if (!l) redirect('/' as any);
+    const [listingResponse, blockedDatesResponse] = await Promise.all([
+      api.get(`listings/owner/${id}`).json<{ data: EditableListing }>(),
+      api.get(`listings/${id}/blocked-dates`).json<{ data: BlockedDate[] }>(),
+    ]);
+    const listing = listingResponse.data;
 
-    defaultValues = {
-      title: l.title ?? '',
-      description: l.description ?? '',
-      category_id: l.category?.id ?? 0,
-      daily_rate: l.daily_rate ?? 0,
-      area: l.area ?? '',
-      condition: l.condition ?? '',
-      rental_rules: l.rental_rules ?? '',
-      specs: l.specs ?? {},
-      min_rental_days: l.min_rental_days ?? 1,
-      max_rental_days: l.max_rental_days ?? 30,
-      delivery_available: l.delivery_available ?? false,
-      delivery_fee: l.delivery_fee ?? 0,
-      security_deposit: l.security_deposit ?? 0,
-      status: l.status ?? 'draft',
-      // Map existing photo rows → PhotoObject[] so the wizard can show and re-submit them
-      photos: (l.photos ?? []).map((p: any) => ({
-        url: p.url,
-        secure_url: p.url,
-        width: p.width ?? undefined,
-        height: p.height ?? undefined,
-        size_kb: p.size_kb ?? undefined,
-        mime_type: p.mime_type ?? undefined,
-      })).filter((p: any) => Boolean(p.url)),
-      blocked_dates: [],
+    if (listing.status === 'archived') redirect('/listings' as never);
+
+    const defaultValues: Partial<ListingFormData> = {
+      title: listing.title,
+      description: listing.description,
+      category_id: listing.category?.id ?? 0,
+      daily_rate: listing.daily_rate,
+      area: listing.area,
+      condition: listing.condition ?? '',
+      rental_rules: listing.rental_rules ?? '',
+      specs: listing.specs ?? {},
+      min_rental_days: listing.min_rental_days ?? 1,
+      max_rental_days: listing.max_rental_days ?? 30,
+      delivery_available: listing.delivery_available ?? false,
+      delivery_fee: listing.delivery_fee ?? 0,
+      security_deposit: listing.security_deposit ?? 0,
+      status: listing.status ?? 'draft',
+      photos: listing.photos.filter((photo): photo is PhotoObject => Boolean(photo?.url)),
+      blocked_dates: blockedDatesResponse.data ?? [],
     };
-  } catch {
-    redirect('/profile' as any);
-  }
 
-  return (
-    <main>
-      <ListingFormWizard mode="edit" listingId={params.id} defaultValues={defaultValues} />
-    </main>
-  );
+    return <ListingFormWizard mode="edit" listingId={id} defaultValues={defaultValues} />;
+  } catch {
+    redirect('/listings' as never);
+  }
 }

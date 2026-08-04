@@ -60,7 +60,7 @@ export function ListingsClient({
                       router.back();
                       return;
                     }
-                    router.push('/explore');
+                    router.push('/explore' as never);
                   }}
                   className="inline-flex items-center gap-1 text-xs font-medium text-[var(--foreground)]/45 transition-colors hover:text-[var(--foreground)]"
                 >
@@ -105,7 +105,7 @@ export function ListingsClient({
 
             <div className="flex flex-col items-start gap-3 lg:min-w-[250px] lg:max-w-[290px] lg:items-end lg:justify-self-end">
               <Link
-                href={"/listings/new" as any}
+                href={'/listings/new' as never}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl hyper-liquid px-5 py-3 text-sm font-bold shadow-lg shadow-cyan-500/20 transition-transform hover:-translate-y-0.5 hover:opacity-95 lg:min-w-[220px]"
               >
                 <Plus size={16} />
@@ -189,7 +189,7 @@ export function ListingsClient({
                   : `No listings match the ${filter} filter right now.`}
               </p>
               <Link
-                href={"/listings/new" as any}
+                href={'/listings/new' as never}
                 className="mt-6 inline-flex items-center gap-2 rounded-2xl hyper-liquid px-5 py-3 text-sm font-bold shadow-lg shadow-cyan-500/20 transition-transform hover:-translate-y-0.5"
               >
                 <Plus size={15} />

@@ -40,5 +40,5 @@ export interface ListingFormData {
   blocked_dates: { start_date: string; end_date: string }[];
 
   // Internal
-  status: 'draft' | 'active';
+  status: 'draft' | 'active' | 'inactive';
 }

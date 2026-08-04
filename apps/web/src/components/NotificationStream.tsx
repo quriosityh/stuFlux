@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { useApiClient } from '@/lib/api-client';
 
 export type InAppNotification =
   | {
@@ -34,7 +35,22 @@ export type InAppNotification =
       conversationId: string;
       senderName: string;
       preview: string;
+    }
+  | {
+      type: 'booking_cancelled';
+      bookingId: string;
+      listingTitle: string;
+      cancelledBy: string;
     };
+
+type StreamNotification = InAppNotification & { notificationId?: string };
+
+type StoredNotification = {
+  id: string;
+  payload: InAppNotification;
+  read_at: string | null;
+  created_at: string;
+};
 
 export interface NotificationItem {
   id: string;
@@ -86,9 +102,9 @@ export function NotificationStream() {
 
       es.onmessage = (e) => {
         try {
-          const notification = JSON.parse(e.data) as InAppNotification;
+          const notification = JSON.parse(e.data) as StreamNotification;
           const item: NotificationItem = {
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            id: notification.notificationId ?? `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             notification,
             timestamp: new Date(),
             read: false,
@@ -179,7 +195,27 @@ export function NotificationStream() {
  * Works anywhere inside the app — no context provider needed.
  */
 export function useNotifications() {
+  const api = useApiClient();
   const [items, setItems] = useState<NotificationItem[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    api.get('notifications')
+      .json<{ data: StoredNotification[] }>()
+      .then(({ data }) => {
+        if (!active) return;
+        setItems(data.map((item) => ({
+          id: item.id,
+          notification: item.payload,
+          timestamp: new Date(item.created_at),
+          read: Boolean(item.read_at),
+        })));
+      })
+      .catch(() => {
+        // The live stream remains available even if history cannot be loaded.
+      });
+    return () => { active = false; };
+  }, [api]);
 
   useEffect(() => {
     return subscribeToNotifications((item) => {
@@ -189,11 +225,13 @@ export function useNotifications() {
 
   const markRead = useCallback((id: string) => {
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  }, []);
+    void api.patch(`notifications/${id}/read`);
+  }, [api]);
 
   const markAllRead = useCallback(() => {
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, []);
+    void api.patch('notifications/read-all');
+  }, [api]);
 
   const unreadCount = items.filter((n) => !n.read).length;
 

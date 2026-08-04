@@ -9,6 +9,7 @@ import {
     serial,
     pgEnum,
     date,
+    index,
     uniqueIndex,
 } from "drizzle-orm/pg-core";
 
@@ -27,16 +28,7 @@ export const users = pgTable("users", {
 
     email: text("email"),
     avatar_url: text("avatar_url"),
-});
-
-// ====================== USER_VERIFICATIONS ======================
-export const userVerifications = pgTable("user_verifications", {
-    id: uuid("id").defaultRandom().primaryKey(), // UUID with default random generation
-    user_id: uuid("user_id")
-        .references(() => users.id, { onDelete: "cascade" }) // Foreign key to users(id)
-        .notNull(),
-    phone_verified: boolean("phone_verified").default(false), // Defaults to false
-    verification_level: text("verification_level").default("unverified"), // Default value
+    onboarding_completed: boolean("onboarding_completed").notNull().default(false),
 });
 
 // ====================== PUSH SUBSCRIPTIONS ======================
@@ -50,6 +42,20 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
     auth: text("auth").notNull(),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
+
+// ====================== NOTIFICATIONS ======================
+export const notifications = pgTable("notifications", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    user_id: uuid("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    payload: jsonb("payload").notNull(),
+    read_at: timestamp("read_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+    index("notifications_user_created_idx").on(table.user_id, table.created_at),
+]);
 
 // ====================== CATEGORIES ======================
 export const categories = pgTable("categories", {

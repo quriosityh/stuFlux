@@ -27,6 +27,12 @@ export type NotificationEvent =
       endDate: string;
     }
   | {
+      type: 'booking_cancelled';
+      bookingId: string;
+      listingTitle: string;
+      cancelledBy: string;
+    }
+  | {
       type: 'new_message';
       conversationId: string;
       senderName: string;

@@ -74,34 +74,18 @@ export const usersRepository = {
     return row ?? null;
   },
 
-  async upsertUserVerification(userId: string, data: { phone_verified?: boolean; verification_level?: string }) {
-    const existing = await db
-      .select()
-      .from(sql`user_verifications`)
-      .where(sql`user_id = ${userId}::uuid`);
-
-    if (existing.length > 0) {
-      await db.execute(sql`
-        UPDATE user_verifications
-        SET 
-          phone_verified = COALESCE(${data.phone_verified ?? null}, phone_verified),
-          verification_level = COALESCE(${data.verification_level ?? null}, verification_level)
-        WHERE user_id = ${userId}::uuid
-      `);
-    } else {
-      await db.execute(sql`
-        INSERT INTO user_verifications (user_id, phone_verified, verification_level)
-        VALUES (${userId}::uuid, COALESCE(${data.phone_verified ?? null}, false), COALESCE(${data.verification_level ?? null}, 'unverified'))
-      `);
-    }
-  },
-
-  async isPhoneVerified(userId: string): Promise<boolean> {
+  async completeOnboarding(id: string, payload: UpdateProfileInput) {
     const [row] = await db
-      .select({ phone_verified: sql<boolean>`COALESCE(phone_verified, false)` })
-      .from(sql`user_verifications`)
-      .where(sql`user_id = ${userId}::uuid`);
-    return Boolean(row?.phone_verified);
+      .update(users)
+      .set({
+        display_name: payload.display_name!,
+        area: payload.area!,
+        onboarding_completed: true,
+        updated_at: sql`NOW()`,
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return row ?? null;
   },
 
   async getUserStats(userId: string) {

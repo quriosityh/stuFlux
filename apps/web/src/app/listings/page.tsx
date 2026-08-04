@@ -33,16 +33,21 @@ export default async function ListingsPage() {
   let loadError: string | null = null;
 
   try {
-    listings = await fetchOwnerListings(api);
+    const [fetchedListings, fetchedBookings] = await Promise.all([
+      fetchOwnerListings(api).catch((err) => {
+        console.error('Error fetching owner listings on server:', err);
+        loadError = 'Could not load your listings. Please refresh the page.';
+        return [];
+      }),
+      fetchOwnerBookings(api).catch((err) => {
+        console.error('Error fetching owner bookings on server:', err);
+        return [];
+      }),
+    ]);
+    listings = fetchedListings;
+    bookings = fetchedBookings;
   } catch (err) {
-    console.error('Error fetching owner listings on server:', err);
-    loadError = 'Could not load your listings. Please refresh the page.';
-  }
-
-  try {
-    bookings = await fetchOwnerBookings(api);
-  } catch (err) {
-    console.error('Error fetching owner bookings on server:', err);
+    console.error('Unexpected error fetching listings page data:', err);
   }
 
   return (

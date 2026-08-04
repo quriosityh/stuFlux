@@ -3,7 +3,8 @@ import { listingsRepository } from '../listings/infrastructure/repository.js';
 import { messagesRepository } from './repository.js';
 import { sendMessageSchema, listMessagesSchema } from './validations.js';
 import { messageEmitter, isUserConnected } from '../../infra/events/messageEmitter.js';
-import { notificationEmitter, type NotificationEvent } from '../../infra/events/notificationEmitter.js';
+import { type NotificationEvent } from '../../infra/events/notificationEmitter.js';
+import { publishNotification } from '../notifications/service.js';
 import { usersRepository } from '../users/repository.js';
 import { sendPushToUser } from '../../infra/push/sender.js';
 
@@ -75,7 +76,7 @@ export const sendMessage = async (payload: unknown, senderId: string) => {
   messageEmitter.emit(`conversation:${conversation.id}`, eventPayload);
 
   const senderName = await usersRepository.findDisplayName(senderId);
-  notificationEmitter.emit(`user:${recipientId}`, {
+  void publishNotification(recipientId, {
     type: 'new_message',
     conversationId: conversation.id,
     senderName: senderName ?? 'Someone',

@@ -55,3 +55,19 @@ export function bookingRejectedEmail(p: {
     `,
   };
 }
+
+export function bookingCancelledEmail(p: {
+  recipientName: string;
+  cancelledBy: string;
+  listingTitle: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `Booking for "${p.listingTitle}" was cancelled`,
+    html: `
+      <p>Hi ${p.recipientName},</p>
+      <p><strong>${p.cancelledBy}</strong> cancelled the booking for <strong>${p.listingTitle}</strong>.</p>
+      <p><a href="${appUrl}/bookings">View your bookings →</a></p>
+      <p>— StuFlux</p>
+    `,
+  };
+}

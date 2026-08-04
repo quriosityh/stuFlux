@@ -7,9 +7,9 @@ export const updateProfileSchema = z.object({
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
-export const updateVerificationSchema = z.object({
-  phone_verified: z.boolean().optional(),
-  verification_level: z.string().optional(),
+export const completeOnboardingSchema = z.object({
+  display_name: z.string().trim().min(2, 'Display name must be at least 2 characters').max(100),
+  area: z.string().trim().min(2, 'Please select your area').max(100),
 });
 
-export type UpdateVerificationInput = z.infer<typeof updateVerificationSchema>;
+export type CompleteOnboardingInput = z.infer<typeof completeOnboardingSchema>;

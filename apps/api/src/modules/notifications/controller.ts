@@ -10,6 +10,8 @@ import {
   type NotificationEvent,
 } from '../../infra/events/notificationEmitter.js';
 import type { Request } from 'express';
+import { requireAuth, type AuthenticatedRequest } from '../../infra/http/middleware/auth.js';
+import { getNotifications, markAllNotificationsRead, markNotificationRead } from './service.js';
 
 /**
  * SSE handler — GET /notifications/stream
@@ -58,5 +60,29 @@ export const streamNotificationsHandler = [
       notificationEmitter.off(`user:${userId}`, listener);
       untrackUserStream(userId);
     });
+  }),
+];
+
+export const listNotificationsHandler = [
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    res.json({ data: await getNotifications(req.auth!.userId) });
+  }),
+];
+
+export const markNotificationReadHandler = [
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const notification = await markNotificationRead(req.auth!.userId, req.params.id);
+    if (!notification) throw new AppError('Notification not found', 404, 'NOTIFICATION_NOT_FOUND');
+    res.json({ data: notification });
+  }),
+];
+
+export const markAllNotificationsReadHandler = [
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    await markAllNotificationsRead(req.auth!.userId);
+    res.status(204).end();
   }),
 ];

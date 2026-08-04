@@ -1,6 +1,6 @@
 import { createClerkClient } from '@clerk/backend';
 import { usersRepository } from './repository.js';
-import type { UpdateProfileInput } from './validations.js';
+import type { CompleteOnboardingInput, UpdateProfileInput } from './validations.js';
 
 const DEFAULT_AREA = 'johar-town';
 const DEFAULT_NAME = 'User';
@@ -74,14 +74,10 @@ export const getProfile = async (dbUserId: string) => {
   const user = await usersRepository.findById(dbUserId);
   if (!user) return null;
 
-  const [phoneVerified, stats] = await Promise.all([
-    usersRepository.isPhoneVerified(dbUserId),
-    usersRepository.getUserStats(dbUserId),
-  ]);
+  const stats = await usersRepository.getUserStats(dbUserId);
 
   return {
     ...user,
-    phone_verified: phoneVerified,
     stats,
   };
 };
@@ -90,10 +86,7 @@ export const getPublicProfile = async (targetUserId: string) => {
   const user = await usersRepository.findById(targetUserId);
   if (!user) return null;
 
-  const [phoneVerified, stats] = await Promise.all([
-    usersRepository.isPhoneVerified(targetUserId),
-    usersRepository.getUserStats(targetUserId),
-  ]);
+  const stats = await usersRepository.getUserStats(targetUserId);
 
   // Strip private metrics (total_earned, pending_earnings) for public view
   const { total_earned, pending_earnings, ...publicStats } = stats;
@@ -103,7 +96,6 @@ export const getPublicProfile = async (targetUserId: string) => {
     display_name: user.display_name,
     area: user.area,
     avatar_url: user.avatar_url,
-    phone_verified: phoneVerified,
     stats: publicStats,
     created_at: user.created_at,
   };
@@ -113,6 +105,13 @@ export const updateProfile = async (dbUserId: string, payload: UpdateProfileInpu
   return usersRepository.updateProfile(dbUserId, payload);
 };
 
-export const updateVerification = async (dbUserId: string, payload: { phone_verified?: boolean; verification_level?: string }) => {
-  await usersRepository.upsertUserVerification(dbUserId, payload);
+export const completeOnboarding = async (dbUserId: string, clerkUserId: string, payload: CompleteOnboardingInput) => {
+  const user = await usersRepository.completeOnboarding(dbUserId, payload);
+  if (!user) return null;
+
+  await clerkClient.users.updateUserMetadata(clerkUserId, {
+    publicMetadata: { onboarding_completed: true },
+  });
+  setCachedUser(clerkUserId, user);
+  return user;
 };

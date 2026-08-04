@@ -5,9 +5,10 @@ import { createBookingSchema } from './validations.js';
 import { bookingsRepository } from './repository.js';
 import { messagesRepository } from '../messages/repository.js';
 import { usersRepository } from '../users/repository.js';
-import { notificationEmitter, type NotificationEvent } from '../../infra/events/notificationEmitter.js';
+import { type NotificationEvent } from '../../infra/events/notificationEmitter.js';
+import { publishNotification } from '../notifications/service.js';
 import { sendPushToUser } from '../../infra/push/sender.js';
-import { bookingConfirmedEmail, bookingRejectedEmail, bookingRequestEmail } from '../../infra/email/templates.js';
+import { bookingCancelledEmail, bookingConfirmedEmail, bookingRejectedEmail, bookingRequestEmail } from '../../infra/email/templates.js';
 import { sendEmail } from '../../infra/email/sender.js';
 import type { BookingStatus } from './types.js';
 
@@ -85,7 +86,7 @@ export const createBooking = async (payload: unknown, renterId: string) => {
 
   const renterName = await usersRepository.findDisplayName(renterId);
   const renterEmail = await usersRepository.findEmailById(renterId);
-  notificationEmitter.emit(`user:${listing.owner.id}`, {
+  void publishNotification(listing.owner.id, {
     type: 'booking_request',
     bookingId: booking.id,
     listingTitle: listing.title,
@@ -163,7 +164,7 @@ export const confirmBooking = async (bookingId: string, ownerId: string) => {
       listingsRepository.findById(booking.listing_id),
       messagesRepository.findConversationByBookingId(bookingId),
     ]);
-    notificationEmitter.emit(`user:${booking.renter_id}`, {
+    void publishNotification(booking.renter_id, {
       type: 'booking_confirmed',
       bookingId: booking.id,
       listingTitle: listing?.title ?? '',
@@ -210,7 +211,7 @@ export const rejectBooking = async (bookingId: string, ownerId: string) => {
   const updated = await bookingsRepository.updateStatus(bookingId, 'rejected', 'rejected_at');
   if (updated) {
     const listing = await listingsRepository.findById(booking.listing_id);
-    notificationEmitter.emit(`user:${booking.renter_id}`, {
+    void publishNotification(booking.renter_id, {
       type: 'booking_rejected',
       bookingId: booking.id,
       listingTitle: listing?.title ?? '',
@@ -255,12 +256,30 @@ export const cancelBooking = async (bookingId: string, userId: string) => {
   const updated = await bookingsRepository.updateStatus(bookingId, 'cancelled', 'cancelled_at');
   if (updated) {
     const counterpartId = userId === booking.renter_id ? booking.owner_id : booking.renter_id;
+    const cancelledBy = await usersRepository.findDisplayName(userId);
+    void publishNotification(counterpartId, {
+      type: 'booking_cancelled',
+      bookingId: booking.id,
+      listingTitle: result.listing.title,
+      cancelledBy: cancelledBy ?? 'The other participant',
+    } satisfies NotificationEvent);
     void sendPushToUser(counterpartId, {
       type: 'booking_cancelled',
       title: 'Booking Cancelled',
       body: `Booking for ${result.listing.title} was cancelled`,
       url: '/bookings',
     });
+    const counterpart = await usersRepository.findEmailById(counterpartId);
+    if (counterpart?.email) {
+      void sendEmail({
+        to: counterpart.email,
+        ...bookingCancelledEmail({
+          recipientName: counterpart.display_name,
+          cancelledBy: cancelledBy ?? 'The other participant',
+          listingTitle: result.listing.title,
+        }),
+      });
+    }
   }
   return updated;
 };
