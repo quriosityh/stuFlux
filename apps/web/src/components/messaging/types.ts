@@ -20,12 +20,16 @@ export interface Conversation {
   dailyRate: number;
   otherUserId: string;
   otherUserName: string;
-  otherUserAvatar?: string;
+  otherUserAvatar?: string;    // real avatar URL from API
+  bookingId?: string;          // present when phase !== 'inquiry'
+  bookingTotalAmount?: number; // total amount for booking if present
   phase: ConversationPhase;
   role: 'renter' | 'lender';
   rentalPeriod?: {
     startDate: string;
     endDate: string;
+    rawStartDate?: string;
+    rawEndDate?: string;
   };
   lastMessage?: {
     body: string;

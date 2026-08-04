@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, ne, or, sql, inArray, asc } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../infra/db/client.js';
 import { bookings, conversations, listings, listingPhotos, messages, users } from '../../../db/schema.js';
@@ -62,6 +62,16 @@ export const messagesRepository = {
       .values({ listing_id: listingId, renter_id: renterId, owner_id: ownerId, booking_id: null })
       .onConflictDoNothing(); // partial unique index handles deduplication
 
+    return db.query.conversations.findFirst({
+      where: and(
+        eq(conversations.listing_id, listingId),
+        eq(conversations.renter_id, renterId),
+        isNull(conversations.booking_id),
+      ),
+    });
+  },
+
+  findInquiryConversation: async (listingId: string, renterId: string) => {
     return db.query.conversations.findFirst({
       where: and(
         eq(conversations.listing_id, listingId),
@@ -183,40 +193,53 @@ export const messagesRepository = {
       .where(or(eq(conversations.renter_id, userId), eq(conversations.owner_id, userId)))
       .orderBy(desc(conversations.updated_at));
 
-    // Attach last message + unread count per conversation
-    const results = await Promise.all(
-      convs.map(async (conv) => {
-        const [lastMsg] = await db
-          .select()
-          .from(messages)
-          .where(and(eq(messages.conversation_id, conv.id), isNull(messages.deleted_at)))
-          .orderBy(desc(messages.created_at))
-          .limit(1);
+    if (convs.length === 0) return [];
 
-        const [{ count: unreadCount }] = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(messages)
-          .where(
-            and(
-              eq(messages.conversation_id, conv.id),
-              ne(messages.sender_id, userId),
-              isNull(messages.read_at),
-              isNull(messages.deleted_at),
-            ),
-          );
+    const convIds = convs.map((c) => c.id);
 
-        return {
-          ...conv,
-          phase: derivePhase(conv.booking_status),
-          last_message:  lastMsg ?? null,
-          unread_count: Number(unreadCount ?? 0),
-          // Tells the client which role the requesting user has in this conversation
-          viewer_role: conv.renter_id === userId ? 'renter' : 'lender',
-        };
-      }),
-    );
+    // Batch fetch last messages using distinct on (conversation_id)
+    const lastMessages = await db
+      .selectDistinctOn([messages.conversation_id], {
+        id: messages.id,
+        conversation_id: messages.conversation_id,
+        sender_id: messages.sender_id,
+        body: messages.body,
+        created_at: messages.created_at,
+        delivered_at: messages.delivered_at,
+        read_at: messages.read_at,
+        deleted_at: messages.deleted_at,
+      })
+      .from(messages)
+      .where(and(inArray(messages.conversation_id, convIds), isNull(messages.deleted_at)))
+      .orderBy(messages.conversation_id, desc(messages.created_at));
 
-    return results;
+    // Batch fetch unread counts
+    const unreadCounts = await db
+      .select({
+        conversation_id: messages.conversation_id,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(messages)
+      .where(
+        and(
+          inArray(messages.conversation_id, convIds),
+          ne(messages.sender_id, userId),
+          isNull(messages.read_at),
+          isNull(messages.deleted_at),
+        ),
+      )
+      .groupBy(messages.conversation_id);
+
+    const msgMap = new Map(lastMessages.map((m) => [m.conversation_id, m]));
+    const unreadMap = new Map(unreadCounts.map((u) => [u.conversation_id, u.count]));
+
+    return convs.map((conv) => ({
+      ...conv,
+      phase: derivePhase(conv.booking_status),
+      last_message: msgMap.get(conv.id) ?? null,
+      unread_count: unreadMap.get(conv.id) ?? 0,
+      viewer_role: conv.renter_id === userId ? 'renter' : 'lender',
+    }));
   },
 
   // -------------------------------------------------------------------------
@@ -228,7 +251,7 @@ export const messagesRepository = {
       .select()
       .from(messages)
       .where(and(eq(messages.conversation_id, conversationId), isNull(messages.deleted_at)))
-      .orderBy(desc(messages.created_at))
+      .orderBy(asc(messages.created_at))
       .limit(limit)
       .offset(offset);
   },

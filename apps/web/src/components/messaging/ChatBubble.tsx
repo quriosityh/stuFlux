@@ -7,6 +7,7 @@ interface Props {
   /** Show the sender's name label above the bubble (first in a group). */
   showSenderInfo?: boolean;
   senderName?: string;
+  senderAvatar?: string;
   /** True when this is an optimistic message not yet confirmed by the server. */
   isTemp?: boolean;
 }
@@ -16,6 +17,7 @@ export function ChatBubble({
   isSentByMe,
   showSenderInfo = false,
   senderName,
+  senderAvatar,
   isTemp = false,
 }: Props) {
   return (
@@ -28,10 +30,14 @@ export function ChatBubble({
       )}
 
       <div className="flex max-w-[80%] items-end gap-2">
-        {/* Avatar placeholder — only on the first bubble in a group */}
+        {/* Avatar — only on the first bubble in a group */}
         {!isSentByMe && showSenderInfo && (
-          <div className="w-6 h-6 rounded-full border border-[var(--border-color)] bg-[var(--surface)] flex items-center justify-center overflow-hidden flex-shrink-0 mb-1">
-            <span className="text-[10px]">🧑</span>
+          <div className="w-6 h-6 rounded-full border border-[var(--border-color)] bg-[var(--surface)] flex items-center justify-center overflow-hidden flex-shrink-0 mb-1 shadow-sm">
+            {senderAvatar ? (
+              <img src={senderAvatar} alt={senderName || 'Sender'} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-[10px] font-bold">{senderName?.charAt(0).toUpperCase() || 'U'}</span>
+            )}
           </div>
         )}
         {/* Spacer to align subsequent bubbles in the same group */}
