@@ -147,12 +147,22 @@ export default function RentingOutTab() {
           {/* Actions */}
           <div className="flex items-center gap-2 mt-0 sm:mt-5">
             {booking.phase === 'pending' && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); setSelectedBooking(booking); }}
-                className="hyper-liquid px-4 sm:px-5 py-2 sm:py-2.5 text-[12px] sm:text-[13px] rounded-lg sm:rounded-xl flex items-center justify-center gap-1.5"
-              >
-                View Request →
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={(e) => handleChat(e, booking.conversation_id)}
+                  className="p-2 sm:px-3.5 sm:py-2 text-[12px] sm:text-[13px] rounded-lg sm:rounded-xl bg-card border border-border/50 hover:bg-muted flex items-center justify-center gap-1.5 shadow-sm text-foreground"
+                  title="Message renter"
+                >
+                  <MessageCircle size={15} className="opacity-80" />
+                  <span className="hidden sm:inline">Message</span>
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setSelectedBooking(booking); }}
+                  className="hyper-liquid px-4 sm:px-5 py-2 sm:py-2.5 text-[12px] sm:text-[13px] rounded-lg sm:rounded-xl flex items-center justify-center gap-1.5"
+                >
+                  View Request →
+                </button>
+              </div>
             )}
             {booking.phase === 'completed' && (
               <button 

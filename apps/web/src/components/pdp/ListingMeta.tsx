@@ -11,9 +11,9 @@ interface ListingMetaProps {
 }
 
 const CONDITION_MAP: Record<string, { label: string; emoji: string }> = {
-  like_new:  { label: 'Like New',  emoji: '✨' },
-  good:      { label: 'Good',      emoji: '👍' },
-  fair:      { label: 'Fair',      emoji: '👌' },
+  like_new: { label: 'Like New', emoji: '✨' },
+  good: { label: 'Good', emoji: '👍' },
+  fair: { label: 'Fair', emoji: '👌' },
   well_used: { label: 'Well Used', emoji: '🔧' },
 };
 

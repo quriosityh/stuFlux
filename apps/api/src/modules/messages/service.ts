@@ -72,21 +72,26 @@ export const sendMessage = async (payload: unknown, senderId: string) => {
     conversation_id: conversation.id,
     delivered_at: deliveredAt ?? message.delivered_at,
   };
+
+  // ── SSE emit first — zero latency for connected clients ─────────────────
   messageEmitter.emit(`conversation:${conversation.id}`, eventPayload);
 
-  const senderName = await usersRepository.findDisplayName(senderId);
-  notificationEmitter.emit(`user:${recipientId}`, {
-    type: 'new_message',
-    conversationId: conversation.id,
-    senderName: senderName ?? 'Someone',
-    preview: data.body.trim().slice(0, 60),
-  } satisfies NotificationEvent);
-  void sendPushToUser(recipientId, {
-    type: 'new_message',
-    title: `New message from ${senderName ?? 'someone'}`,
-    body: data.body.trim().slice(0, 120),
-    url: `/messages?conversation=${conversation.id}`,
-  });
+  // ── Push & in-app notifications run in background ────────────────────────
+  void (async () => {
+    const senderName = await usersRepository.findDisplayName(senderId);
+    notificationEmitter.emit(`user:${recipientId}`, {
+      type: 'new_message',
+      conversationId: conversation.id,
+      senderName: senderName ?? 'Someone',
+      preview: data.body.trim().slice(0, 60),
+    } satisfies NotificationEvent);
+    void sendPushToUser(recipientId, {
+      type: 'new_message',
+      title: `New message from ${senderName ?? 'someone'}`,
+      body: data.body.trim().slice(0, 120),
+      url: `/messages?conversation=${conversation.id}`,
+    });
+  })();
 
   return { conversation, message: eventPayload };
 };
@@ -104,16 +109,23 @@ export const listConversations = async (userId: string) => {
 // ---------------------------------------------------------------------------
 
 export const listMessages = async (conversationId: string, query: unknown, userId: string) => {
-  const convo = await messagesRepository.findConversationById(conversationId);
+  const { limit, offset } = listMessagesSchema.parse(query);
+
+  // Run auth-check and message fetch concurrently — saves one round-trip
+  const [convo, msgs] = await Promise.all([
+    messagesRepository.findConversationById(conversationId),
+    messagesRepository.getMessages(conversationId, limit, offset),
+  ]);
+
   if (!convo) throw new AppError('Conversation not found', 404, 'CONVERSATION_NOT_FOUND');
   if (convo.renter_id !== userId && convo.owner_id !== userId) {
     throw new AppError('Not allowed', 403, 'FORBIDDEN');
   }
-  const { limit, offset } = listMessagesSchema.parse(query);
-  const msgs = await messagesRepository.getMessages(conversationId, limit, offset);
-  await messagesRepository.markConversationRead(conversationId, userId);
+
+  // Mark read in background — don't block the response
+  void messagesRepository.markConversationRead(conversationId, userId);
+
   // Annotate each message so the client knows which side to render it on.
-  // This avoids the Clerk ID vs internal UUID mismatch on the frontend.
   return msgs.map((m) => ({ ...m, viewer_is_sender: m.sender_id === userId }));
 };
 
@@ -140,4 +152,26 @@ export const markConversationSeen = async (conversationId: string, userId: strin
   }
   await messagesRepository.markConversationRead(conversationId, userId);
   return { conversation_id: conversationId, status: 'seen' } as const;
+};
+
+// ---------------------------------------------------------------------------
+// getConversationByListing
+// ---------------------------------------------------------------------------
+// Returns the existing inquiry (or booking) conversation for the requesting
+// user (as renter) and a given listing. Used by the PDP "smart open" button
+// so that clicking "Message Host" opens an existing thread rather than always
+// creating a new first message.
+// ---------------------------------------------------------------------------
+
+export const getConversationByListing = async (listingId: string, renterId: string) => {
+  const listing = await listingsRepository.findById(listingId);
+  if (!listing) throw new AppError('Listing not found', 404, 'LISTING_NOT_FOUND');
+
+  // Owners cannot message themselves
+  if (listing.owner?.id === renterId) {
+    throw new AppError('Owners cannot open a conversation with themselves', 400, 'CONVERSATION_NOT_ALLOWED');
+  }
+
+  const convo = await messagesRepository.findInquiryConversation(listingId, renterId);
+  return convo ?? null;
 };

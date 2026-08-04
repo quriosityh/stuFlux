@@ -15,6 +15,7 @@ export function ConversationPreview({
     listingTitle, 
     listingImage, 
     otherUserName, 
+    otherUserAvatar,
     phase, 
     role, 
     rentalPeriod, 
@@ -41,8 +42,11 @@ export function ConversationPreview({
         />
         {/* Avatar Overlay */}
         <div className="absolute -bottom-1.5 -right-1.5 w-[26px] h-[26px] rounded-full border-2 border-[var(--background)] bg-[var(--surface)] flex items-center justify-center overflow-hidden shadow-md">
-          {/* We'll use an emoji fallback for the mock avatar */}
-          <span className="text-[12px]">🧑</span>
+          {otherUserAvatar ? (
+            <img src={otherUserAvatar} alt={otherUserName} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-[10px] font-bold">{otherUserName.charAt(0).toUpperCase()}</span>
+          )}
         </div>
       </div>
 

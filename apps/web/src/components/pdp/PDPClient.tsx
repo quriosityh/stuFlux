@@ -19,6 +19,8 @@ import { PDPStickyNav } from './PDPStickyNav';
 import { PDPMobileNav } from './PDPMobileNav';
 import { TrustStrip } from './TrustStrip';
 
+import { BookingRequestSheet } from './BookingRequestSheet';
+
 interface PDPClientProps {
   listing: any;
   availability: any[];
@@ -29,9 +31,9 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
   const { isSignedIn } = useAuth();
   const [selectedDates, setSelectedDates] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
   const [showNavBookingCTA, setShowNavBookingCTA] = useState(false);
-  const [bookingLoading, setBookingLoading] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
+
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [sheetDeliveryOption, setSheetDeliveryOption] = useState(false);
 
   // ── Scroll sentinel: show sticky nav CTA once the booking sidebar scrolls off-screen ──
   useEffect(() => {
@@ -47,50 +49,12 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
 
   if (!listing) return null;
 
-  // ── Booking request ──────────────────────────────────────────────────────
-  const handleBookingRequest = async ({ delivery = false }: { delivery?: boolean } = {}) => {
+  const handleBookClick = ({ delivery = false }: { delivery?: boolean } = {}) => {
     if (!isSignedIn) {
       window.location.href = '/auth/sign-in';
       return;
     }
-    if (!selectedDates.start || !selectedDates.end) return;
 
-    setBookingLoading(true);
-    setBookingError(null);
-
-    try {
-      const res = await api
-        .post('bookings', {
-          json: {
-            listing_id: listing.id,
-            start_date: format(selectedDates.start, 'yyyy-MM-dd'),
-            end_date: format(selectedDates.end, 'yyyy-MM-dd'),
-            ...(delivery && listing.delivery_available ? { delivery: true } : {}),
-          },
-        })
-        .json<{ success: boolean; data?: { conversation_id?: string } }>();
-
-      setBookingSuccess(true);
-
-      // Navigate to the conversation thread if the API returns one
-      if (res.data?.conversation_id) {
-        setTimeout(() => {
-          window.location.href = `/messages/${res.data!.conversation_id}`;
-        }, 800);
-      }
-    } catch (e: any) {
-      const payload = e?.response
-        ? await e.response.json().catch(() => null)
-        : null;
-      setBookingError(
-        payload?.error?.message ?? payload?.message ?? 'Failed to request booking. Please try again.'
-      );
-    } finally {
-      setBookingLoading(false);
-    }
-  };
-
-  const handleBookClick = ({ delivery = false }: { delivery?: boolean } = {}) => {
     if (!selectedDates.start || !selectedDates.end) {
       const el = document.getElementById('availability-section');
       if (el) {
@@ -98,7 +62,8 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
         window.scrollTo({ top: y, behavior: 'smooth' });
       }
     } else {
-      handleBookingRequest({ delivery });
+      setSheetDeliveryOption(delivery);
+      setIsSheetOpen(true);
     }
   };
 
@@ -190,79 +155,42 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
           {/* ── RIGHT COLUMN (40%) — Desktop sticky sidebar ───────────── */}
           <div id="booking-sidebar" className="hidden md:block md:w-2/5 lg:w-[40%] w-full relative">
             <div id="booking-card-anchor" className="sticky top-32 max-w-[380px] ml-auto">
-              {bookingSuccess ? (
-                <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/8 p-8 text-center">
-                  <div className="text-3xl mb-3">🎉</div>
-                  <p className="font-bold text-emerald-400 text-lg font-syne">Request sent!</p>
-                  <p className="text-sm text-foreground/60 mt-1">
-                    The owner will confirm shortly. Redirecting to your conversation…
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {bookingError && (
-                    <div className="mb-3 rounded-2xl border border-red-400/30 bg-red-400/8 px-4 py-3 text-sm text-red-400">
-                      {bookingError}
-                    </div>
-                  )}
-                  <BookingCard
-                    dailyRate={listing.daily_rate}
-                    securityDeposit={listing.security_deposit}
-                    selectedDates={selectedDates}
-                    onBookingRequest={handleBookClick}
-                    isSticky={false}
-                    deliveryAvailable={listing.delivery_available}
-                    deliveryFee={listing.delivery_fee}
-                    area={listing.area}
-                    minRentalDays={listing.min_rental_days}
-                    maxRentalDays={listing.max_rental_days}
-                  />
-                </>
-              )}
+              <BookingCard
+                dailyRate={listing.daily_rate}
+                securityDeposit={listing.security_deposit}
+                selectedDates={selectedDates}
+                onBookingRequest={handleBookClick}
+                isSticky={false}
+                deliveryAvailable={listing.delivery_available}
+                deliveryFee={listing.delivery_fee}
+                area={listing.area}
+                minRentalDays={listing.min_rental_days}
+                maxRentalDays={listing.max_rental_days}
+              />
             </div>
           </div>
 
           {/* ── MOBILE BOTTOM BAR ─────────────────────────────────────── */}
           <div className="md:hidden">
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border/10 z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-              {bookingSuccess ? (
-                <p className="text-center text-emerald-400 font-bold text-sm py-2">
-                  Request sent! The owner will confirm shortly. 🎉
-                </p>
-              ) : (
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="font-bold font-syne text-xl">Rs. {listing.daily_rate.toLocaleString()}</div>
-                    <div className="text-sm text-foreground/60 font-medium">
-                      {selectedDates.start && selectedDates.end ? (
-                        `For ${days} day${days !== 1 ? 's' : ''} · ${format(selectedDates.start, 'MMM d')} – ${format(selectedDates.end, 'MMM d')}`
-                      ) : (
-                        'Per day'
-                      )}
-                    </div>
-                    {bookingError && (
-                      <p className="text-xs text-red-400 mt-1">{bookingError}</p>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="font-bold font-syne text-xl">Rs. {listing.daily_rate.toLocaleString()}</div>
+                  <div className="text-sm text-foreground/60 font-medium">
+                    {selectedDates.start && selectedDates.end ? (
+                      `For ${days} day${days !== 1 ? 's' : ''} · ${format(selectedDates.start, 'MMM d')} – ${format(selectedDates.end, 'MMM d')}`
+                    ) : (
+                      'Per day'
                     )}
                   </div>
-                  <button
-                    disabled={bookingLoading}
-                    onClick={() => {
-                      if (!selectedDates.start || !selectedDates.end) {
-                        document.getElementById('availability-section')?.scrollIntoView({ behavior: 'smooth' });
-                      } else {
-                        handleBookingRequest({ delivery: false });
-                      }
-                    }}
-                    className="hyper-liquid px-8 py-3 text-sm flex-1 max-w-[200px] disabled:opacity-50"
-                  >
-                    {bookingLoading
-                      ? 'Sending…'
-                      : !selectedDates.start || !selectedDates.end
-                        ? 'Check Dates'
-                        : 'Request'}
-                  </button>
                 </div>
-              )}
+                <button
+                  onClick={() => handleBookClick({ delivery: false })}
+                  className="hyper-liquid px-8 py-3 text-sm flex-1 max-w-[200px]"
+                >
+                  {!selectedDates.start || !selectedDates.end ? 'Check Dates' : 'Request'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -274,6 +202,15 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
         {/* Trust strip */}
         <TrustStrip />
       </div>
+
+      {/* Booking Request Confirmation Sheet */}
+      <BookingRequestSheet
+        isOpen={isSheetOpen}
+        onClose={() => setIsSheetOpen(false)}
+        listing={listing}
+        selectedDates={selectedDates}
+        initialDelivery={sheetDeliveryOption}
+      />
     </>
   );
 }

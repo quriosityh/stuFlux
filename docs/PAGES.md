@@ -32,8 +32,7 @@ The primary marketplace storefront. Dynamically switches between casual discover
 
     ```
     ┌─────────────────────────────────────────────┐
-    │  [Top Category Strip — sticky]              │
-    │  [Search Bar — Where | When | What]         │
+    │  [Top Category Strip — ]              │
     ├─────────────────────────────────────────────┤
     │  📍 Gulberg & Nearby            [→ See all]   │  ← Conditional (area-resolved only)
     │  [Card] [Card] [Card] [Card] ──────────→    │
@@ -227,14 +226,14 @@ These are the canonical categories. This table is the single source of truth —
 
 ```
 ┌──────────────────────────────────────────┐
-│                                  [❤️]   │  ← overlay, top-right
+│                                     [❤️]   │  ← overlay, top-right
 │                                          │
 │             [ Item Image ]               │
 │               (4:3 Ratio)                │
 │                                          │
-│  [✨ Like New]                           │  ← condition pill, bottom-left overlay
-├──────────────────────────────────────────┤
-│ DSLR Camera Kit   q                       │  ← title
+│                                          │  ← condition pill, bottom-left overlay
+├────────────────────────   ───────────────┤
+│ DSLR Camera Kit                  rating `│  ← title rattting
 │ 📍 Gulberg                        🚚     │  ← area + delivery icon
 │ Rs. 2,500/day              8 rentals     │  ← price + social proof
 └──────────────────────────────────────────┘
@@ -243,15 +242,8 @@ These are the canonical categories. This table is the single source of truth —
 #### Image Zone (overlays on photo)
 *   **Photo**: 4:3 aspect ratio, `object-fit: cover`. Micro-zoom on hover (`scale-105` transition).
 *   **Top-Right — `[❤️]` Save Button**: Floating icon button, always visible. 1-tap toggle with spring animation. Saves to user's local wishlist.
-*   **Bottom-Left — Condition Pill**: Translucent pill badge showing item condition. Always visible — condition is a primary trust signal in P2P rentals.
-
-    | API value | Display label | Pill colour |
-    | :--- | :--- | :--- |
-    | `like_new` | ✨ Like New | Emerald |
-    | `good` | 👍 Good | Sky blue |
-    | `fair` | 👌 Fair | Amber |
-    | `well_used` | 🔧 Well Used | Muted grey |
-
+*   **Bottom-Left — Condition Pill**: Translucent pill badge showing item condition. Always visible 
+   
 #### Info Strip (below image)
 *   **Row 1 — Title**: Bold, single-line, truncated with ellipsis. Pulls from `listing.title`.
 *   **Row 2 — Area + Delivery**:
@@ -1188,11 +1180,11 @@ To keep the Profile experience clean, fast, and student-focused:
 | :--- | :---: | :---: |
 | Avatar, Display Name, Area badge, Tenure | ✅ | ✅ |
 | Phone Verified Badge (`📱 Phone Verified`) | ✅ | ✅ |
-| Dual Reputation Chips (`Lending` / `Renting` ratings) | ✅ | ✅ |
-| Primary CTA | `[ ✏️ Edit Profile ]` | `[ 💬 Message ]` *(Contextual)* |
+| Dual Reputation Chips (`Lending` / `Renting` ratings and number  of rentals as lender or renter same as current role (in hich wwe are seeing him)) | ✅ | ✅ |
+| Primary CTA | `[ ✏️ Edit Profile ]` |notthing |
 | Tab 1 | **`[ 💰 Earnings ]`** (Lender KPIs & monthly summary) | **`[ 📦 Listings ]`** (Active storefront items) |
-| Tab 2 | **`[ 📦 History ]`** (Full borrowed & lent records) | **`[ ⭐ Reviews ]`** (Public feedback feed) |
-| Tab 3 | **`[ ⭐ Reviews ]`** (Detailed reviews & filters) | *(Hidden)* |
+| Tab 2 | **`[ 📦 History ]`** (Full borrowed & lent records) | **`[ ⭐ Reviews ]`** (Public feedback feed) about this person given byy otheers|
+| Tab 3 | **`[ ⭐ Reviews ]`** | *(Hidden)* |
 | Tab 4 | **`[ ⚙️ Settings ]`** (Edit profile, theme, auth) | *(Hidden)* |
 | Monetary amounts & earnings metrics | ✅ Visible | ❌ Hidden |
 
@@ -1245,10 +1237,6 @@ Provides a clear financial overview for lenders calculated dynamically from exis
 A simple, pure-CSS list grouped by month:
 - `July 2026`: **Rs. 14,500** · 4 rentals
 - `June 2026`: **Rs. 10,000** · 4 rentals
-
-##### C. No Transaction Redundancy
-To avoid duplicating the transaction list present in the History tab, the Earnings tab finishes with a direct link CTA:
-`[ View Full Rental History → ]` which seamlessly navigates to the **History Tab**.
 
 ---
 

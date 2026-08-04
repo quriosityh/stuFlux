@@ -37,7 +37,7 @@ function formatTimestamp(value?: string | null) {
   return date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function mapMessage(item: ApiMessage): Message {
+function mapMessage(item: ApiMessage, viewerIsSender?: boolean): Message {
   return {
     id: item.id,
     senderId: item.sender_id,
@@ -45,57 +45,59 @@ function mapMessage(item: ApiMessage): Message {
     createdAt: formatTimestamp(item.created_at),
     rawCreatedAt: item.created_at ?? '',
     type: 'text',
-    // viewer_is_sender is server-annotated on REST load; for SSE it won't be present
-    viewerIsSender: item.viewer_is_sender,
+    viewerIsSender: viewerIsSender !== undefined ? viewerIsSender : item.viewer_is_sender,
   };
 }
 
-/** Merge a new message into the list, dedup by id, sort by rawCreatedAt ascending. */
-function mergeMessage(prev: Message[], next: Message): Message[] {
-  if (prev.some((m) => m.id === next.id)) return prev;
+/**
+ * Upsert a message into the list by id. Dedup and keep ascending order.
+ * Also replaces any temp message whose body matches (optimistic → confirmed).
+ */
+function upsertMessage(prev: Message[], next: Message): Message[] {
+  // Already have this exact id (e.g. SSE duplicate) → keep old entry (don't overwrite viewerIsSender)
+  if (prev.some((m) => m.id === next.id)) {
+    // update in-place to get confirmed viewerIsSender if it was undefined
+    return prev.map((m) => (m.id === next.id ? { ...m, ...next } : m));
+  }
   return [...prev, next].sort((a, b) => a.rawCreatedAt.localeCompare(b.rawCreatedAt));
 }
 
-/** Replace a temp message (optimistic) with the confirmed one from the API. */
-function replaceTemp(prev: Message[], tempId: string, confirmed: Message): Message[] {
-  const without = prev.filter((m) => m.id !== tempId);
-  return mergeMessage(without, confirmed);
-}
-
 export function ChatView({ conversation, onBack, onOpenContext, onConversationUpdated }: Props) {
-  const { getToken, userId } = useAuth();
+  const { getToken } = useAuth();
+
   const [showMobileContext, setShowMobileContext] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
-  const sseRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const retryCountRef = useRef(0);
+  const sseRetryRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryCountRef    = useRef(0);
 
-  // ─── Load messages ────────────────────────────────────────────────────────
+  // Track temp IDs that have been confirmed so SSE duplicates get discarded
+  const confirmedTempMap = useRef<Map<string, string>>(new Map()); // tempId → confirmedId
+
+  // ── Load messages ────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
+    setIsLoadingMessages(true);
+    setMessages([]);
+    confirmedTempMap.current.clear();
 
     const loadMessages = async () => {
-      const token = await getToken();
-      if (!token) return;
-
-      setIsLoadingMessages(true);
       try {
+        const token = await getToken();
+        if (!token || cancelled) return;
+
         const res = await fetch(`/api/proxy/conversations/${conversation.id}/messages`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
-        if (!res.ok) throw new Error('Failed to load messages');
+        if (!res.ok) throw new Error(`${res.status}`);
         const payload = (await res.json()) as { data: ApiMessage[] };
         if (!cancelled) {
-          const sorted = payload.data
-            .map(mapMessage)
-            .sort((a, b) => a.rawCreatedAt.localeCompare(b.rawCreatedAt));
-          setMessages(sorted);
+          setMessages(payload.data.map((m) => mapMessage(m, m.viewer_is_sender)));
         }
 
-        // Mark as seen in background
+        // Mark seen — fire and forget
         fetch(`/api/proxy/conversations/${conversation.id}/seen`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -108,19 +110,17 @@ export function ChatView({ conversation, onBack, onOpenContext, onConversationUp
     };
 
     void loadMessages();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [conversation.id, getToken]);
 
-  // ─── Auto-scroll to bottom ────────────────────────────────────────────────
+  // ── Auto-scroll to bottom ────────────────────────────────────────────────
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ─── SSE real-time stream with reconnect backoff ──────────────────────────
+  // ── SSE real-time stream with reconnect backoff ──────────────────────────
   useEffect(() => {
-    if (!conversation.id || !userId) return;
+    if (!conversation.id) return;
 
     let es: EventSource | null = null;
     let active = true;
@@ -129,18 +129,33 @@ export function ChatView({ conversation, onBack, onOpenContext, onConversationUp
       if (!active) return;
       es = new EventSource(`/api/conversations/${conversation.id}/stream`);
 
-      es.onopen = () => {
-        retryCountRef.current = 0; // reset backoff on successful connect
-      };
+      es.onopen = () => { retryCountRef.current = 0; };
 
       es.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data) as ApiMessage;
-          // Skip malformed or deleted messages
           if (!payload.id || !payload.body) return;
 
-          const next = mapMessage(payload);
-          setMessages((prev) => mergeMessage(prev, next));
+          // Determine viewer side for SSE messages (no server annotation)
+          const viewerIsSender = payload.sender_id !== conversation.otherUserId;
+
+          setMessages((prev) => {
+            // If we have a temp message with the same body sent very recently by viewer,
+            // replace the temp with this confirmed message
+            if (viewerIsSender) {
+              const tempIdx = prev.findIndex(
+                (m) => m.id.startsWith('temp-') && m.body === payload.body && m.viewerIsSender === true
+              );
+              if (tempIdx !== -1) {
+                const tempId = prev[tempIdx].id;
+                confirmedTempMap.current.set(tempId, payload.id);
+                const without = prev.filter((_, i) => i !== tempIdx);
+                return upsertMessage(without, mapMessage(payload, true));
+              }
+            }
+
+            return upsertMessage(prev, mapMessage(payload, viewerIsSender));
+          });
 
           onConversationUpdated?.({
             ...conversation,
@@ -160,8 +175,6 @@ export function ChatView({ conversation, onBack, onOpenContext, onConversationUp
         es?.close();
         es = null;
         if (!active) return;
-
-        // Exponential backoff: 1s, 2s, 4s, 8s … capped at 30s
         const delay = Math.min(1000 * 2 ** retryCountRef.current, 30_000);
         retryCountRef.current++;
         sseRetryRef.current = setTimeout(connect, delay);
@@ -175,55 +188,65 @@ export function ChatView({ conversation, onBack, onOpenContext, onConversationUp
       if (sseRetryRef.current) clearTimeout(sseRetryRef.current);
       es?.close();
     };
-  }, [conversation.id, userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [conversation.id, conversation.otherUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Send message ─────────────────────────────────────────────────────────
+  // ── Send message ─────────────────────────────────────────────────────────
   const handleSendMessage = useCallback(
     async (text: string) => {
-      if (isSending) return; // prevent double-send
+      if (isSending) return;
       setIsSending(true);
 
-      // Optimistic temp message
+      // Optimistic temp message — appears instantly before round-trip
       const tempId = `temp-${Date.now()}`;
+      const nowIso = new Date().toISOString();
       const tempMsg: Message = {
         id: tempId,
-        senderId: userId ?? '',
+        senderId: 'me',
         body: text,
-        createdAt: formatTimestamp(new Date().toISOString()),
-        rawCreatedAt: new Date().toISOString(),
+        createdAt: formatTimestamp(nowIso),
+        rawCreatedAt: nowIso,
         type: 'text',
-        viewerIsSender: true, // always right-aligned immediately
+        viewerIsSender: true,
       };
-      setMessages((prev) => mergeMessage(prev, tempMsg));
+      setMessages((prev) => upsertMessage(prev, tempMsg));
 
       try {
         const token = await getToken();
         if (!token) {
-          // rollback optimistic
           setMessages((prev) => prev.filter((m) => m.id !== tempId));
           return;
         }
 
         const res = await fetch('/api/proxy/messages', {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ conversation_id: conversation.id, body: text }),
         });
 
         if (!res.ok) {
+          // Remove temp on failure
           setMessages((prev) => prev.filter((m) => m.id !== tempId));
           return;
         }
 
         const payload = (await res.json()) as { data: ApiMessage };
-        const confirmed = mapMessage(payload.data);
+        const confirmed: Message = mapMessage(payload.data, true);
 
-        // Replace the temp message with the real one (SSE may also deliver it
-        // — mergeMessage deduplication ensures we won't double-add it)
-        setMessages((prev) => replaceTemp(prev, tempId, confirmed));
+        // Replace the temp message with the confirmed one.
+        // If SSE already delivered and replaced it, this is a no-op.
+        setMessages((prev) => {
+          // Check if SSE already replaced this temp (confirmedTempMap has it)
+          const alreadyConfirmedId = confirmedTempMap.current.get(tempId);
+          if (alreadyConfirmedId) {
+            // SSE already replaced it — just make sure we update with the right id
+            return prev.map((m) =>
+              m.id === alreadyConfirmedId ? { ...m, ...confirmed } : m
+            );
+          }
+          // SSE not arrived yet — replace temp directly
+          const without = prev.filter((m) => m.id !== tempId);
+          return upsertMessage(without, confirmed);
+        });
 
         onConversationUpdated?.({
           ...conversation,
@@ -239,7 +262,7 @@ export function ChatView({ conversation, onBack, onOpenContext, onConversationUp
         setIsSending(false);
       }
     },
-    [conversation, getToken, isSending, userId, onConversationUpdated],
+    [conversation, getToken, isSending, onConversationUpdated],
   );
 
   const handleOpenContext = () => {
@@ -270,14 +293,11 @@ export function ChatView({ conversation, onBack, onOpenContext, onConversationUp
               return <SystemMessage key={msg.id} message={msg} />;
             }
 
-            // Use server-annotated viewerIsSender when available (avoids Clerk ID vs UUID mismatch).
-            // For optimistic (temp) messages, senderId is the Clerk userId string — also correct.
             const isSentByMe = msg.viewerIsSender !== undefined
               ? msg.viewerIsSender
-              : msg.id.startsWith('temp-') || msg.senderId === userId;
+              : msg.id.startsWith('temp-') || msg.senderId !== conversation.otherUserId;
             const isTemp = msg.id.startsWith('temp-');
             const prevMsg = idx > 0 ? messages[idx - 1] : null;
-            // Show avatar + name on the first bubble of a group from the other person
             const showSenderInfo =
               !isSentByMe &&
               (prevMsg?.senderId !== msg.senderId || prevMsg?.type === 'system');
@@ -290,6 +310,7 @@ export function ChatView({ conversation, onBack, onOpenContext, onConversationUp
                 isTemp={isTemp}
                 showSenderInfo={showSenderInfo}
                 senderName={conversation.otherUserName}
+                senderAvatar={conversation.otherUserAvatar}
               />
             );
           })

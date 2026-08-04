@@ -9,6 +9,7 @@ import { ContextPanel } from './ContextPanel';
 import { EmptyChat, EmptyInbox } from './EmptyViews';
 import { Conversation } from './types';
 import { cn } from '@/lib/utils';
+import type { InAppNotification } from '@/components/NotificationStream';
 
 type ApiConversation = {
   id: string;
@@ -30,7 +31,6 @@ type ApiConversation = {
   owner_avatar_url?: string | null;
   listing_photo_url?: string | null;
   phase?: string | null;
-  /** Populated server-side — avoids Clerk ID vs internal UUID mismatch on client */
   viewer_role?: 'renter' | 'lender' | null;
   last_message?: {
     id: string;
@@ -50,17 +50,15 @@ function formatTimestamp(value?: string | null) {
 }
 
 function mapConversation(item: ApiConversation, currentUserId?: string | null): Conversation {
-  // Use viewer_role from the API (server knows the internal UUID — client only has Clerk ID)
-  // Fall back to checking renter_id only if viewer_role is missing (old API versions)
   const isRenter = item.viewer_role
     ? item.viewer_role === 'renter'
     : currentUserId === item.renter_id;
 
-  const otherUserName = isRenter ? item.owner_display_name ?? 'Owner' : item.renter_display_name ?? 'Renter';
-  const otherUserId = isRenter ? item.owner_id : item.renter_id;
-  const listingImage = item.listing_photo_url || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1000&auto=format&fit=crop';
+  const otherUserName   = isRenter ? item.owner_display_name  ?? 'Owner'  : item.renter_display_name ?? 'Renter';
+  const otherUserId     = isRenter ? item.owner_id : item.renter_id;
+  const otherUserAvatar = isRenter ? item.owner_avatar_url  ?? undefined : item.renter_avatar_url ?? undefined;
+  const listingImage    = item.listing_photo_url || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1000&auto=format&fit=crop';
 
-  // Use last_message.created_at if available, otherwise fall back to updated_at
   const rawUpdatedAt = item.last_message?.created_at ?? item.updated_at ?? item.created_at ?? '';
 
   return {
@@ -71,10 +69,18 @@ function mapConversation(item: ApiConversation, currentUserId?: string | null): 
     dailyRate: item.listing_daily_rate ?? 0,
     otherUserId,
     otherUserName,
+    otherUserAvatar,
+    bookingId: item.booking_id ?? undefined,
+    bookingTotalAmount: item.booking_total_amount ?? undefined,
     phase: (item.phase as Conversation['phase']) ?? 'inquiry',
     role: isRenter ? 'renter' : 'lender',
     rentalPeriod: item.booking_start_date && item.booking_end_date
-      ? { startDate: formatTimestamp(item.booking_start_date), endDate: formatTimestamp(item.booking_end_date) }
+      ? {
+          startDate: formatTimestamp(item.booking_start_date),
+          endDate: formatTimestamp(item.booking_end_date),
+          rawStartDate: item.booking_start_date,
+          rawEndDate: item.booking_end_date,
+        }
       : undefined,
     lastMessage: item.last_message
       ? {
@@ -95,34 +101,32 @@ export function MessagesClient({ initialConversationId }: { initialConversationI
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeRole, setActiveRole] = useState('All');
-  const [activePhase, setActivePhase] = useState('All');
+  const [searchQuery, setSearchQuery]   = useState('');
+  const [activeRole, setActiveRole]     = useState('All');
+  const [activePhase, setActivePhase]   = useState('All');
 
-  const [isMobile, setIsMobile] = useState(false);
-  const [isTablet, setIsTablet] = useState(false);
+  const [isMobile, setIsMobile]   = useState(false);
+  const [isTablet, setIsTablet]   = useState(false);
 
+  // ── Responsive breakpoints ────────────────────────────────────────────────
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
       setIsTablet(window.innerWidth >= 768 && window.innerWidth < 1280);
     };
-
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // ── Load conversations ────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
 
     const loadConversations = async () => {
       const token = await getToken();
       if (!token) {
-        if (!cancelled) {
-          setConversations([]);
-          setIsLoading(false);
-        }
+        if (!cancelled) { setConversations([]); setIsLoading(false); }
         return;
       }
 
@@ -130,38 +134,68 @@ export function MessagesClient({ initialConversationId }: { initialConversationI
         const res = await fetch('/api/proxy/conversations', {
           headers: { Authorization: `Bearer ${token}` },
         });
-
         if (!res.ok) throw new Error('Failed to load conversations');
         const payload = (await res.json()) as { data: ApiConversation[] };
         if (!cancelled) {
-          // Sort newest first by rawUpdatedAt
           const mapped = payload.data.map((item) => mapConversation(item, userId));
           mapped.sort((a, b) => b.rawUpdatedAt.localeCompare(a.rawUpdatedAt));
           setConversations(mapped);
           setIsLoading(false);
         }
       } catch {
-        if (!cancelled) {
-          setConversations([]);
-          setIsLoading(false);
-        }
+        if (!cancelled) { setConversations([]); setIsLoading(false); }
       }
     };
 
     void loadConversations();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [getToken, userId]);
 
+  // ── Real-time inbox: listen to global notification events ─────────────────
+  // When a new_message SSE notification fires for a conversation we're NOT
+  // currently viewing, update that conversation's preview without a full refetch.
   useEffect(() => {
-    if (isMobile) {
-      if (selectedId && !initialConversationId) {
-        router.push(`/messages/${selectedId}` as any);
-      }
+    const handler = (e: Event) => {
+      const notif = (e as CustomEvent<InAppNotification>).detail;
+      if (notif.type !== 'new_message') return;
+
+      setConversations((prev) => {
+        const exists = prev.some((c) => c.id === notif.conversationId);
+        if (!exists) return prev; // new conversation — let next page load pick it up
+
+        const now = new Date().toISOString();
+        const next = prev.map((c) =>
+          c.id !== notif.conversationId
+            ? c
+            : {
+                ...c,
+                lastMessage: {
+                  body: notif.preview,
+                  createdAt: formatTimestamp(now),
+                  rawCreatedAt: now,
+                },
+                // Only increment unread if this conversation isn't currently open
+                unreadCount: selectedId === notif.conversationId ? c.unreadCount : c.unreadCount + 1,
+                rawUpdatedAt: now,
+              },
+        );
+        next.sort((a, b) => b.rawUpdatedAt.localeCompare(a.rawUpdatedAt));
+        return next;
+      });
+    };
+
+    window.addEventListener('stuflux:notification', handler);
+    return () => window.removeEventListener('stuflux:notification', handler);
+  }, [selectedId]);
+
+  // ── Mobile: redirect to dedicated page ───────────────────────────────────
+  useEffect(() => {
+    if (isMobile && selectedId && !initialConversationId) {
+      router.push(`/messages/${selectedId}` as any);
     }
   }, [selectedId, isMobile, initialConversationId, router]);
 
+  // ── Mobile: hide bottom nav when in a chat ───────────────────────────────
   useEffect(() => {
     if (isMobile && selectedId) {
       document.body.style.paddingBottom = '0px';
@@ -172,7 +206,6 @@ export function MessagesClient({ initialConversationId }: { initialConversationI
       const nav = document.querySelector('nav.md\\:hidden') as HTMLElement;
       if (nav) nav.style.display = '';
     }
-
     return () => {
       document.body.style.paddingBottom = '';
       const nav = document.querySelector('nav.md\\:hidden') as HTMLElement;
@@ -180,30 +213,26 @@ export function MessagesClient({ initialConversationId }: { initialConversationI
     };
   }, [isMobile, selectedId]);
 
+  // ── Conversation update callback (from ChatView after send / SSE receive) ─
   const handleConversationUpdated = (updated: Conversation) => {
     setConversations((prev) => {
       const next = prev.map((item) => (item.id === updated.id ? updated : item));
-      // Re-sort so the conversation with newest message bubbles to the top
       next.sort((a, b) => b.rawUpdatedAt.localeCompare(a.rawUpdatedAt));
       return next;
     });
   };
 
+  // ── Filter conversations ──────────────────────────────────────────────────
   const filteredConversations = useMemo(() => {
     return conversations.filter((c) => {
-      if (activeRole === 'As Renter' && c.role !== 'renter') return false;
-      if (activeRole === 'As Lender' && c.role !== 'lender') return false;
-      if (activeRole === 'Unread' && c.unreadCount === 0) return false;
-
+      if (activeRole === 'As Renter'  && c.role !== 'renter') return false;
+      if (activeRole === 'As Lender'  && c.role !== 'lender') return false;
+      if (activeRole === 'Unread'     && c.unreadCount === 0) return false;
       if (activePhase !== 'All' && c.phase.toLowerCase() !== activePhase.toLowerCase()) return false;
-
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        if (!c.otherUserName.toLowerCase().includes(q) && !c.listingTitle.toLowerCase().includes(q)) {
-          return false;
-        }
+        if (!c.otherUserName.toLowerCase().includes(q) && !c.listingTitle.toLowerCase().includes(q)) return false;
       }
-
       return true;
     });
   }, [conversations, activeRole, activePhase, searchQuery]);
@@ -216,9 +245,7 @@ export function MessagesClient({ initialConversationId }: { initialConversationI
     );
   }
 
-  if (conversations.length === 0) {
-    return <EmptyInbox />;
-  }
+  if (conversations.length === 0) return <EmptyInbox />;
 
   const selectedConversation = conversations.find((c) => c.id === selectedId);
   const bottomClass = isMobile && selectedId ? 'bottom-0' : 'bottom-16';
@@ -235,10 +262,7 @@ export function MessagesClient({ initialConversationId }: { initialConversationI
           <div className="flex-1 flex flex-col h-full bg-[var(--background)] z-50">
             <ChatView
               conversation={selectedConversation}
-              onBack={() => {
-                setSelectedId(undefined);
-                router.push('/messages' as any);
-              }}
+              onBack={() => { setSelectedId(undefined); router.push('/messages' as any); }}
               onConversationUpdated={handleConversationUpdated}
             />
           </div>

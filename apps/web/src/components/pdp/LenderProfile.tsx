@@ -78,6 +78,21 @@ export function LenderProfile({ owner, listingId }: LenderProfileProps) {
     setMessageError(null);
 
     try {
+      // 1. Check if an active/inquiry conversation thread already exists for this listing
+      const existingRes = await api
+        .get(`conversations/by-listing/${listingId}`)
+        .json<{ success?: boolean; data?: { id: string } | null }>()
+        .catch(() => null);
+
+      const existingConvoId = existingRes?.data?.id;
+
+      if (existingConvoId) {
+        // Active/inquiry thread exists — navigate directly without sending a duplicate initial message
+        window.location.href = `/messages/${existingConvoId}`;
+        return;
+      }
+
+      // 2. No active thread — create new inquiry thread and send opener
       const res = await api
         .post('messages', {
           json: {
@@ -85,18 +100,17 @@ export function LenderProfile({ owner, listingId }: LenderProfileProps) {
             body: 'Hi! I am interested in renting your listing.',
           },
         })
-        .json<{ success: boolean; data?: { conversation?: { id: string }; id?: string } }>();
+        .json<{ success?: boolean; data?: { conversation_id?: string; conversation?: { id: string }; id?: string } }>();
 
-      // API might return data nested differently
+      // Extract conversation_id correctly (data.conversation_id is returned by sendMessage handler)
       const conversationId = 
-        (res as any).data?.conversation?.id || 
-        (res as any).data?.id || 
-        (res as any).conversation?.id;
+        (res as any).data?.conversation_id ||
+        (res as any).data?.conversation?.id ||
+        (res as any).conversation_id;
 
       if (conversationId) {
         window.location.href = `/messages/${conversationId}`;
       } else {
-        // Fallback to general messages page if ID is missing
         window.location.href = '/messages';
       }
     } catch (err: any) {
@@ -205,7 +219,7 @@ export function LenderProfile({ owner, listingId }: LenderProfileProps) {
           </div>
         </div>
         
-        {/* ===== RIGHT COLUMN: Name, Bio, Reviews, and Actions ===== */}
+        {/* ===== RIGHT COLUMN: Name, Location/Joined Info, and Actions ===== */}
         <div className="w-full lg:flex-1 space-y-6">
           <div>
             <h3 className="text-3xl sm:text-4xl font-bold font-syne text-foreground mb-2">
@@ -216,11 +230,7 @@ export function LenderProfile({ owner, listingId }: LenderProfileProps) {
             </p>
           </div>
 
-          <div className="text-foreground/80 leading-relaxed font-medium space-y-6 max-w-2xl">
-            <p className="text-sm sm:text-base">
-              Hi, I'm {firstName}! I'm a student based in {locationLabel} and I love sharing my gear with other students on campus. 
-              Always happy to answer questions and make your rental experience as smooth as possible.
-            </p>
+          <div className="text-foreground/80 leading-relaxed font-medium space-y-4 max-w-2xl">
             <div className="flex flex-col sm:flex-row gap-5 text-sm">
               <div className="flex items-center gap-2 text-foreground/75">
                 <MapPin className="w-4 h-4 text-foreground/50 shrink-0" />
