@@ -8,9 +8,9 @@ import { AppError } from '../../common/errors.js';
 export const getMe = [
   requireAuth,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const user = await getProfile(req.auth!.userId);
-    if (!user) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
-    res.json({ data: user });
+    // auth.userRow already set by requireAuth middleware — no extra DB lookup
+    const profile = await getProfile(req.auth!.userRow);
+    res.json({ data: profile });
   }),
 ];
 
@@ -26,9 +26,9 @@ export const updateMe = [
 
 export const getUserById = [
   asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.params.id;
-    if (!userId) throw new AppError('User ID is required', 400, 'MISSING_USER_ID');
-    const user = await getPublicProfile(userId);
+    const { id } = req.params;
+    if (!id) throw new AppError('User ID is required', 400, 'MISSING_USER_ID');
+    const user = await getPublicProfile(id);
     if (!user) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     res.json({ data: user });
   }),

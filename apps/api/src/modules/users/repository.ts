@@ -53,7 +53,7 @@ export const usersRepository = {
           display_name: params.display_name,
           email: params.email || null,
           avatar_url: params.avatar_url || null,
-          updated_at: sql`NOW()`
+          updated_at: sql`NOW()`,
         },
       })
       .returning();
@@ -66,7 +66,8 @@ export const usersRepository = {
       .update(users)
       .set({
         ...(payload.display_name !== undefined && { display_name: payload.display_name }),
-        ...(payload.area !== undefined && { area: payload.area }),
+        ...(payload.area        !== undefined && { area: payload.area }),
+        ...(payload.avatar_url  !== undefined && { avatar_url: payload.avatar_url }),
         updated_at: sql`NOW()`,
       })
       .where(eq(users.id, id))
@@ -75,51 +76,57 @@ export const usersRepository = {
   },
 
   async isPhoneVerified(userId: string): Promise<boolean> {
-    const [row] = await db
-      .select({ phone_verified: sql<boolean>`COALESCE(phone_verified, false)` })
-      .from(sql`user_verifications`)
-      .where(sql`user_id = ${userId}::uuid`);
-    return Boolean(row?.phone_verified);
+    try {
+      const res = await db.execute(sql`
+        SELECT COALESCE(phone_verified, false) AS phone_verified
+        FROM user_verifications
+        WHERE user_id = ${userId}::uuid
+        LIMIT 1
+      `);
+      return Boolean(res.rows?.[0]?.phone_verified);
+    } catch {
+      // No row in user_verifications yet — treat as unverified
+      return false;
+    }
   },
 
+  /**
+   * Fetches booking stats + review ratings in parallel (2 DB calls concurrently)
+   */
   async getUserStats(userId: string) {
-    // 1. Booking stats & earnings
-    const bookingRes = await db.execute(sql`
-      SELECT
-        COALESCE(SUM(CASE WHEN owner_id = ${userId}::uuid AND status = 'completed' THEN (total_amount + delivery_fee) ELSE 0 END), 0)::int AS total_earned,
-        COALESCE(SUM(CASE WHEN owner_id = ${userId}::uuid AND status = 'confirmed' THEN (total_amount + delivery_fee) ELSE 0 END), 0)::int AS pending_earnings,
-        COALESCE(COUNT(CASE WHEN owner_id = ${userId}::uuid AND status = 'completed' THEN 1 END), 0)::int AS completed_lent,
-        COALESCE(COUNT(CASE WHEN renter_id = ${userId}::uuid AND status = 'completed' THEN 1 END), 0)::int AS completed_borrowed
-      FROM bookings
-      WHERE (owner_id = ${userId}::uuid OR renter_id = ${userId}::uuid)
-    `);
+    const [bookingRes, reviewRes] = await Promise.all([
+      db.execute(sql`
+        SELECT
+          COALESCE(SUM(CASE WHEN owner_id  = ${userId}::uuid AND status = 'completed' THEN (total_amount + delivery_fee) ELSE 0 END), 0)::int AS total_earned,
+          COALESCE(SUM(CASE WHEN owner_id  = ${userId}::uuid AND status = 'confirmed' THEN (total_amount + delivery_fee) ELSE 0 END), 0)::int AS pending_earnings,
+          COALESCE(COUNT(CASE WHEN owner_id  = ${userId}::uuid AND status = 'completed' THEN 1 END), 0)::int AS completed_lent,
+          COALESCE(COUNT(CASE WHEN renter_id = ${userId}::uuid AND status = 'completed' THEN 1 END), 0)::int AS completed_borrowed
+        FROM bookings
+        WHERE owner_id = ${userId}::uuid OR renter_id = ${userId}::uuid
+      `),
+      db.execute(sql`
+        SELECT
+          ROUND(AVG(CASE WHEN role = 'as_lender' THEN rating END)::numeric, 1)::float AS lender_rating_avg,
+          COUNT(CASE WHEN role = 'as_lender' THEN 1 END)::int                         AS lender_rating_count,
+          ROUND(AVG(CASE WHEN role = 'as_renter' THEN rating END)::numeric, 1)::float AS renter_rating_avg,
+          COUNT(CASE WHEN role = 'as_renter' THEN 1 END)::int                         AS renter_rating_count
+        FROM reviews
+        WHERE target_id = ${userId}::uuid AND deleted_at IS NULL
+      `),
+    ]);
 
-    // 2. Rating stats from reviews
-    const reviewRes = await db.execute(sql`
-      SELECT
-        COALESCE(AVG(CASE WHEN role = 'as_lender' THEN rating END), 0)::float AS lender_rating_avg,
-        COALESCE(COUNT(CASE WHEN role = 'as_lender' THEN 1 END), 0)::int AS lender_rating_count,
-        COALESCE(AVG(CASE WHEN role = 'as_renter' THEN rating END), 0)::float AS renter_rating_avg,
-        COALESCE(COUNT(CASE WHEN role = 'as_renter' THEN 1 END), 0)::int AS renter_rating_count
-      FROM reviews
-      WHERE target_id = ${userId}::uuid AND deleted_at IS NULL
-    `);
-
-    const bookingStats = (bookingRes.rows?.[0] || {}) as any;
-    const reviewStats = (reviewRes.rows?.[0] || {}) as any;
-
-    const lenderAvg = Number(reviewStats.lender_rating_avg || 0);
-    const renterAvg = Number(reviewStats.renter_rating_avg || 0);
+    const b = (bookingRes.rows?.[0] ?? {}) as Record<string, unknown>;
+    const r = (reviewRes.rows?.[0] ?? {}) as Record<string, unknown>;
 
     return {
-      total_earned: Number(bookingStats.total_earned || 0),
-      pending_earnings: Number(bookingStats.pending_earnings || 0),
-      completed_lent: Number(bookingStats.completed_lent || 0),
-      completed_borrowed: Number(bookingStats.completed_borrowed || 0),
-      lender_rating_avg: lenderAvg ? parseFloat(lenderAvg.toFixed(1)) : null,
-      lender_rating_count: Number(reviewStats.lender_rating_count || 0),
-      renter_rating_avg: renterAvg ? parseFloat(renterAvg.toFixed(1)) : null,
-      renter_rating_count: Number(reviewStats.renter_rating_count || 0),
+      total_earned:        Number(b.total_earned        ?? 0),
+      pending_earnings:    Number(b.pending_earnings    ?? 0),
+      completed_lent:      Number(b.completed_lent      ?? 0),
+      completed_borrowed:  Number(b.completed_borrowed  ?? 0),
+      lender_rating_avg:   Number(r.lender_rating_avg   ?? 0) || null,
+      lender_rating_count: Number(r.lender_rating_count ?? 0),
+      renter_rating_avg:   Number(r.renter_rating_avg   ?? 0) || null,
+      renter_rating_count: Number(r.renter_rating_count ?? 0),
     };
   },
 };

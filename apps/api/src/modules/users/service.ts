@@ -53,14 +53,13 @@ export const ensureUserSynced = async (clerkUserId: string) => {
 
   const email = clerkUser.emailAddresses[0]?.emailAddress || null;
   const avatar_url = clerkUser.imageUrl || null;
-  const area = DEFAULT_AREA;
 
   const user = await usersRepository.upsertFromClerk({
     clerk_user_id: clerkUserId,
     display_name: displayName,
     email,
     avatar_url,
-    area,
+    area: DEFAULT_AREA,
   });
 
   if (user) {
@@ -70,42 +69,46 @@ export const ensureUserSynced = async (clerkUserId: string) => {
   return user;
 };
 
-export const getProfile = async (dbUserId: string) => {
-  const user = await usersRepository.findById(dbUserId);
-  if (!user) return null;
-
+/**
+ * Get own profile with stats + phone verification (3 DB calls total, 2 in parallel)
+ * The user row is passed in from auth middleware — no redundant findById call.
+ */
+export const getProfile = async (userRow: any) => {
   const [phoneVerified, stats] = await Promise.all([
-    usersRepository.isPhoneVerified(dbUserId),
-    usersRepository.getUserStats(dbUserId),
+    usersRepository.isPhoneVerified(userRow.id),
+    usersRepository.getUserStats(userRow.id),
   ]);
 
   return {
-    ...user,
+    ...userRow,
     phone_verified: phoneVerified,
     stats,
   };
 };
 
+/**
+ * Public profile — strips private financials (earned/pending amounts)
+ */
 export const getPublicProfile = async (targetUserId: string) => {
-  const user = await usersRepository.findById(targetUserId);
-  if (!user) return null;
-
-  const [phoneVerified, stats] = await Promise.all([
+  const [user, phoneVerified, stats] = await Promise.all([
+    usersRepository.findById(targetUserId),
     usersRepository.isPhoneVerified(targetUserId),
     usersRepository.getUserStats(targetUserId),
   ]);
 
-  // Strip private metrics (total_earned, pending_earnings) for public view
-  const { total_earned, pending_earnings, ...publicStats } = stats;
+  if (!user) return null;
+
+  // Strip private financial fields — renter should not see host's earnings
+  const { total_earned: _te, pending_earnings: _pe, ...publicStats } = stats;
 
   return {
-    id: user.id,
+    id:           user.id,
     display_name: user.display_name,
-    area: user.area,
-    avatar_url: user.avatar_url,
+    area:         user.area,
+    avatar_url:   user.avatar_url,
+    created_at:   user.created_at,
     phone_verified: phoneVerified,
-    stats: publicStats,
-    created_at: user.created_at,
+    stats:        publicStats,
   };
 };
 
