@@ -185,8 +185,6 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
               initialCount={Number(listing.review_count ?? 0)}
             />
 
-            {/* Trust strip */}
-            <TrustStrip />
           </div>
 
           {/* ── RIGHT COLUMN (40%) — Desktop sticky sidebar ───────────── */}
@@ -260,8 +258,8 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
                     {bookingLoading
                       ? 'Sending…'
                       : !selectedDates.start || !selectedDates.end
-                      ? 'Check Dates'
-                      : 'Request'}
+                        ? 'Check Dates'
+                        : 'Request'}
                   </button>
                 </div>
               )}
@@ -273,6 +271,8 @@ export default function PDPClient({ listing, availability }: PDPClientProps) {
         {/* LenderProfile section */}
         <LenderProfile owner={listing.owner} listingId={listing.id} />
 
+        {/* Trust strip */}
+        <TrustStrip />
       </div>
     </>
   );
