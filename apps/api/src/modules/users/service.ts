@@ -101,8 +101,10 @@ export const getPublicProfile = async (targetUserId: string) => {
   };
 };
 
-export const updateProfile = async (dbUserId: string, payload: UpdateProfileInput) => {
-  return usersRepository.updateProfile(dbUserId, payload);
+export const updateProfile = async (dbUserId: string, clerkUserId: string, payload: UpdateProfileInput) => {
+  const updated = await usersRepository.updateProfile(dbUserId, payload);
+  if (updated) setCachedUser(clerkUserId, updated);
+  return updated;
 };
 
 export const completeOnboarding = async (dbUserId: string, clerkUserId: string, payload: CompleteOnboardingInput) => {

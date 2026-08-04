@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApiClient } from '@/lib/api-client';
-import { searchAreas, POPULAR_AREA_IDS, getAreaById, LAHORE_AREAS_DATA, type LahoreArea } from '@stuflux/types';
 import { AreaSelector } from '@/components/shared/AreaSelector';
-import { MapPin, Save, Loader2, X } from 'lucide-react';
+import { Save, Loader2, X } from 'lucide-react';
+import { readApiError } from '@/lib/listings/api';
 
 type Profile = {
   id?: string;
@@ -23,6 +24,7 @@ type Props = {
 
 export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
   const api = useApiClient();
+  const router = useRouter();
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '');
   const [selectedArea, setSelectedArea] = useState(profile?.area ?? '');
   // search and filter logic removed since AreaSelector handles it internally.
@@ -42,15 +44,16 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
     setSaving(true);
     setError(null);
     try {
-      await api.put('users/me', {
+      const response = await api.put('users/me', {
         json: {
           display_name: displayName.trim(),
           ...(selectedArea && { area: selectedArea }),
         },
-      }).json();
-      onSaved({ display_name: displayName.trim(), area: selectedArea });
-    } catch (e: any) {
-      setError('Failed to save. Please try again.');
+      }).json<{ data: Profile }>();
+      onSaved(response.data);
+      router.refresh();
+    } catch (error) {
+      setError(await readApiError(error, 'Your profile could not be saved. Please try again.'));
     } finally {
       setSaving(false);
     }

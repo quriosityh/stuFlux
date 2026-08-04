@@ -18,7 +18,7 @@ export const updateMe = [
   requireAuth,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const parsed = updateProfileSchema.parse(req.body);
-    const updated = await updateProfile(req.auth!.userId, parsed);
+    const updated = await updateProfile(req.auth!.userId, req.auth!.clerkUserId, parsed);
     if (!updated) throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     res.json({ data: updated });
   }),

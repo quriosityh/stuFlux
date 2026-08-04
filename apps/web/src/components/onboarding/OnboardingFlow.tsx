@@ -7,6 +7,7 @@ import { MapPin, UserRound } from 'lucide-react';
 import { AreaSelector } from '@/components/shared/AreaSelector';
 import { Button } from '@/components/ui/Button';
 import { useApiClient } from '@/lib/api-client';
+import { readApiError } from '@/lib/listings/api';
 
 type OnboardingProfile = {
   display_name: string;
@@ -38,7 +39,10 @@ export function OnboardingFlow() {
         setDisplayName(data.display_name === 'User' ? '' : data.display_name);
         setArea(data.area || 'johar-town');
       })
-      .catch(() => active && setError('We could not load your profile. Please refresh and try again.'))
+      .catch(async (error) => {
+        if (!active) return;
+        setError(await readApiError(error, 'We could not load your profile. Please refresh and try again.'));
+      })
       .finally(() => active && setLoading(false));
 
     return () => { active = false; };
@@ -62,12 +66,12 @@ export function OnboardingFlow() {
     try {
       await api.put('users/me/onboarding', {
         json: { display_name: normalizedName, area },
-      });
+      }).json<{ data: OnboardingProfile }>();
       await user?.reload();
       router.replace('/explore' as never);
       router.refresh();
-    } catch {
-      setError('Your profile could not be saved. Please review your details and try again.');
+    } catch (error) {
+      setError(await readApiError(error, 'Your profile could not be saved. Please review your details and try again.'));
     } finally {
       setSaving(false);
     }

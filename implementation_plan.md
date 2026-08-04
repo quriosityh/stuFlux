@@ -24,6 +24,7 @@
 - Added a persistent notifications database model, API endpoints for history/read state, and durable publishing that feeds the existing SSE stream.
 - Added cancellation notifications to the in-app inbox, toast UI, Web Push, and email; documented VAPID server environment values.
 - Passed full API and web TypeScript checks, focused notification UI linting, migration-journal JSON validation, and diff integrity checks after the notification changes.
+- Diagnosed and repaired the onboarding/profile failure caused by unapplied schema migrations. Applied migrations `0008` and `0009` to the configured Neon database; profile UI now uses returned database data and meaningful API error responses.
 
 ## Pending ⏳
 
@@ -32,6 +33,7 @@
 - Add integration/browser coverage for the My Listings authorization and edit flows using a configured database and Clerk test session.
 - Apply migrations `0008` and `0009` in each deployed environment and configure the documented VAPID keys before release.
 - Add integration/browser coverage for notification persistence, SSE reconnects, browser permission, and push delivery with a configured test database and Clerk session.
+- Run browser smoke coverage with a Clerk test account for Google onboarding and profile edits on desktop and mobile.
 
 ## Known issues
 

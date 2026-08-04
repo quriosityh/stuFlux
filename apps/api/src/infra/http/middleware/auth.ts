@@ -23,9 +23,6 @@ export const requireAuth = async (
 ) => {
   try {
     const authHeader = req.headers.authorization;
-    // Debug: surface incoming auth header for local troubleshooting
-    console.debug('Incoming Authorization header:', authHeader ? authHeader.slice(0, 128) : authHeader);
-    
     if (!authHeader?.startsWith('Bearer ')) {
       throw new AppError('No authorization token provided', 401, 'UNAUTHORIZED');
     }
@@ -52,7 +49,9 @@ export const requireAuth = async (
 
     next();
   } catch (error: any) {
-    console.error('🔒 Auth verification failed:', error.message);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Auth verification failed:', error.message);
+    }
     
     if (error instanceof AppError) {
       next(error);
