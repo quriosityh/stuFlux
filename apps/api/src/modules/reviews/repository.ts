@@ -43,6 +43,25 @@ export const getBookingDetails = async (bookingId: string, tx: any = db) => {
   return booking || null;
 };
 
+/** Mark one elapsed confirmed booking complete before creating its review. */
+export const completeBookingIfEnded = async (bookingId: string, tx: any = db) => {
+  const [booking] = await tx
+    .update(bookings)
+    .set({
+      status: 'completed',
+      completed_at: sql`NOW()`,
+      updated_at: sql`NOW()`,
+    })
+    .where(and(
+      eq(bookings.id, bookingId),
+      eq(bookings.status, 'confirmed'),
+      sql`${bookings.end_date} < CURRENT_DATE`
+    ))
+    .returning({ id: bookings.id });
+
+  return !!booking;
+};
+
 /**
  * Find review by booking + reviewer
  */

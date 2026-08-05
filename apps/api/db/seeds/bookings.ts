@@ -3,8 +3,21 @@ import { db } from '../../src/infra/db/client.js';
 import { bookings } from '../schema.js';
 
 type ListingRef = { id: string; owner_id: string; daily_rate: number };
+type PendingReviewFor = 'renter' | 'owner';
+export type SeededBooking = typeof bookings.$inferSelect & { pendingReviewFor?: PendingReviewFor };
+type BookingSeed = {
+  listingIndex: number;
+  renterIndex: number;
+  start_date: string;
+  end_date: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled';
+  message: string;
+  security_deposit: number;
+  delivery_fee: number;
+  pendingReviewFor?: PendingReviewFor;
+};
 
-const bookingSeed = [
+const bookingSeed: readonly BookingSeed[] = [
   { listingIndex: 0, renterIndex: 1, start_date: '2026-08-10', end_date: '2026-08-13', status: 'pending', message: 'Need backup power for a small family event.', security_deposit: 8000, delivery_fee: 400 },
   { listingIndex: 1, renterIndex: 2, start_date: '2026-08-14', end_date: '2026-08-16', status: 'confirmed', message: 'Required for a home-office backup setup.', security_deposit: 7000, delivery_fee: 500 },
   { listingIndex: 2, renterIndex: 3, start_date: '2026-08-18', end_date: '2026-08-22', status: 'pending', message: 'Need it for some shelves and minor repairs.', security_deposit: 2000, delivery_fee: 0 },
@@ -20,6 +33,11 @@ const bookingSeed = [
   { listingIndex: 8, renterIndex: 0, start_date: '2026-07-12', end_date: '2026-07-15', status: 'completed', message: 'Worn for my cousin’s mehndi dinner.', security_deposit: 12000, delivery_fee: 300 },
   { listingIndex: 9, renterIndex: 4, start_date: '2026-06-03', end_date: '2026-06-04', status: 'completed', message: 'A clear picture for our project presentation.', security_deposit: 8000, delivery_fee: 400 },
   { listingIndex: 2, renterIndex: 5, start_date: '2026-08-23', end_date: '2026-08-25', status: 'pending', message: 'For fitting curtain rails in a new apartment.', security_deposit: 2000, delivery_fee: 0 },
+  // Review workflow: each rental is complete, one participant has reviewed,
+  // and the named side below still has a review to submit.
+  { listingIndex: 0, renterIndex: 2, start_date: '2026-07-01', end_date: '2026-07-03', status: 'completed', message: 'Mahnoor rented the generator for a three-day study-group backup.', security_deposit: 8000, delivery_fee: 400, pendingReviewFor: 'renter' as PendingReviewFor },
+  { listingIndex: 8, renterIndex: 1, start_date: '2026-07-04', end_date: '2026-07-06', status: 'completed', message: 'Hamza rented Ayesha’s sherwani for a university formal.', security_deposit: 12000, delivery_fee: 300, pendingReviewFor: 'owner' as PendingReviewFor },
+  { listingIndex: 9, renterIndex: 4, start_date: '2026-07-07', end_date: '2026-07-09', status: 'completed', message: 'Hira rented Hamza’s projector for her final presentation.', security_deposit: 8000, delivery_fee: 400, pendingReviewFor: 'owner' as PendingReviewFor },
 ] as const;
 
 export async function seedBookings(userIds: string[], listingRefs: ListingRef[]) {
@@ -59,14 +77,14 @@ export async function seedBookings(userIds: string[], listingRefs: ListingRef[])
   const missing = rows.filter((row) => !existingKeys.has(`${row.listing.id}:${row.renterId}:${row.start_date}`));
 
   if (missing.length) {
-    await db.insert(bookings).values(missing.map(({ listing, renterId, ...booking }) => ({
-      listing_id: listing.id,
-      renter_id: renterId,
-      owner_id: listing.owner_id,
+    await db.insert(bookings).values(missing.map((booking) => ({
+      listing_id: booking.listing.id,
+      renter_id: booking.renterId,
+      owner_id: booking.listing.owner_id,
       start_date: booking.start_date,
       end_date: booking.end_date,
       total_days: booking.total_days,
-      total_amount: listing.daily_rate * booking.total_days,
+      total_amount: booking.listing.daily_rate * booking.total_days,
       status: booking.status,
       message: booking.message,
       security_deposit: booking.security_deposit,
@@ -77,5 +95,18 @@ export async function seedBookings(userIds: string[], listingRefs: ListingRef[])
       completed_at: booking.status === 'completed' ? new Date('2026-06-25T10:00:00Z') : null,
     })));
   }
-  return db.select().from(bookings).where(inArray(bookings.listing_id, listingRefs.map((listing) => listing.id)));
+  const seededBookings = await db
+    .select()
+    .from(bookings)
+    .where(inArray(bookings.listing_id, listingRefs.map((listing) => listing.id)));
+  const pendingReviewByBookingKey = new Map(
+    seededRows
+      .filter((row) => row.pendingReviewFor)
+      .map((row) => [`${row.listing.id}:${row.renterId}:${row.start_date}`, row.pendingReviewFor!]),
+  );
+
+  return seededBookings.map((booking) => ({
+    ...booking,
+    pendingReviewFor: pendingReviewByBookingKey.get(`${booking.listing_id}:${booking.renter_id}:${booking.start_date}`),
+  })) satisfies SeededBooking[];
 }

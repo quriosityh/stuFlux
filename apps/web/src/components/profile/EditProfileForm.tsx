@@ -18,9 +18,10 @@ type Props = {
   profile: Profile | null;
   onSaved: (updated: Partial<Profile>) => void;
   onCancel: () => void;
+  onboarding?: boolean;
 };
 
-export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
+export function EditProfileForm({ profile, onSaved, onCancel, onboarding = false }: Props) {
   const api = useApiClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -114,16 +115,26 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
       setError('Display name is required.');
       return;
     }
+    if (onboarding && !selectedArea) {
+      setError('Please select your area in Lahore.');
+      return;
+    }
+    if (onboarding && !avatarUrl) {
+      setError('Please add a profile photo to continue.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await api.put('users/me', {
-        json: {
-          display_name: displayName.trim(),
-          ...(selectedArea && { area: selectedArea }),
-          ...(avatarUrl !== profile?.avatar_url && { avatar_url: avatarUrl }),
-        },
-      }).json();
+      const profilePayload = {
+        display_name: displayName.trim(),
+        ...(selectedArea && { area: selectedArea }),
+        ...(avatarUrl !== profile?.avatar_url && { avatar_url: avatarUrl }),
+      };
+      await (onboarding
+        ? api.post('users/me/complete-onboarding', { json: { ...profilePayload, avatar_url: avatarUrl! } })
+        : api.put('users/me', { json: profilePayload })
+      ).json();
       onSaved({
         display_name: displayName.trim(),
         area: selectedArea,
@@ -298,12 +309,14 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
 
         {/* Actions */}
         <div className="flex gap-3 pt-1">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl border border-[var(--border-color)] text-sm font-semibold text-[var(--foreground)]/60 hover:text-[var(--foreground)] transition-colors"
-          >
-            Cancel
-          </button>
+          {!onboarding && (
+            <button
+              onClick={onCancel}
+              className="flex-1 py-2.5 rounded-xl border border-[var(--border-color)] text-sm font-semibold text-[var(--foreground)]/60 hover:text-[var(--foreground)] transition-colors"
+            >
+              Cancel
+            </button>
+          )}
           <button
             id="save-profile-btn"
             onClick={handleSave}
@@ -311,7 +324,7 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl hyper-liquid text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            {saving ? 'Saving…' : 'Save Changes'}
+            {saving ? 'Saving…' : onboarding ? 'Complete Profile' : 'Save Changes'}
           </button>
         </div>
       </div>

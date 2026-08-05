@@ -42,8 +42,18 @@ export async function seedUsers() {
     );
   }
 
-  return db
+  const seededUsers = await db
     .select()
     .from(users)
     .where(inArray(users.clerk_user_id, usersSeed.map((user) => user.clerk_user_id)));
+  const usersByClerkId = new Map(seededUsers.map((user) => [user.clerk_user_id, user]));
+
+  // SQL does not guarantee IN-clause result order. Keep this aligned with
+  // demoUsers because the listing and booking stories intentionally use its
+  // stable account order.
+  return demoUsers.map((user) => {
+    const seededUser = usersByClerkId.get(user.clerk_user_id);
+    if (!seededUser) throw new Error(`Missing seeded demo user: ${user.clerk_user_id}`);
+    return seededUser;
+  });
 }

@@ -32,6 +32,7 @@ export interface Booking {
     deliveryFee: number;
     securityDeposit: number;
   };
+  hasReviewed?: boolean;
   conversation_id: string | null;
   created_at: string;
 }

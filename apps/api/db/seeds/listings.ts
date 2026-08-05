@@ -79,6 +79,9 @@ export async function seedListings(ownerIds: string[]) {
       return [title, resolvedCategoryId];
     }),
   );
+  const expectedOwnerIdByTitle = new Map(
+    listingsSeed.map((listing, index) => [listing.title, ownerIds[index % ownerIds.length]!]),
+  );
 
   const existingListings = await db
     .select({ title: listings.title })
@@ -107,19 +110,24 @@ export async function seedListings(ownerIds: string[]) {
     .from(listings)
     .where(inArray(listings.title, listingsSeed.map((listing) => listing.title)));
 
-  // Older seed runs stored category IDs directly. Reconcile those existing rows
-  // so an idempotent seed run also repairs listings moved to the current categories.
-  const categoryCorrections = seededListings.filter(
-    (listing) => listing.category_id !== expectedCategoryIdByTitle.get(listing.title),
+  // Reconcile older fixture runs so their category and owner assignments match
+  // the current deterministic demo story.
+  const listingCorrections = seededListings.filter(
+    (listing) =>
+      listing.category_id !== expectedCategoryIdByTitle.get(listing.title) ||
+      listing.owner_id !== expectedOwnerIdByTitle.get(listing.title),
   );
-  if (categoryCorrections.length) {
+  if (listingCorrections.length) {
     // Keep this on one connection. Parallel updates can exhaust the small pool
     // available on hosted development databases.
     await db.transaction(async (tx) => {
-      for (const listing of categoryCorrections) {
+      for (const listing of listingCorrections) {
         await tx
           .update(listings)
-          .set({ category_id: expectedCategoryIdByTitle.get(listing.title)! })
+          .set({
+            category_id: expectedCategoryIdByTitle.get(listing.title)!,
+            owner_id: expectedOwnerIdByTitle.get(listing.title)!,
+          })
           .where(eq(listings.id, listing.id));
       }
     });

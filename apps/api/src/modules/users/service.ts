@@ -2,7 +2,7 @@ import { createClerkClient } from '@clerk/backend';
 import { AppError } from '../../common/errors.js';
 import { usersRepository } from './repository.js';
 import type { SyncPhoneVerificationInput } from './validations.js';
-import type { UpdateProfileInput } from './validations.js';
+import type { CompleteOnboardingInput, UpdateProfileInput } from './validations.js';
 
 const DEFAULT_AREA = 'johar-town';
 const DEFAULT_NAME = 'User';
@@ -132,4 +132,13 @@ export const getPublicProfile = async (targetUserId: string) => {
 
 export const updateProfile = async (dbUserId: string, payload: UpdateProfileInput) => {
   return usersRepository.updateProfile(dbUserId, payload);
+};
+
+/**
+ * Marks onboarding complete only alongside the required profile data. Keeping
+ * this separate from the regular profile update prevents a client from setting
+ * an arbitrary `onboarded: true` flag.
+ */
+export const completeOnboarding = async (dbUserId: string, payload: CompleteOnboardingInput) => {
+  return usersRepository.updateProfile(dbUserId, { ...payload, onboarded: true });
 };

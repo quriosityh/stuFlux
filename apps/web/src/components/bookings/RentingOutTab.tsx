@@ -7,12 +7,14 @@ import { MessageCircle, Star, Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
 import BookingDetailSheet from './BookingDetailSheet';
+import ReviewModal from './ReviewModal';
 import { BookingsLoadError } from './RentingTab';
 
 export default function RentingOutTab() {
   const router = useRouter();
   const { bookings, isLoading, error, refetch } = useBookings('owner');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [reviewingBooking, setReviewingBooking] = useState<Booking | null>(null);
 
   if (isLoading) {
     return (
@@ -27,13 +29,21 @@ export default function RentingOutTab() {
     return <BookingsLoadError message={error.message} onRetry={refetch} />;
   }
 
-  if (bookings.length === 0) {
+  // Active Command Center sorting (Pending reviews only show completed bookings that are NOT reviewed yet; cancelled/rejected requests removed)
+  const pendingApprovals = bookings.filter(b => b.phase === 'pending').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  const upcomingRentals = bookings.filter(b => b.phase === 'confirmed').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  const currentlyOut = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
+  const pendingReviews = bookings.filter(b => b.phase === 'completed' && !b.hasReviewed).sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
+
+  const hasActiveRequests = pendingApprovals.length > 0 || upcomingRentals.length > 0 || currentlyOut.length > 0 || pendingReviews.length > 0;
+
+  if (bookings.length === 0 || !hasActiveRequests) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6 border border-dashed border-border/60 rounded-3xl bg-card/20">
         <div className="w-12 h-12 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
           <Calendar className="text-muted-foreground" size={24} />
         </div>
-        <h3 className="font-semibold text-lg">No requests received</h3>
+        <h3 className="font-semibold text-lg">No active requests</h3>
         <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-6">
           List your items for rent. Once other students request them, they will show up here.
         </p>
@@ -46,13 +56,6 @@ export default function RentingOutTab() {
       </div>
     );
   }
-
-  // Sorting
-  const pendingApprovals = bookings.filter(b => b.phase === 'pending').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const upcomingRentals = bookings.filter(b => b.phase === 'confirmed').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const currentlyOut = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
-  const pendingReviews = bookings.filter(b => b.phase === 'completed').sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
-  const closedRequests = bookings.filter(b => b.phase === 'cancelled' || b.phase === 'rejected').sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
 
   const handleChat = (e: React.MouseEvent, conversationId: string | null) => {
     e.stopPropagation();
@@ -166,7 +169,7 @@ export default function RentingOutTab() {
             )}
             {booking.phase === 'completed' && (
               <button 
-                onClick={(e) => { e.stopPropagation(); }}
+                onClick={(e) => { e.stopPropagation(); setReviewingBooking(booking); }}
                 className="px-4 sm:px-5 py-2 sm:py-2.5 text-[12px] sm:text-[13px] font-semibold rounded-lg sm:rounded-xl bg-foreground text-background hover:bg-foreground/90 transition-all shadow-md shadow-foreground/10"
               >
                 Write Review
@@ -218,13 +221,6 @@ export default function RentingOutTab() {
         </section>
       )}
 
-      {closedRequests.length > 0 && (
-        <section>
-          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Closed Requests</h2>
-          <div className="flex flex-col gap-4">{closedRequests.map(renderCard)}</div>
-        </section>
-      )}
-
       {selectedBooking && (
         <BookingDetailSheet 
           booking={selectedBooking} 
@@ -232,6 +228,17 @@ export default function RentingOutTab() {
           onClose={() => setSelectedBooking(null)}
           role="lender"
           onActionSuccess={refetch}
+          onOpenReview={(b) => setReviewingBooking(b)}
+        />
+      )}
+
+      {reviewingBooking && (
+        <ReviewModal
+          booking={reviewingBooking}
+          isOpen={!!reviewingBooking}
+          onClose={() => setReviewingBooking(null)}
+          role="lender"
+          onSuccess={refetch}
         />
       )}
     </div>

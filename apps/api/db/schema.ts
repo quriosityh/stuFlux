@@ -29,6 +29,7 @@ export const users = pgTable("users", {
 
     email: text("email"),
     avatar_url: text("avatar_url"),
+    onboarded: boolean("onboarded").default(false).notNull(),
 });
 
 // ====================== USER_VERIFICATIONS ======================

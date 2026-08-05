@@ -61,13 +61,14 @@ export const usersRepository = {
     return row;
   },
 
-  async updateProfile(id: string, payload: UpdateProfileInput) {
+  async updateProfile(id: string, payload: UpdateProfileInput & { onboarded?: boolean }) {
     const [row] = await db
       .update(users)
       .set({
         ...(payload.display_name !== undefined && { display_name: payload.display_name }),
         ...(payload.area        !== undefined && { area: payload.area }),
         ...(payload.avatar_url  !== undefined && { avatar_url: payload.avatar_url }),
+        ...(payload.onboarded   !== undefined && { onboarded: payload.onboarded }),
         updated_at: sql`NOW()`,
       })
       .where(eq(users.id, id))
