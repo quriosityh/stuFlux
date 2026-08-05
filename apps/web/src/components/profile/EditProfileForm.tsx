@@ -149,55 +149,59 @@ export function EditProfileForm({ profile, onSaved, onCancel, onboarding = false
 
   return (
     <div className="animate-in fade-in duration-300">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-display text-lg font-bold text-[var(--foreground)]">Edit Profile</h2>
-        <button
-          onClick={onCancel}
-          className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--foreground)]/40 hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition-all"
-        >
-          <X size={16} />
-        </button>
-      </div>
+      {/* Header (hidden in onboarding mode since onboarding page provides its own title) */}
+      {!onboarding && (
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-display text-lg font-bold text-foreground">Edit Profile</h2>
+          <button
+            onClick={onCancel}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-foreground/40 hover:text-foreground hover:bg-foreground/5 transition-all"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-6">
         {/* ── Avatar Picker ── */}
-        <div className="flex flex-col gap-2">
-          <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--foreground)]/40 font-display">
-            Profile Photo
-          </label>
-          <div className="flex items-center gap-4">
+        <div className={`flex flex-col gap-3 ${onboarding ? 'items-center text-center mt-2' : ''}`}>
+          {!onboarding && (
+            <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--foreground)]/40 font-display">
+              Profile Photo
+            </label>
+          )}
+          <div className={`flex ${onboarding ? 'flex-col items-center' : 'items-center'} gap-4`}>
             {/* Avatar preview */}
             <div className="relative flex-shrink-0">
-              <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-[var(--accent)] to-blue-600 flex items-center justify-center text-white shadow-sm">
+              <div className={`${onboarding ? 'w-24 h-24' : 'w-20 h-20'} rounded-full overflow-hidden bg-gradient-to-br from-[var(--accent)]/80 to-blue-600/80 flex items-center justify-center text-white shadow-md border-2 border-border/20`}>
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <User size={32} />
+                  <User size={onboarding ? 40 : 32} className="opacity-90" />
                 )}
               </div>
               {/* Loading overlay */}
               {avatarUploading && (
-                <div className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center">
-                  <Loader2 size={20} className="text-white animate-spin" />
+                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                  <Loader2 size={24} className="text-white animate-spin" />
                 </div>
               )}
             </div>
 
             {/* Upload button */}
-            <div className="flex flex-col gap-2">
+            <div className={`flex flex-col gap-2 ${onboarding ? 'items-center' : ''}`}>
               <button
                 id="avatar-upload-btn"
                 type="button"
                 disabled={avatarUploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border-color)] text-xs font-bold text-[var(--foreground)]/70 hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border border-border/30 text-xs font-bold text-foreground/80 hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-surface transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm ${onboarding ? 'w-full sm:w-auto' : ''}`}
               >
-                <Camera size={14} />
+                <Camera size={15} />
                 {avatarUploading ? 'Uploading…' : avatarUrl ? 'Change Photo' : 'Upload Photo'}
               </button>
-              <p className="text-[10px] text-[var(--foreground)]/30">
-                JPEG · PNG · WebP · max 7 MB
+              <p className="text-[10px] text-foreground/40 font-medium">
+                JPEG, PNG, WebP (Max 7MB)
               </p>
             </div>
 
@@ -224,8 +228,8 @@ export function EditProfileForm({ profile, onSaved, onCancel, onboarding = false
         </div>
 
         {/* ── Display Name ── */}
-        <div className="flex flex-col gap-2">
-          <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--foreground)]/40 font-display">
+        <div className={`flex flex-col gap-2 ${onboarding ? 'mt-4' : ''}`}>
+          <label className={`text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/40 font-display ${onboarding ? 'text-center' : ''}`}>
             Display Name
           </label>
           <input
@@ -233,26 +237,28 @@ export function EditProfileForm({ profile, onSaved, onCancel, onboarding = false
             type="text"
             value={displayName}
             onChange={e => setDisplayName(e.target.value)}
-            placeholder="Your name"
-            className="w-full bg-[var(--background)] border border-[var(--border-color)] text-[var(--foreground)] placeholder-[var(--foreground)]/25 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[var(--accent)]/60 transition-all"
+            placeholder="e.g. John Doe"
+            className={`w-full bg-background border border-border/40 text-foreground placeholder-foreground/30 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all ${
+              onboarding ? 'text-center text-base py-4 rounded-2xl bg-surface/50 shadow-sm' : ''
+            }`}
           />
         </div>
 
         {/* ── Area Selection ── */}
         <div className="flex flex-col gap-2">
-          <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--foreground)]/40 font-display">
+          <label className={`text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/40 font-display ${onboarding ? 'text-center' : ''}`}>
             Your Area in Lahore
           </label>
 
           {selectedAreaLabel && (
-            <div className="flex items-center gap-2 mb-1">
-              <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--accent)] bg-[var(--accent)]/8 px-3 py-1 rounded-full border border-[var(--accent)]/20">
-                <MapPin size={12} />
+            <div className={`flex items-center gap-2 mb-1 ${onboarding ? 'justify-center' : ''}`}>
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1.5 rounded-full border border-[var(--accent)]/20 shadow-sm">
+                <MapPin size={14} />
                 {selectedAreaLabel}
               </span>
               <button
                 onClick={() => setSelectedArea('')}
-                className="text-xs text-[var(--foreground)]/40 hover:text-[var(--foreground)] transition-colors"
+                className="text-xs font-semibold text-foreground/40 hover:text-foreground transition-colors ml-1"
               >
                 Clear
               </button>
@@ -260,20 +266,25 @@ export function EditProfileForm({ profile, onSaved, onCancel, onboarding = false
           )}
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground)]/30" />
+            <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40 ${onboarding ? 'left-4' : 'left-3'}`} />
             <input
               id="edit-area-search"
               type="text"
               value={areaSearch}
               onChange={e => setAreaSearch(e.target.value)}
               placeholder="Search area…"
-              className="w-full bg-[var(--background)] border border-[var(--border-color)] text-[var(--foreground)] placeholder-[var(--foreground)]/25 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)]/60 transition-all"
+              className={`w-full bg-background border border-border/40 text-foreground placeholder-foreground/30 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all ${
+                onboarding ? 'text-center pl-4 pr-10 text-base py-4 rounded-2xl bg-surface/50 shadow-sm' : ''
+              }`}
             />
+            {onboarding && (
+               <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40 opacity-50" />
+            )}
           </div>
 
-          <div className="flex flex-col divide-y divide-[var(--border-color)]/30 overflow-y-auto max-h-48 rounded-xl border border-[var(--border-color)]/40">
+          <div className={`flex flex-col divide-y divide-border/20 overflow-y-auto max-h-48 rounded-2xl border border-border/30 bg-background/50 backdrop-blur-sm ${onboarding ? 'mt-2' : ''}`}>
             {filteredAreas.length === 0 ? (
-              <div className="text-center text-[var(--foreground)]/30 text-sm py-6">
+              <div className="text-center text-foreground/40 text-sm py-6 font-medium">
                 No areas found for &ldquo;{areaSearch}&rdquo;
               </div>
             ) : (
@@ -308,11 +319,11 @@ export function EditProfileForm({ profile, onSaved, onCancel, onboarding = false
         )}
 
         {/* Actions */}
-        <div className="flex gap-3 pt-1">
+        <div className={`flex gap-3 ${onboarding ? 'pt-4' : 'pt-1'}`}>
           {!onboarding && (
             <button
               onClick={onCancel}
-              className="flex-1 py-2.5 rounded-xl border border-[var(--border-color)] text-sm font-semibold text-[var(--foreground)]/60 hover:text-[var(--foreground)] transition-colors"
+              className="flex-1 py-2.5 rounded-xl border border-border/40 text-sm font-semibold text-foreground/60 hover:text-foreground hover:bg-surface/50 transition-colors"
             >
               Cancel
             </button>
@@ -321,9 +332,11 @@ export function EditProfileForm({ profile, onSaved, onCancel, onboarding = false
             id="save-profile-btn"
             onClick={handleSave}
             disabled={saving || !isDirty || avatarUploading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl hyper-liquid text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className={`flex-1 flex items-center justify-center gap-2 hyper-liquid font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all ${
+              onboarding ? 'py-4 rounded-2xl text-base shadow-lg' : 'py-2.5 rounded-xl text-sm'
+            }`}
           >
-            {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            {saving ? <Loader2 size={onboarding ? 18 : 15} className="animate-spin" /> : !onboarding && <Save size={15} />}
             {saving ? 'Saving…' : onboarding ? 'Complete Profile' : 'Save Changes'}
           </button>
         </div>
