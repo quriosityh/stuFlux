@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import type { Route } from 'next';
 import { useApiClient } from '@/lib/api-client';
 import { ListingFormData } from './types';
 import { StepIndicator } from './StepIndicator';
@@ -41,6 +42,10 @@ const INITIAL_DATA: ListingFormData = {
   status: 'draft',
 };
 
+// The form intentionally displays PKR while the listings API persists all
+// monetary values in paisa (the smallest currency unit).
+const toPaisa = (amount: number) => Math.round(amount * 100);
+
 function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: ListingFormWizardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,7 +69,7 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
     title: formData.title,
     description: formData.description,
     category_id: formData.category_id,
-    daily_rate: formData.daily_rate,
+    daily_rate: toPaisa(formData.daily_rate),
     area: formData.area,
     condition: formData.condition,
     rental_rules: formData.rental_rules,
@@ -72,8 +77,8 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
     min_rental_days: formData.min_rental_days,
     max_rental_days: formData.max_rental_days,
     delivery_available: formData.delivery_available,
-    delivery_fee: formData.delivery_fee,
-    security_deposit: formData.security_deposit,
+    delivery_fee: toPaisa(formData.delivery_fee),
+    security_deposit: toPaisa(formData.security_deposit),
     status,
     // Send full photo objects — width/height/size_kb/mime_type are stored in DB
     photos: formData.photos.map((photo, i) => ({
@@ -126,11 +131,13 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
         }
       }
 
-      router.push(`/listings/${finalId}` as any);
-    } catch (error: any) {
+      router.push(`/listings/${finalId}` as Route);
+    } catch (error: unknown) {
       console.error('Failed to publish listing:', error);
       setSubmitError(
-        error?.message ?? 'Something went wrong. Please check your details and try again.'
+        error instanceof Error
+          ? error.message
+          : 'Something went wrong. Please check your details and try again.'
       );
       setIsSubmitting(false);
     }

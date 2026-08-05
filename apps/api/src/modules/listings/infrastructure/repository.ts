@@ -58,6 +58,10 @@ export const listingsRepository = {
         rating: listingRatingStats.rating,
         review_count: listingRatingStats.reviewCount,
         delivery_available: listings.delivery_available,
+        booking_count: listings.booking_count,
+        rating: listingRatingStats.rating,
+        review_count: listingRatingStats.reviewCount,
+        delivery_available: listings.delivery_available,
         created_at: listings.created_at,
         category: {
           id: categories.id,
@@ -218,6 +222,7 @@ export const listingsRepository = {
       .from(listings)
       .leftJoin(categories, eq(categories.id, listings.category_id))
       .leftJoin(users, eq(users.id, listings.owner_id))
+      .leftJoin(listingRatingStats, eq(listingRatingStats.listingId, listings.id))
       .leftJoin(
         listingPhotos,
         and(

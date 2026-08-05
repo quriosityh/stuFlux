@@ -85,12 +85,23 @@ export const updateListing = async (id: string, payload: unknown, ownerId: strin
 
   const nextStatus = data.status ?? existing.status;
   if (nextStatus === 'active') {
+    // Partial updates from the owner inventory (for example, a rate change or
+    // resuming a paused listing) do not include the listing's photos. Validate
+    // against the persisted publishable state in that case rather than treating
+    // the omitted field as an empty photo set.
+    const current = data.photos === undefined
+      ? await listingsRepository.findById(id)
+      : null;
     const snapshot: CreateListingInput = {
-      ...existing,
+      title: data.title ?? current?.title,
+      description: data.description ?? current?.description,
+      category_id: data.category_id ?? current?.category?.id,
+      daily_rate: data.daily_rate ?? current?.daily_rate,
+      area: data.area ?? current?.area,
       ...data,
-      photos: normalizedPhotos,
+      photos: data.photos === undefined ? (current?.photos ?? []) : normalizedPhotos,
     } as any;
-    assertPublishable({ ...snapshot, photos: normalizedPhotos });
+    assertPublishable(snapshot);
   }
 
   const updatedId = await listingsRepository.update(id, ownerId, { ...data, photos: data.photos ? normalizedPhotos : undefined });
