@@ -1,4 +1,4 @@
-import { differenceInCalendarDays } from 'date-fns';
+import { differenceInCalendarDays, parseISO } from 'date-fns';
 import { AppError } from '../../common/errors.js';
 import { listingsRepository } from '../listings/infrastructure/repository.js';
 import { createBookingSchema } from './validations.js';
@@ -305,12 +305,17 @@ export const getBookings = async (
     const isLender = role === 'owner';
     const counterpartUser = isLender ? renter : owner;
 
-    const startDate = new Date(booking.start_date);
-    const endDate = new Date(booking.end_date);
+    // Dates in the bookings table are date-only values. Parse them as local
+    // calendar dates so the phase cannot change unexpectedly because the
+    // server or client is in a different timezone.
+    const startDate = parseISO(booking.start_date);
+    const endDate = parseISO(booking.end_date);
 
     let phase = booking.status as string;
     if (booking.status === 'confirmed') {
-      if (today >= startDate && today <= endDate) {
+      // `end_date` is the checkout/return date, not an additional rental day.
+      // Keep this consistent with total_days (end - start) and overlap checks.
+      if (today >= startDate && today < endDate) {
         phase = 'active';
       } else {
         phase = 'confirmed';

@@ -14,17 +14,6 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', 'clsx', 'react-hook-form'],
   },
 
-  // ✅ Proxy API calls through Next.js to avoid CORS in development
-  async rewrites() {
-    const apiBase = process.env.API_BASE_URL || 'http://localhost:4000/api/v1';
-    return [
-      {
-        source: '/api/proxy/:path*',
-        destination: `${apiBase}/:path*`,
-      },
-    ];
-  },
-
   images: {
     // ✅ Whitelisted remote image sources
     remotePatterns: [

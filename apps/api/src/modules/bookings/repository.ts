@@ -172,7 +172,9 @@ export const bookingsRepository = {
   },
 
   /**
-   * Finalize rentals whose confirmed end date has passed. This keeps the
+   * Finalize rentals whose confirmed end date has arrived. The end date is
+   * exclusive throughout booking calculations: a booking from Aug 10 to Aug
+   * 13 is a three-day rental and is no longer active on Aug 13. This keeps the
    * persisted booking status aligned with the status displayed to users and
    * with review eligibility.
    */
@@ -186,7 +188,7 @@ export const bookingsRepository = {
       })
       .where(and(
         eq(bookings.status, 'confirmed'),
-        sql`${bookings.end_date} < CURRENT_DATE`
+        sql`${bookings.end_date} <= CURRENT_DATE`
       ));
   },
 

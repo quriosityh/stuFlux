@@ -23,6 +23,10 @@ async function forwardRequest(req: NextRequest, path: string[]) {
   headers.delete('host');
   headers.delete('connection');
   headers.delete('content-length');
+  // This is a server-to-server request. Forwarding the browser's Origin makes
+  // the API apply its CORS allowlist to the web app's LAN address (for example,
+  // when the app is opened on a phone during local development).
+  headers.delete('origin');
 
   const hasBody = !['GET', 'HEAD'].includes(req.method);
   const body = hasBody ? await req.text() : undefined;

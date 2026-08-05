@@ -27,7 +27,8 @@ type BlockedRange = { start_date: string; end_date: string };
 
 const fromPaisa = (amount: number | undefined) => Math.round((amount ?? 0) / 100);
 
-export default async function EditListingPage({ params }: { params: { id: string } }) {
+export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { userId, getToken } = await auth();
   if (!userId) redirect('/auth/sign-in');
 
@@ -37,8 +38,8 @@ export default async function EditListingPage({ params }: { params: { id: string
   let defaultValues: Partial<ListingFormData> = {};
   try {
     const [res, blockedDatesResponse] = await Promise.all([
-      api.get(`listings/${params.id}`).json<{ data: ListingDetails }>(),
-      api.get(`listings/${params.id}/blocked-dates`).json<{ data: BlockedRange[] }>(),
+      api.get(`listings/${id}`).json<{ data: ListingDetails }>(),
+      api.get(`listings/${id}/blocked-dates`).json<{ data: BlockedRange[] }>(),
     ]);
     const l = res.data;
     if (!l) redirect('/');
@@ -75,7 +76,7 @@ export default async function EditListingPage({ params }: { params: { id: string
 
   return (
     <main>
-      <ListingFormWizard mode="edit" listingId={params.id} defaultValues={defaultValues} />
+      <ListingFormWizard mode="edit" listingId={id} defaultValues={defaultValues} />
     </main>
   );
 }

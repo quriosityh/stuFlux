@@ -38,6 +38,12 @@ const bookingSeed: readonly BookingSeed[] = [
   { listingIndex: 0, renterIndex: 2, start_date: '2026-07-01', end_date: '2026-07-03', status: 'completed', message: 'Mahnoor rented the generator for a three-day study-group backup.', security_deposit: 8000, delivery_fee: 400, pendingReviewFor: 'renter' as PendingReviewFor },
   { listingIndex: 8, renterIndex: 1, start_date: '2026-07-04', end_date: '2026-07-06', status: 'completed', message: 'Hamza rented Ayesha’s sherwani for a university formal.', security_deposit: 12000, delivery_fee: 300, pendingReviewFor: 'owner' as PendingReviewFor },
   { listingIndex: 9, renterIndex: 4, start_date: '2026-07-07', end_date: '2026-07-09', status: 'completed', message: 'Hira rented Hamza’s projector for her final presentation.', security_deposit: 8000, delivery_fee: 400, pendingReviewFor: 'owner' as PendingReviewFor },
+  // Fresh review prompts for repeat seed runs. These use new booking keys so
+  // prior reviews remain intact while the evaluator accounts still have a
+  // completed booking awaiting their review.
+  { listingIndex: 0, renterIndex: 2, start_date: '2026-07-10', end_date: '2026-07-12', status: 'completed', message: 'Mahnoor rented the generator again for an exam-week study session.', security_deposit: 8000, delivery_fee: 400, pendingReviewFor: 'renter' as PendingReviewFor },
+  { listingIndex: 8, renterIndex: 1, start_date: '2026-07-13', end_date: '2026-07-15', status: 'completed', message: 'Hamza rented Ayesha’s sherwani for another university formal.', security_deposit: 12000, delivery_fee: 300, pendingReviewFor: 'owner' as PendingReviewFor },
+  { listingIndex: 9, renterIndex: 4, start_date: '2026-07-16', end_date: '2026-07-18', status: 'completed', message: 'Hira rented Hamza’s projector for a project showcase.', security_deposit: 8000, delivery_fee: 400, pendingReviewFor: 'owner' as PendingReviewFor },
 ] as const;
 
 export async function seedBookings(userIds: string[], listingRefs: ListingRef[]) {
@@ -73,8 +79,11 @@ export async function seedBookings(userIds: string[], listingRefs: ListingRef[])
     });
   const rows = [...seededRows, ...reviewCoverageRows];
   const existing = await db.select().from(bookings).where(inArray(bookings.listing_id, listingRefs.map((listing) => listing.id)));
-  const existingKeys = new Set(existing.map((booking) => `${booking.listing_id}:${booking.renter_id}:${booking.start_date}`));
-  const missing = rows.filter((row) => !existingKeys.has(`${row.listing.id}:${row.renterId}:${row.start_date}`));
+  // A listing cannot have overlapping confirmed dates. Older fixture versions
+  // may have assigned a different renter to the same listing/date, so treat
+  // that occupied slot as already seeded instead of attempting a duplicate.
+  const existingKeys = new Set(existing.map((booking) => `${booking.listing_id}:${booking.start_date}`));
+  const missing = rows.filter((row) => !existingKeys.has(`${row.listing.id}:${row.start_date}`));
 
   if (missing.length) {
     await db.insert(bookings).values(missing.map((booking) => ({
