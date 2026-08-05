@@ -4,8 +4,23 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
 
+type ListingCardItem = {
+  id?: unknown;
+  title?: string;
+  area?: string;
+  city?: string;
+  daily_rate?: number;
+  price?: number;
+  rating?: number | null;
+  photos?: Array<{ is_primary?: boolean; url?: string }>;
+  photo?: { thumbnail_url?: string; url?: string };
+  imageUrl?: string;
+  delivery_available?: boolean;
+  booking_count?: number;
+};
+
 interface ListingCardProps {
-  item: any;
+  item: ListingCardItem;
 }
 
 export function ListingCard({ item }: ListingCardProps) {
@@ -13,19 +28,22 @@ export function ListingCard({ item }: ListingCardProps) {
   const title = item?.title || 'Untitled Listing';
   const area = item?.area || item?.city || '';
   const price = item?.daily_rate ?? item?.price ?? 0;
+  // Never stringify a malformed listing id into a route such as
+  // `/listings/[object Object]`; the API correctly rejects that as non-UUID.
+  const listingId = typeof item?.id === 'string' ? item.id : null;
 
   // `rating` and `review_count` are calculated by the listings API from renter reviews.
   const rating = item?.rating == null ? null : Number(item.rating);
 
   // Primary photo: try photos array first, then thumbnail, then imageUrl fallback
-  const primaryPhoto = item?.photos?.find((p: any) => p.is_primary)?.url
+  const primaryPhoto = item?.photos?.find((p) => p.is_primary)?.url
     ?? item?.photos?.[0]?.url
     ?? item?.photo?.thumbnail_url
     ?? item?.photo?.url
     ?? item?.imageUrl;
 
   return (
-    <Link href={{ pathname: `/listings/${item?.id || '1'}` }} className="group block cursor-pointer">
+    <Link href={listingId ? { pathname: `/listings/${listingId}` } : { pathname: '/' }} className="group block cursor-pointer">
       {/* Image Container */}
       <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-3.5 bg-surface border border-border/5">
         <motion.div

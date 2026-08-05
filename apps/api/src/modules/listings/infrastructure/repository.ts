@@ -58,10 +58,6 @@ export const listingsRepository = {
         rating: listingRatingStats.rating,
         review_count: listingRatingStats.reviewCount,
         delivery_available: listings.delivery_available,
-        booking_count: listings.booking_count,
-        rating: listingRatingStats.rating,
-        review_count: listingRatingStats.reviewCount,
-        delivery_available: listings.delivery_available,
         created_at: listings.created_at,
         category: {
           id: categories.id,

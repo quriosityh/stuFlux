@@ -294,7 +294,7 @@ export const getBookings = async (
   // The UI treats an elapsed confirmed booking as completed. Persist that
   // transition before returning bookings so review submission sees the same
   // status rather than rejecting a visibly completed rental.
-  await bookingsRepository.completeExpiredBookings();
+  await completeExpiredBookings();
   const rawRows = await bookingsRepository.findForUser(userId, role, status, listingId, limit);
 
   const today = new Date();
@@ -359,6 +359,9 @@ export const getBookings = async (
     };
   });
 };
+
+/** Persist all rentals whose exclusive end date has arrived as completed. */
+export const completeExpiredBookings = async () => bookingsRepository.completeExpiredBookings();
 
 export const getAvailability = async (listingId: string) => {
   const [confirmedBookings, blockedDates] = await Promise.all([

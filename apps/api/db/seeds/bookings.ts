@@ -44,6 +44,10 @@ const bookingSeed: readonly BookingSeed[] = [
   { listingIndex: 0, renterIndex: 2, start_date: '2026-07-10', end_date: '2026-07-12', status: 'completed', message: 'Mahnoor rented the generator again for an exam-week study session.', security_deposit: 8000, delivery_fee: 400, pendingReviewFor: 'renter' as PendingReviewFor },
   { listingIndex: 8, renterIndex: 1, start_date: '2026-07-13', end_date: '2026-07-15', status: 'completed', message: 'Hamza rented Ayesha’s sherwani for another university formal.', security_deposit: 12000, delivery_fee: 300, pendingReviewFor: 'owner' as PendingReviewFor },
   { listingIndex: 9, renterIndex: 4, start_date: '2026-07-16', end_date: '2026-07-18', status: 'completed', message: 'Hira rented Hamza’s projector for a project showcase.', security_deposit: 8000, delivery_fee: 400, pendingReviewFor: 'owner' as PendingReviewFor },
+  // Current rentals make the Active/Currently Out sections demonstrable.
+  { listingIndex: 3, renterIndex: 2, start_date: '2026-08-04', end_date: '2026-08-07', status: 'confirmed', message: 'Mahnoor is using the pressure washer for a post-event driveway cleanup.', security_deposit: 4000, delivery_fee: 350 },
+  { listingIndex: 0, renterIndex: 4, start_date: '2026-08-04', end_date: '2026-08-07', status: 'confirmed', message: 'Hira is using Ayesha’s generator during a short power outage.', security_deposit: 8000, delivery_fee: 400 },
+  { listingIndex: 1, renterIndex: 3, start_date: '2026-08-04', end_date: '2026-08-07', status: 'confirmed', message: 'Zain is using Hamza’s solar inverter for a home-office backup.', security_deposit: 7000, delivery_fee: 500 },
 ] as const;
 
 export async function seedBookings(userIds: string[], listingRefs: ListingRef[]) {

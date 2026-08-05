@@ -55,7 +55,7 @@ export const completeBookingIfEnded = async (bookingId: string, tx: any = db) =>
     .where(and(
       eq(bookings.id, bookingId),
       eq(bookings.status, 'confirmed'),
-      sql`${bookings.end_date} < CURRENT_DATE`
+      sql`${bookings.end_date} <= CURRENT_DATE`
     ))
     .returning({ id: bookings.id });
 

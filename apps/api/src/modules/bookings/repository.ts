@@ -179,7 +179,7 @@ export const bookingsRepository = {
    * with review eligibility.
    */
   async completeExpiredBookings() {
-    await db
+    return db
       .update(bookings)
       .set({
         status: 'completed',
@@ -189,7 +189,8 @@ export const bookingsRepository = {
       .where(and(
         eq(bookings.status, 'confirmed'),
         sql`${bookings.end_date} <= CURRENT_DATE`
-      ));
+      ))
+      .returning({ id: bookings.id });
   },
 
   async incrementListingBookingCount(listingId: string) {

@@ -3,22 +3,39 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Route } from 'next';
-import { Compass, Send, Package, Activity, UserRound } from 'lucide-react';
+import { Compass, MessageCircle, Package, CalendarCheck, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth, useUser } from '@clerk/nextjs';
+import { useApiClient } from '@/lib/api-client';
+import { useState, useEffect } from 'react';
 
 export function MobileNav() {
   const pathname = usePathname();
 
   const navItems = [
     { name: 'Discover', href: '/' as const, icon: Compass },
-    { name: 'DMs', href: '/messages' as const, icon: Send },
-    { name: 'Listings', href: '/listings' as const, icon: Package, isDrop: true },
-    { name: 'Activity', href: '/bookings' as const, icon: Activity },
+    { name: 'DMs', href: '/messages' as const, icon: MessageCircle },
+    { name: 'Listings', href: '/listings' as const, icon: Package },
+    { name: 'Bookings', href: '/bookings' as const, icon: CalendarCheck },
     { name: 'You', href: '/profile' as const, icon: UserRound },
   ];
 
   const activeIndex = navItems.findIndex(item => pathname === item.href);
   const hasActive = activeIndex !== -1;
+
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
+  const api = useApiClient();
+
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      api.get('users/me').json<{ data: { avatar_url: string | null } }>()
+        .then(res => setProfileAvatar(res.data.avatar_url))
+        .catch(console.error);
+    }
+  }, [isSignedIn, api]);
 
   // Exact formula to find the center of the item given `px-10` (40px padding) and `justify-between` with 5 `w-12` (48px) items.
   // CSS mask-position percentages are calculated against (container_width - mask_width).
@@ -48,7 +65,7 @@ export function MobileNav() {
       />
 
       {/* Foreground Layer (Icons) */}
-      <div className="relative z-10 px-10 pt-3 pb-4 flex items-end justify-between">
+      <div className="relative z-10 px-10 pt-2 pb-3 flex items-end justify-between">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -69,21 +86,24 @@ export function MobileNav() {
                 {isActive ? (
                   /* Active: floating icon (nav background is masked out behind it) */
                   <div className="absolute top-[-32px] w-[46px] h-[46px] rounded-full bg-[var(--nav-bg)] flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-border/5">
-                    <Icon size={22} strokeWidth={2.5} className="text-[var(--accent)]" />
-                  </div>
-                ) : item.isDrop ? (
-                  /* Inactive Drop: circle border */
-                  <div className="w-6 h-6 rounded-full border border-foreground/30 flex items-center justify-center">
-                    <Icon size={14} strokeWidth={2} />
+                    {item.name === 'You' && (profileAvatar || user?.imageUrl) ? (
+                      <img src={profileAvatar || user?.imageUrl} alt="You" className="w-[42px] h-[42px] rounded-full object-cover shrink-0 aspect-square" />
+                    ) : (
+                      <Icon size={22} strokeWidth={2.5} className="text-[var(--accent)]" />
+                    )}
                   </div>
                 ) : (
                   /* Inactive: plain icon */
-                  <Icon size={22} strokeWidth={2} />
+                  item.name === 'You' && (profileAvatar || user?.imageUrl) ? (
+                    <img src={profileAvatar || user?.imageUrl} alt="You" className="w-6 h-6 rounded-full object-cover shrink-0 aspect-square" />
+                  ) : (
+                    <Icon size={22} strokeWidth={2} />
+                  )
                 )}
               </div>
 
               {/* Spacer */}
-              <div className="h-1.5" />
+              <div className="h-1" />
 
               {/* Label - always at same position */}
               <span className={cn(
