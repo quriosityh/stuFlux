@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Compass, Send, Plus, Activity, UserRound } from 'lucide-react';
+import type { Route } from 'next';
+import { Compass, Send, Package, Activity, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function MobileNav() {
@@ -11,7 +12,7 @@ export function MobileNav() {
   const navItems = [
     { name: 'Discover', href: '/' as const, icon: Compass },
     { name: 'DMs', href: '/messages' as const, icon: Send },
-    { name: 'Drop', href: '/listings/new' as const, icon: Plus, isDrop: true },
+    { name: 'Listings', href: '/listings' as const, icon: Package, isDrop: true },
     { name: 'Activity', href: '/bookings' as const, icon: Activity },
     { name: 'You', href: '/profile' as const, icon: UserRound },
   ];
@@ -55,7 +56,7 @@ export function MobileNav() {
           return (
             <Link
               key={item.name}
-              href={item.href as any}
+              href={item.href as Route}
               className={cn(
                 "flex flex-col items-center relative transition-all duration-200 w-12",
                 isActive

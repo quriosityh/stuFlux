@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Bell, User, Plus, Menu, Search, Moon, Sun, X } from 'lucide-react';
+import { Bell, User, Plus, Menu, Search, Moon, Sun, X, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchBar, ActiveTab } from '../explore/SearchBar';
 import { LahoreArea, getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
@@ -128,6 +128,7 @@ export function NavHeader() {
     { name: 'Explore', href: '/' as const },
     { name: 'Chats', href: '/messages' as const },
     { name: 'Activity', href: '/bookings' as const },
+    { name: 'Listings', href: '/listings' as const },
   ];
 
   // Check if PDP sticky nav wants to replace us
@@ -282,6 +283,14 @@ export function NavHeader() {
                     transition={transitionConfig}
                     className="absolute right-0 flex items-center gap-2"
                   >
+                    <Link
+                      href={'/listings' as Route}
+                      aria-label="My listings"
+                      title="My listings"
+                      className="p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors"
+                    >
+                      <Package size={20} className={pathname === '/listings' ? 'text-[var(--accent)]' : 'text-foreground/80'} />
+                    </Link>
                     <button 
                       onClick={toggleTheme}
                       className="p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors relative"
@@ -316,6 +325,14 @@ export function NavHeader() {
                     transition={transitionConfig}
                     className="absolute right-0 flex items-center gap-2"
                   >
+                    <Link
+                      href={'/listings' as Route}
+                      aria-label="My listings"
+                      title="My listings"
+                      className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 border border-transparent transition-colors"
+                    >
+                      <Package size={20} className={pathname === '/listings' ? 'text-[var(--accent)]' : 'text-foreground/80'} />
+                    </Link>
                     <button 
                       onClick={toggleTheme}
                       className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 border border-transparent transition-colors"

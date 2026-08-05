@@ -12,7 +12,7 @@ export default function SignInPage() {
             Access your rental dashboard
           </p>
         </div>
-        <SignIn fallbackRedirectUrl="/messages" routing="path" path="/auth/sign-in" signUpUrl="/auth/sign-up" />
+        <SignIn fallbackRedirectUrl="/" routing="path" path="/auth/sign-in" signUpUrl="/auth/sign-up" />
       </div>
     </div>
   );

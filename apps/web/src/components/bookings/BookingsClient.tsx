@@ -2,13 +2,17 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import RentingTab from './RentingTab';
 import RentingOutTab from './RentingOutTab';
 
 type Tab = 'renting' | 'rentingOut';
 
 export default function BookingsClient() {
-  const [activeTab, setActiveTab] = useState<Tab>('renting');
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>(() => (
+    searchParams.get('tab') === 'rentingOut' ? 'rentingOut' : 'renting'
+  ));
 
   return (
     <div className="flex flex-col gap-6">
