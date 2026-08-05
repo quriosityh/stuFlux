@@ -9,14 +9,17 @@ import { MobileSearchBar } from '../explore/MobileSearchBar';
 export function Navigation() {
   const pathname = usePathname();
   const isPDP = pathname?.startsWith('/listings/');
+  const isMessages = pathname?.startsWith('/messages');
 
   return (
     <>
       {!isPDP && (
         <>
-          <Suspense fallback={null}>
-            <MobileSearchBar />
-          </Suspense>
+          {!isMessages && (
+            <Suspense fallback={null}>
+              <MobileSearchBar />
+            </Suspense>
+          )}
           <MobileNav />
         </>
       )}

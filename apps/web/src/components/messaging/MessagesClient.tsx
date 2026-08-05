@@ -253,7 +253,7 @@ export function MessagesClient({ initialConversationId }: { initialConversationI
   return (
     <div
       className={cn(
-        'fixed top-0 md:top-16 left-0 right-0 flex overflow-hidden max-w-[1600px] mx-auto w-full bg-[var(--background)] shadow-2xl border-x border-[var(--border-color)] md:bottom-0',
+        'fixed top-0 md:top-16 left-0 right-0 flex overflow-hidden w-full bg-[var(--background)] md:bottom-0',
         bottomClass,
       )}
     >

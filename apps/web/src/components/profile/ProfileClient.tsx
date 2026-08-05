@@ -8,10 +8,10 @@ import { useApiClient } from '@/lib/api-client';
 import { format } from 'date-fns';
 import { getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
 import {
-  User, MapPin, Calendar, CheckCircle2, ShieldCheck,
+  User, MapPin, Calendar, ShieldCheck,
   Star, DollarSign, Clock, PackageCheck, History,
   Settings, TrendingUp, ShoppingBag, Edit3, LogOut,
-  ChevronRight, Sparkles, Filter, MessageSquare, Sun, Moon, Phone
+  ChevronRight, Sparkles, MessageSquareQuote, Sun, Moon
 } from 'lucide-react';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -94,6 +94,15 @@ function formatBookingDates(startDate?: string, endDate?: string): string | null
   return start && end ? `${start} – ${end}` : start ?? end;
 }
 
+// Presentational-only helper: maps a booking status string to a badge tone.
+// Does not affect what status text is displayed, only its color treatment.
+function statusTone(status?: string): { bg: string; text: string } {
+  const s = (status || '').toLowerCase();
+  if (s === 'completed') return { bg: 'bg-emerald-500/10', text: 'text-emerald-400' };
+  if (s === 'confirmed') return { bg: 'bg-blue-500/10', text: 'text-blue-400' };
+  return { bg: 'bg-[var(--accent)]/10', text: 'text-[var(--accent)]' };
+}
+
 export function ProfileClient({ initialProfile, initialBookings, initialReviews = [] }: Props) {
   const api = useApiClient();
   const { signOut } = useSignOut();
@@ -101,16 +110,16 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
   const [profile, setProfile] = useState<Profile | null>(initialProfile);
   const [bookings] = useState<Booking[]>(initialBookings);
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
-  
+
   // Tab Navigation State: 'earnings' | 'history' | 'reviews' | 'settings'
   const [activeTab, setActiveTab] = useState<'earnings' | 'history' | 'reviews' | 'settings'>('earnings');
-  
+
   // History Sub-toggle: 'lender' | 'renter'
   const [historyRole, setHistoryRole] = useState<'lender' | 'renter'>('lender');
-  
+
   // Reviews Role Filter: 'as_lender' | 'as_renter'
   const [reviewFilter, setReviewFilter] = useState<'as_lender' | 'as_renter'>('as_lender');
-  
+
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
 
@@ -128,8 +137,8 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
         const arr = res?.data?.reviews ?? res?.data ?? [];
         if (Array.isArray(arr)) setReviews(arr);
       })
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch(() => { });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
   // Theme detector
@@ -217,20 +226,17 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
 
   return (
     <div className="min-h-screen bg-[var(--background)] pb-24 text-[var(--foreground)]">
-      <div className="max-w-3xl mx-auto px-4 pt-6 sm:pt-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-10">
 
         {/* ─────────────────────────────────────────────────────────────────── */}
         {/* 1. HERO HEADER WITH IDENTITY & DUAL-ROLE REPUTATION CHIPS          */}
         {/* ─────────────────────────────────────────────────────────────────── */}
-        <div
-          className="chrome-card rounded-3xl p-6 sm:p-8 animate-in fade-in duration-500 mb-6"
-          style={{ background: 'var(--surface)' }}
-        >
+        <div className="animate-in fade-in duration-500 mb-6">
           <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between">
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4">
               {/* Avatar */}
               <div className="relative flex-shrink-0">
-                <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl overflow-hidden bg-gradient-to-br from-[var(--accent)] to-blue-600 flex items-center justify-center text-white text-3xl font-bold shadow-md">
+                <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-full overflow-hidden bg-gradient-to-br from-[var(--accent)] to-blue-600 flex items-center justify-center text-white text-2xl font-bold ring-1 ring-[var(--border-color)]/40">
                   {profile?.avatar_url ? (
                     <img
                       src={profile.avatar_url}
@@ -238,35 +244,35 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <User size={36} />
+                    <User size={28} />
                   )}
                 </div>
-                <span className="absolute bottom-0.5 right-0.5 w-4 h-4 bg-emerald-400 rounded-full border-2 border-[var(--surface)] shadow-sm" />
+                <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-[var(--background)]" />
               </div>
 
               {/* User Metadata */}
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight truncate">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight truncate">
                     {profile?.display_name ?? 'Student'}
                   </h1>
                   {profile?.phone_verified && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                      <ShieldCheck size={13} />
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400">
+                      <ShieldCheck size={12} />
                       Verified
                     </span>
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-[var(--foreground)]/60 font-medium">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-[var(--foreground)]/50 font-medium">
                   {areaLabel && (
                     <span className="flex items-center gap-1">
-                      <MapPin size={13} className="text-[var(--accent)]" />
+                      <MapPin size={12} className="text-[var(--accent)]" />
                       {areaLabel}
                     </span>
                   )}
                   <span className="flex items-center gap-1">
-                    <Calendar size={13} className="text-[var(--accent)]" />
+                    <Calendar size={12} className="text-[var(--accent)]" />
                     Member since {memberSince}
                   </span>
                 </div>
@@ -277,34 +283,34 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
             <button
               id="edit-profile-hero-btn"
               onClick={() => setEditProfileOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-color)] text-xs font-bold hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all flex-shrink-0 self-stretch sm:self-auto justify-center"
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold text-[var(--foreground)]/70 border border-[var(--border-color)]/50 hover:border-[var(--accent)]/60 hover:text-[var(--accent)] transition-colors flex-shrink-0 self-stretch sm:self-auto justify-center"
             >
-              <Edit3 size={14} />
+              <Edit3 size={13} />
               Edit Profile
             </button>
           </div>
 
           {/* DUAL-ROLE REPUTATION CHIPS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6 pt-5 border-t border-[var(--border-color)]/50">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
             {/* Lending Chip */}
             <button
               onClick={() => { setActiveTab('reviews'); setReviewFilter('as_lender'); }}
-              className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--background)]/40 border border-[var(--border-color)] hover:border-[var(--accent)]/50 transition-all text-left group"
+              className="flex items-center justify-between p-4 rounded-2xl bg-[var(--surface)]/60 hover:bg-[var(--surface)] border border-transparent hover:border-[var(--border-color)]/40 transition-all text-left group"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">
-                  <TrendingUp size={18} />
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center flex-shrink-0">
+                  <TrendingUp size={16} />
                 </div>
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--foreground)]/40">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)]/40">
                     Lending Reputation
                   </div>
                   <div className="flex items-center gap-1.5 font-display text-sm font-bold mt-0.5">
                     {stats?.lender_rating_avg ? (
                       <>
-                        <Star size={14} className="fill-amber-400 text-amber-400" />
+                        <Star size={13} className="fill-amber-400 text-amber-400" />
                         <span>{stats.lender_rating_avg}</span>
-                        <span className="text-xs font-normal text-[var(--foreground)]/50">
+                        <span className="text-xs font-normal text-[var(--foreground)]/40 truncate">
                           ({stats.lender_rating_count || stats.completed_lent} rentals)
                         </span>
                       </>
@@ -316,28 +322,28 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                   </div>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-[var(--foreground)]/30 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight size={15} className="text-[var(--foreground)]/25 group-hover:translate-x-0.5 group-hover:text-[var(--foreground)]/50 transition-all flex-shrink-0" />
             </button>
 
             {/* Renting Chip */}
             <button
               onClick={() => { setActiveTab('reviews'); setReviewFilter('as_renter'); }}
-              className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--background)]/40 border border-[var(--border-color)] hover:border-[var(--accent)]/50 transition-all text-left group"
+              className="flex items-center justify-between p-4 rounded-2xl bg-[var(--surface)]/60 hover:bg-[var(--surface)] border border-transparent hover:border-[var(--border-color)]/40 transition-all text-left group"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold">
-                  <ShoppingBag size={18} />
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center flex-shrink-0">
+                  <ShoppingBag size={16} />
                 </div>
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--foreground)]/40">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)]/40">
                     Renting Reputation
                   </div>
                   <div className="flex items-center gap-1.5 font-display text-sm font-bold mt-0.5">
                     {stats?.renter_rating_avg ? (
                       <>
-                        <Star size={14} className="fill-amber-400 text-amber-400" />
+                        <Star size={13} className="fill-amber-400 text-amber-400" />
                         <span>{stats.renter_rating_avg}</span>
-                        <span className="text-xs font-normal text-[var(--foreground)]/50">
+                        <span className="text-xs font-normal text-[var(--foreground)]/40 truncate">
                           ({stats.renter_rating_count || stats.completed_borrowed} rentals)
                         </span>
                       </>
@@ -349,14 +355,14 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                   </div>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-[var(--foreground)]/30 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight size={15} className="text-[var(--foreground)]/25 group-hover:translate-x-0.5 group-hover:text-[var(--foreground)]/50 transition-all flex-shrink-0" />
             </button>
           </div>
         </div>
 
         {/* Edit Profile Form Inline Panel */}
         {editProfileOpen && (
-          <div className="mb-6 chrome-card rounded-3xl p-6 sm:p-8 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="mb-6 rounded-2xl bg-[var(--surface)] border border-[var(--border-color)]/40 p-6 sm:p-8 animate-in fade-in slide-in-from-top-2 duration-300">
             <EditProfileForm
               profile={profile}
               onSaved={handleProfileSaved}
@@ -366,59 +372,67 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
         )}
 
         {/* ─────────────────────────────────────────────────────────────────── */}
-        {/* 2. SEGMENTED CONTROL TABS (Earnings, History, Reviews, Settings)    */}
+        {/* 2. TAB NAVIGATION (Earnings, History, Reviews, Settings)            */}
         {/* ─────────────────────────────────────────────────────────────────── */}
-        <div className="flex p-1.5 rounded-2xl bg-[var(--surface)] border border-[var(--border-color)] mb-6 scrollbar-hide overflow-x-auto">
+        <div className="flex items-center gap-1 mb-6 border-b border-[var(--border-color)]/40 overflow-x-auto scrollbar-hide">
           <button
             id="tab-earnings-btn"
             onClick={() => setActiveTab('earnings')}
-            className={`flex-1 min-w-[90px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              activeTab === 'earnings'
-                ? 'bg-[var(--accent)] text-white shadow-md'
-                : 'text-[var(--foreground)]/60 hover:text-[var(--foreground)]'
-            }`}
+            className={`relative flex-shrink-0 py-3 px-3.5 text-xs font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'earnings'
+                ? 'text-[var(--accent)]'
+                : 'text-[var(--foreground)]/45 hover:text-[var(--foreground)]/70'
+              }`}
           >
             <DollarSign size={14} />
             Earnings
+            {activeTab === 'earnings' && (
+              <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-[var(--accent)]" />
+            )}
           </button>
 
           <button
             id="tab-history-btn"
             onClick={() => setActiveTab('history')}
-            className={`flex-1 min-w-[90px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              activeTab === 'history'
-                ? 'bg-[var(--accent)] text-white shadow-md'
-                : 'text-[var(--foreground)]/60 hover:text-[var(--foreground)]'
-            }`}
+            className={`relative flex-shrink-0 py-3 px-3.5 text-xs font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'history'
+                ? 'text-[var(--accent)]'
+                : 'text-[var(--foreground)]/45 hover:text-[var(--foreground)]/70'
+              }`}
           >
             <History size={14} />
             History
+            {activeTab === 'history' && (
+              <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-[var(--accent)]" />
+            )}
           </button>
 
           <button
             id="tab-reviews-btn"
             onClick={() => setActiveTab('reviews')}
-            className={`flex-1 min-w-[90px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              activeTab === 'reviews'
-                ? 'bg-[var(--accent)] text-white shadow-md'
-                : 'text-[var(--foreground)]/60 hover:text-[var(--foreground)]'
-            }`}
+            className={`relative flex-shrink-0 py-3 px-3.5 text-xs font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'reviews'
+                ? 'text-[var(--accent)]'
+                : 'text-[var(--foreground)]/45 hover:text-[var(--foreground)]/70'
+              }`}
           >
             <Star size={14} />
             Reviews
+            {activeTab === 'reviews' && (
+              <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-[var(--accent)]" />
+            )}
           </button>
 
           <button
             id="tab-settings-btn"
             onClick={() => setActiveTab('settings')}
-            className={`flex-1 min-w-[90px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              activeTab === 'settings'
-                ? 'bg-[var(--accent)] text-white shadow-md'
-                : 'text-[var(--foreground)]/60 hover:text-[var(--foreground)]'
-            }`}
+            className={`relative flex-shrink-0 py-3 px-3.5 text-xs font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'settings'
+                ? 'text-[var(--accent)]'
+                : 'text-[var(--foreground)]/45 hover:text-[var(--foreground)]/70'
+              }`}
           >
             <Settings size={14} />
             Settings
+            {activeTab === 'settings' && (
+              <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-[var(--accent)]" />
+            )}
           </button>
         </div>
 
@@ -426,18 +440,18 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
         {/* TAB 1: EARNINGS DASHBOARD                                          */}
         {/* ─────────────────────────────────────────────────────────────────── */}
         {activeTab === 'earnings' && (
-          <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="space-y-4 animate-in fade-in duration-300">
             {/* Top KPI Cards (3 Cards) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Card 1: Total Earned */}
-              <div className="chrome-card p-5 rounded-2xl border-emerald-500/20 bg-emerald-500/5">
+              <div className="p-4 rounded-2xl bg-emerald-500/[0.06]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 font-display">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 font-display">
                     Total Earned
                   </span>
-                  <DollarSign size={18} className="text-emerald-400" />
+                  <DollarSign size={16} className="text-emerald-400" />
                 </div>
-                <div className="font-display text-2xl font-bold mt-2 text-[var(--foreground)]">
+                <div className="font-display text-xl font-bold mt-2 text-[var(--foreground)]">
                   {formatPKR(stats?.total_earned || 0)}
                 </div>
                 <div className="text-[11px] text-[var(--foreground)]/40 mt-1">
@@ -446,14 +460,14 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
               </div>
 
               {/* Card 2: Pending / Active */}
-              <div className="chrome-card p-5 rounded-2xl border-amber-500/20 bg-amber-500/5">
+              <div className="p-4 rounded-2xl bg-amber-500/[0.06]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 font-display">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 font-display">
                     Pending / Active
                   </span>
-                  <Clock size={18} className="text-amber-400" />
+                  <Clock size={16} className="text-amber-400" />
                 </div>
-                <div className="font-display text-2xl font-bold mt-2 text-[var(--foreground)]">
+                <div className="font-display text-xl font-bold mt-2 text-[var(--foreground)]">
                   {formatPKR(stats?.pending_earnings || 0)}
                 </div>
                 <div className="text-[11px] text-[var(--foreground)]/40 mt-1">
@@ -462,14 +476,14 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
               </div>
 
               {/* Card 3: Completed Lent */}
-              <div className="chrome-card p-5 rounded-2xl border-[var(--accent)]/20 bg-[var(--accent)]/5">
+              <div className="p-4 rounded-2xl bg-[var(--accent)]/[0.06]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent)] font-display">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent)] font-display">
                     Completed Lent
                   </span>
-                  <PackageCheck size={18} className="text-[var(--accent)]" />
+                  <PackageCheck size={16} className="text-[var(--accent)]" />
                 </div>
-                <div className="font-display text-2xl font-bold mt-2 text-[var(--foreground)]">
+                <div className="font-display text-xl font-bold mt-2 text-[var(--foreground)]">
                   {stats?.completed_lent || 0} rentals
                 </div>
                 <div className="text-[11px] text-[var(--foreground)]/40 mt-1">
@@ -479,9 +493,9 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
             </div>
 
             {/* Monthly Earnings Summary */}
-            <div className="chrome-card rounded-3xl p-6">
-              <h3 className="font-display text-sm font-bold uppercase tracking-wider text-[var(--foreground)]/60 mb-4 flex items-center gap-2">
-                <Sparkles size={15} className="text-[var(--accent)]" />
+            <div className="rounded-2xl bg-[var(--surface)]/60 p-5 sm:p-6">
+              <h3 className="font-display text-xs font-bold uppercase tracking-wider text-[var(--foreground)]/50 mb-4 flex items-center gap-2">
+                <Sparkles size={14} className="text-[var(--accent)]" />
                 Monthly Earnings Summary
               </h3>
 
@@ -490,7 +504,7 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                   No completed earnings recorded yet. List an item to start earning!
                 </div>
               ) : (
-                <div className="divide-y divide-[var(--border-color)]">
+                <div className="divide-y divide-[var(--border-color)]/30">
                   {monthlyEarnings.map((item, idx) => (
                     <div key={idx} className="py-3 flex items-center justify-between">
                       <span className="text-sm font-semibold">{item.month}</span>
@@ -508,13 +522,13 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
               )}
 
               {/* Direct link to History Tab */}
-              <div className="mt-6 pt-4 border-t border-[var(--border-color)] text-right">
+              <div className="mt-5 pt-4 border-t border-[var(--border-color)]/30 text-right">
                 <button
                   id="view-full-history-cta"
                   onClick={() => setActiveTab('history')}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] hover:underline"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] hover:gap-2.5 transition-all"
                 >
-                  View Full Rental History →
+                  View Full Rental History <ChevronRight size={13} />
                 </button>
               </div>
             </div>
@@ -525,35 +539,33 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
         {/* TAB 2: RENTAL HISTORY                                              */}
         {/* ─────────────────────────────────────────────────────────────────── */}
         {activeTab === 'history' && (
-          <div className="space-y-5 animate-in fade-in duration-300">
+          <div className="space-y-4 animate-in fade-in duration-300">
             {/* History Sub-toggles */}
-            <div className="flex gap-2">
+            <div className="inline-flex p-1 rounded-full bg-[var(--surface)]/60 gap-1">
               <button
                 onClick={() => setHistoryRole('lender')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  historyRole === 'lender'
-                    ? 'bg-[var(--accent)]/15 border border-[var(--accent)] text-[var(--accent)]'
-                    : 'bg-[var(--surface)] border border-[var(--border-color)] text-[var(--foreground)]/50'
-                }`}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${historyRole === 'lender'
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'text-[var(--foreground)]/50 hover:text-[var(--foreground)]/80'
+                  }`}
               >
                 Lent Out ({stats?.completed_lent || 0})
               </button>
               <button
                 onClick={() => setHistoryRole('renter')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  historyRole === 'renter'
-                    ? 'bg-purple-500/15 border border-purple-500 text-purple-400'
-                    : 'bg-[var(--surface)] border border-[var(--border-color)] text-[var(--foreground)]/50'
-                }`}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${historyRole === 'renter'
+                    ? 'bg-purple-500 text-white'
+                    : 'text-[var(--foreground)]/50 hover:text-[var(--foreground)]/80'
+                  }`}
               >
                 Borrowed ({stats?.completed_borrowed || 0})
               </button>
             </div>
 
-            {/* Rental History Cards List */}
+            {/* Rental History List */}
             {filteredBookings.length === 0 ? (
-              <div className="chrome-card rounded-3xl p-12 text-center">
-                <History size={36} className="mx-auto text-[var(--foreground)]/20 mb-3" />
+              <div className="rounded-2xl bg-[var(--surface)]/40 py-14 text-center">
+                <History size={30} className="mx-auto text-[var(--foreground)]/20 mb-3" />
                 <p className="font-display text-sm font-bold text-[var(--foreground)]/50">
                   No {historyRole === 'lender' ? 'lend-out' : 'borrowed'} history found
                 </p>
@@ -562,45 +574,45 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="rounded-2xl bg-[var(--surface)]/40 divide-y divide-[var(--border-color)]/25 overflow-hidden">
                 {filteredBookings.map((b) => {
                   const dateRange = formatBookingDates(b.start_date, b.end_date);
+                  const tone = statusTone(b.status);
 
                   return (
                     <div
                       key={b.id}
-                      className="chrome-card p-4 sm:p-5 rounded-[24px] flex items-center justify-between gap-4 hover:bg-surface/80 transition-all border border-border/30 hover:border-border/60"
+                      className="p-3.5 sm:p-4 flex items-center gap-3.5 hover:bg-[var(--foreground)]/[0.03] transition-colors"
                     >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="w-14 h-14 rounded-xl bg-muted/50 overflow-hidden flex-shrink-0 flex items-center justify-center text-foreground/30 shadow-sm border border-border/20">
-                          {b.listing?.photo?.url ? (
-                            <img src={b.listing.photo.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform" />
-                          ) : (
-                            <PackageCheck size={20} />
-                          )}
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-[var(--foreground)]/5 overflow-hidden flex-shrink-0 flex items-center justify-center text-[var(--foreground)]/25">
+                        {b.listing?.photo?.url ? (
+                          <img src={b.listing.photo.url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <PackageCheck size={18} />
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-display text-sm font-bold truncate">
+                          {b.listing?.title || 'Rental Booking'}
+                        </h4>
+                        <div className="text-xs text-[var(--foreground)]/50 truncate mt-0.5">
+                          {historyRole === 'lender'
+                            ? `Renter: ${b.renter?.display_name || 'Student'}`
+                            : `Host: ${b.owner?.display_name || 'Owner'}`}
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="font-display text-sm font-bold truncate">
-                            {b.listing?.title || 'Rental Booking'}
-                          </h4>
-                          <div className="text-xs text-[var(--foreground)]/50 truncate mt-0.5">
-                            {historyRole === 'lender'
-                              ? `Renter: ${b.renter?.display_name || 'Student'}`
-                              : `Host: ${b.owner?.display_name || 'Owner'}`}
+                        {dateRange && (
+                          <div className="text-[11px] text-[var(--foreground)]/35 mt-0.5">
+                            {dateRange}
                           </div>
-                          {dateRange && (
-                            <div className="text-[11px] text-[var(--foreground)]/40 mt-0.5">
-                              {dateRange}
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </div>
 
                       <div className="text-right flex-shrink-0">
                         <div className="font-display text-sm font-bold text-[var(--foreground)]">
                           {formatPKR((b.total_amount || 0) + (b.delivery_fee || 0))}
                         </div>
-                        <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 mt-1">
+                        <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider mt-1 ${tone.bg} ${tone.text}`}>
                           {b.status || 'Completed'}
                         </span>
                       </div>
@@ -616,17 +628,17 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
         {/* TAB 3: REVIEWS FEED                                                */}
         {/* ─────────────────────────────────────────────────────────────────── */}
         {activeTab === 'reviews' && (
-          <div className="space-y-5 animate-in fade-in duration-300">
+          <div className="space-y-4 animate-in fade-in duration-300">
             {/* Aggregate Score Bar & Role Filter */}
-            <div className="chrome-card p-5 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl bg-[var(--surface)]/60 p-4 sm:p-5">
               <div>
-                <h3 className="font-display text-sm font-bold uppercase tracking-wider text-[var(--foreground)]/50">
+                <h3 className="font-display text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)]/45">
                   Reviews Summary
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="flex items-center gap-1 text-amber-400">
-                    <Star size={18} className="fill-amber-400" />
-                    <span className="font-display text-xl font-bold text-[var(--foreground)]">
+                    <Star size={17} className="fill-amber-400" />
+                    <span className="font-display text-lg font-bold text-[var(--foreground)]">
                       {reviewFilter === 'as_lender'
                         ? (stats?.lender_rating_avg || 'N/A')
                         : (stats?.renter_rating_avg || 'N/A')}
@@ -639,34 +651,32 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
               </div>
 
               {/* Role Filters */}
-              <div className="flex items-center gap-1.5 bg-[var(--background)] p-1 rounded-xl border border-[var(--border-color)]">
+              <div className="inline-flex items-center gap-1 bg-[var(--background)]/50 p-1 rounded-full">
                 <button
                   onClick={() => setReviewFilter('as_lender')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    reviewFilter === 'as_lender'
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${reviewFilter === 'as_lender'
                       ? 'bg-[var(--accent)] text-white'
-                      : 'text-[var(--foreground)]/50'
-                  }`}
+                      : 'text-[var(--foreground)]/50 hover:text-[var(--foreground)]/80'
+                    }`}
                 >
                   As Lender
                 </button>
                 <button
                   onClick={() => setReviewFilter('as_renter')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    reviewFilter === 'as_renter'
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${reviewFilter === 'as_renter'
                       ? 'bg-[var(--accent)] text-white'
-                      : 'text-[var(--foreground)]/50'
-                  }`}
+                      : 'text-[var(--foreground)]/50 hover:text-[var(--foreground)]/80'
+                    }`}
                 >
                   As Renter
                 </button>
               </div>
             </div>
 
-            {/* Reviews Cards List */}
+            {/* Reviews List */}
             {filteredReviews.length === 0 ? (
-              <div className="chrome-card rounded-3xl p-12 text-center">
-                <Star size={36} className="mx-auto text-[var(--foreground)]/20 mb-3" />
+              <div className="rounded-2xl bg-[var(--surface)]/40 py-14 text-center">
+                <Star size={30} className="mx-auto text-[var(--foreground)]/20 mb-3" />
                 <p className="font-display text-sm font-bold text-[var(--foreground)]/50">
                   No reviews in this category yet
                 </p>
@@ -675,12 +685,12 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="rounded-2xl bg-[var(--surface)]/40 divide-y divide-[var(--border-color)]/25 overflow-hidden">
                 {filteredReviews.map((r) => (
-                  <div key={r.id} className="chrome-card p-5 rounded-[24px] space-y-3 border border-border/30 hover:border-border/60 transition-colors">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                  <div key={r.id} className="p-4 sm:p-5 hover:bg-[var(--foreground)]/[0.03] transition-colors">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[var(--accent)] to-blue-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 overflow-hidden">
                           {r.reviewer?.avatar_url ? (
                             <img
                               src={r.reviewer.avatar_url}
@@ -691,22 +701,22 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                             r.reviewer?.display_name?.[0] || 'S'
                           )}
                         </div>
-                        <div>
-                          <div className="font-display text-sm font-bold">
+                        <div className="min-w-0">
+                          <div className="font-display text-sm font-bold truncate">
                             {r.reviewer?.display_name || 'Anonymous Student'}
                           </div>
                           <div className="text-[10px] text-[var(--foreground)]/40 mt-0.5">
-                            Reviewed {r.created_at ? format(new Date(r.created_at), 'MMM d, yyyy') : 'recently'}
+                            {r.created_at ? format(new Date(r.created_at), 'MMM d, yyyy') : 'Recently'}
                           </div>
                         </div>
                       </div>
 
                       {/* Stars */}
-                      <div className="flex items-center gap-1 text-amber-400">
+                      <div className="flex items-center gap-0.5 text-amber-400 flex-shrink-0">
                         {[1, 2, 3, 4, 5].map((s) => (
                           <Star
                             key={s}
-                            size={13}
+                            size={12}
                             className={s <= r.rating ? 'fill-amber-400' : 'text-[var(--border-color)]'}
                           />
                         ))}
@@ -715,16 +725,19 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
 
                     {/* Comment text */}
                     {r.comment && (
-                      <p className="text-xs text-[var(--foreground)]/80 leading-relaxed pl-13">
-                        &ldquo;{r.comment}&rdquo;
-                      </p>
+                      <div className="flex items-start gap-2 mt-3 pl-11 sm:pl-12">
+                        <MessageSquareQuote size={13} className="text-[var(--foreground)]/25 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-[var(--foreground)]/75 leading-relaxed">
+                          {r.comment}
+                        </p>
+                      </div>
                     )}
 
                     {/* Listing reference link */}
                     {reviewFilter === 'as_lender' && r.listing && (
                       <a
                         href={`/listings/${r.listing.id}`}
-                        className="block text-[11px] text-[var(--accent)] font-semibold pt-1 border-t border-[var(--border-color)]/30 hover:underline"
+                        className="inline-block text-[11px] text-[var(--accent)] font-semibold pt-2 mt-2 pl-11 sm:pl-12 hover:underline"
                       >
                         {r.listing.title}
                       </a>
@@ -740,31 +753,31 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
         {/* TAB 4: SETTINGS & ACCOUNT PREFERENCES                              */}
         {/* ─────────────────────────────────────────────────────────────────── */}
         {activeTab === 'settings' && (
-          <div className="space-y-4 animate-in fade-in duration-300">
-            <div className="chrome-card rounded-3xl overflow-hidden divide-y divide-[var(--border-color)]">
+          <div className="space-y-3 animate-in fade-in duration-300">
+            <div className="rounded-2xl bg-[var(--surface)]/40 overflow-hidden divide-y divide-[var(--border-color)]/25">
               {/* Edit Profile Row */}
               <button
                 id="settings-edit-profile-row"
                 onClick={() => setEditProfileOpen(true)}
-                className="w-full p-5 text-left flex items-center justify-between hover:bg-[var(--accent)]/5 transition-colors"
+                className="w-full p-4 sm:p-5 text-left flex items-center justify-between hover:bg-[var(--foreground)]/[0.03] transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center">
-                    <Edit3 size={16} />
+                  <div className="w-9 h-9 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center flex-shrink-0">
+                    <Edit3 size={15} />
                   </div>
                   <div>
                     <h4 className="font-display text-sm font-bold">Edit Profile Information</h4>
                     <p className="text-xs text-[var(--foreground)]/40">Update display name and Lahore area location</p>
                   </div>
                 </div>
-                <ChevronRight size={16} className="text-[var(--foreground)]/30" />
+                <ChevronRight size={15} className="text-[var(--foreground)]/25 flex-shrink-0" />
               </button>
 
               {/* Verification Status Row */}
-              <div className="p-5 flex items-center justify-between">
+              <div className="p-4 sm:p-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                    <ShieldCheck size={16} />
+                  <div className="w-9 h-9 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck size={15} />
                   </div>
                   <div>
                     <h4 className="font-display text-sm font-bold">Phone Verification</h4>
@@ -775,19 +788,19 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                     </p>
                   </div>
                 </div>
-              </div>
-              <div className="px-5 pb-5">
-                <PhoneVerification
-                  verified={Boolean(profile?.phone_verified)}
-                  onVerified={() => setProfile((current) => current ? { ...current, phone_verified: true } : current)}
-                />
+                <div className="mt-4 pl-12">
+                  <PhoneVerification
+                    verified={Boolean(profile?.phone_verified)}
+                    onVerified={() => setProfile((current) => current ? { ...current, phone_verified: true } : current)}
+                  />
+                </div>
               </div>
 
               {/* Appearance / Theme Selector Row */}
-              <div className="p-5 flex items-center justify-between">
+              <div className="p-4 sm:p-5 flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
-                    {currentTheme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+                  <div className="w-9 h-9 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center flex-shrink-0">
+                    {currentTheme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
                   </div>
                   <div>
                     <h4 className="font-display text-sm font-bold">Theme Appearance</h4>
@@ -795,24 +808,22 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 bg-[var(--background)] p-1 rounded-xl border border-[var(--border-color)]">
+                <div className="inline-flex items-center gap-1 bg-[var(--background)]/50 p-1 rounded-full">
                   <button
                     onClick={() => toggleTheme('light')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      currentTheme === 'light'
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${currentTheme === 'light'
                         ? 'bg-[var(--accent)] text-white'
-                        : 'text-[var(--foreground)]/40'
-                    }`}
+                        : 'text-[var(--foreground)]/40 hover:text-[var(--foreground)]/70'
+                      }`}
                   >
                     Light
                   </button>
                   <button
                     onClick={() => toggleTheme('dark')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      currentTheme === 'dark'
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${currentTheme === 'dark'
                         ? 'bg-[var(--accent)] text-white'
-                        : 'text-[var(--foreground)]/40'
-                    }`}
+                        : 'text-[var(--foreground)]/40 hover:text-[var(--foreground)]/70'
+                      }`}
                   >
                     Dark
                   </button>
@@ -823,18 +834,18 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
               <button
                 id="settings-logout-btn"
                 onClick={() => signOut()}
-                className="w-full p-5 text-left flex items-center justify-between hover:bg-red-500/5 transition-colors"
+                className="w-full p-4 sm:p-5 text-left flex items-center justify-between hover:bg-red-500/[0.04] transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center">
-                    <LogOut size={16} />
+                  <div className="w-9 h-9 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center flex-shrink-0">
+                    <LogOut size={15} />
                   </div>
                   <div>
                     <h4 className="font-display text-sm font-bold text-red-400">Sign Out</h4>
                     <p className="text-xs text-[var(--foreground)]/40">Securely exit your account on this browser</p>
                   </div>
                 </div>
-                <ChevronRight size={16} className="text-red-400/40" />
+                <ChevronRight size={15} className="text-red-400/40 flex-shrink-0" />
               </button>
             </div>
           </div>
