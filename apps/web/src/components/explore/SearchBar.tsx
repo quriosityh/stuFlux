@@ -251,6 +251,9 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
                       // Empty input still advances freely (no query is allowed).
                       if (!selectedArea && areaSearch.trim() && filteredAreas.length > 0) {
                         setSelectedArea(filteredAreas[0]);
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem('stuflux_last_area_id', filteredAreas[0].id);
+                        }
                       }
                       advanceToNext('where');
                     }
@@ -413,6 +416,9 @@ export function SearchBar({ activeTab, setActiveTab, selectedArea, setSelectedAr
                         key={area.id}
                         onClick={() => {
                           setSelectedArea(area);
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem('stuflux_last_area_id', area.id);
+                          }
                           setActiveTab('when');
                         }}
                         className="flex items-center gap-3 px-3 py-2.5 rounded-2xl cursor-pointer transition-all duration-150"
