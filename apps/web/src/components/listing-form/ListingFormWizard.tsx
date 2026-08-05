@@ -42,9 +42,7 @@ const INITIAL_DATA: ListingFormData = {
   status: 'draft',
 };
 
-// The form intentionally displays PKR while the listings API persists all
-// monetary values in paisa (the smallest currency unit).
-const toPaisa = (amount: number) => Math.round(amount * 100);
+// The form and API use actual currency values (PKR).
 
 function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: ListingFormWizardProps) {
   const router = useRouter();
@@ -69,7 +67,7 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
     title: formData.title,
     description: formData.description,
     category_id: formData.category_id,
-    daily_rate: toPaisa(formData.daily_rate),
+    daily_rate: formData.daily_rate,
     area: formData.area,
     condition: formData.condition,
     rental_rules: formData.rental_rules,
@@ -77,8 +75,8 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
     min_rental_days: formData.min_rental_days,
     max_rental_days: formData.max_rental_days,
     delivery_available: formData.delivery_available,
-    delivery_fee: toPaisa(formData.delivery_fee),
-    security_deposit: toPaisa(formData.security_deposit),
+    delivery_fee: formData.delivery_fee,
+    security_deposit: formData.security_deposit,
     status,
     // Send full photo objects — width/height/size_kb/mime_type are stored in DB
     photos: formData.photos.map((photo, i) => ({

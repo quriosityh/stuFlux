@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { isFuture } from 'date-fns';
 import type { ActivityBooking } from './types';
-import BookingCard, { getDisplayStatus } from './BookingCard';
+import BookingCard, { getBookingEnd, getBookingStart, getDisplayStatus } from './BookingCard';
 import BookingSection from './BookingSection';
 import { IconX } from '@tabler/icons-react';
 import { Loader2 } from 'lucide-react';
@@ -22,15 +21,15 @@ export default function RentingTab({ bookings, onBookingUpdated }: RentingTabPro
 
   const activeRentals = bookings.filter(b => {
     if (b.status !== 'confirmed') return false;
-    const start = new Date(b.start_date);
-    const end = new Date(b.end_date);
+    const start = getBookingStart(b.start_date);
+    const end = getBookingEnd(b.end_date);
     const now = new Date();
     return start <= now && end >= now;
   });
 
   const upcoming = bookings.filter(b => {
     if (b.status !== 'confirmed') return false;
-    return isFuture(new Date(b.start_date));
+    return getBookingStart(b.start_date) > new Date();
   });
 
   const past = bookings.filter(b => {

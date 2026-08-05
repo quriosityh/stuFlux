@@ -56,6 +56,20 @@ export const ensureUserSynced = async (clerkUserId: string) => {
   const email = clerkUser.emailAddresses[0]?.emailAddress || null;
   const avatar_url = clerkUser.imageUrl || null;
 
+  // Demo data may have been created before the matching Clerk account. Reuse
+  // that profile by email so its listings, bookings, and reviews stay linked
+  // to the person instead of creating a second database identity.
+  if (email) {
+    const matchingUser = await usersRepository.findByEmail(email);
+    if (matchingUser) {
+      const user = await usersRepository.attachClerkIdentity(matchingUser.id, clerkUserId);
+      if (user) {
+        setCachedUser(clerkUserId, user);
+        return user;
+      }
+    }
+  }
+
   const user = await usersRepository.upsertFromClerk({
     clerk_user_id: clerkUserId,
     display_name: displayName,

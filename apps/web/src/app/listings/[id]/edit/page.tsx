@@ -25,7 +25,7 @@ type ListingDetails = {
 
 type BlockedRange = { start_date: string; end_date: string };
 
-const fromPaisa = (amount: number | undefined) => Math.round((amount ?? 0) / 100);
+// No conversion needed for PKR values
 
 export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -48,7 +48,7 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
       title: l.title ?? '',
       description: l.description ?? '',
       category_id: l.category?.id ?? 0,
-      daily_rate: fromPaisa(l.daily_rate),
+      daily_rate: l.daily_rate ?? 0,
       area: l.area ?? '',
       condition: l.condition ?? '',
       rental_rules: l.rental_rules ?? '',
@@ -56,8 +56,8 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
       min_rental_days: l.min_rental_days ?? 1,
       max_rental_days: l.max_rental_days ?? 30,
       delivery_available: l.delivery_available ?? false,
-      delivery_fee: fromPaisa(l.delivery_fee),
-      security_deposit: fromPaisa(l.security_deposit),
+      delivery_fee: l.delivery_fee ?? 0,
+      security_deposit: l.security_deposit ?? 0,
       // Map existing photo rows → PhotoObject[] so the wizard can show and re-submit them
       photos: (l.photos ?? []).map((p) => ({
         url: p.url,

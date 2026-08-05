@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Bell, User, Plus, Menu, Search, X } from 'lucide-react';
+import { User, Plus, Menu, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchBar, ActiveTab } from '../explore/SearchBar';
 import { LahoreArea, getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
@@ -39,10 +39,6 @@ export function NavHeader() {
     }
   }, [isSignedIn, api]);
 
-  // Notifications state
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [activeToast, setActiveToast] = useState<any | null>(null);
 
@@ -53,8 +49,6 @@ export function NavHeader() {
       const notif = customEvent.detail;
       if (!notif) return;
 
-      setNotifications((prev) => [notif, ...prev.slice(0, 19)]);
-      setUnreadCount((prev) => prev + 1);
       setActiveToast(notif);
 
       const timer = setTimeout(() => {
@@ -293,8 +287,7 @@ export function NavHeader() {
               </div>
             ) : (
               <>
-                {/* Action Crossfade container */}
-                <div className="relative flex items-center justify-end w-32 h-10 mr-2">
+                <div className="relative flex items-center justify-end h-10 mr-2">
                   <AnimatePresence initial={false}>
                     {isExpanded ? (
                       <motion.div 
@@ -303,23 +296,8 @@ export function NavHeader() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={transitionConfig}
-                        className="absolute right-0 flex items-center gap-2"
-                      >
-                        <button 
-                          onClick={() => {
-                            setShowNotifMenu(!showNotifMenu);
-                            setUnreadCount(0);
-                          }}
-                          className="p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors relative"
-                        >
-                          <Bell size={20} className="text-foreground/80" />
-                          {unreadCount > 0 && (
-                            <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 bg-[var(--accent)] text-black font-extrabold text-[10px] rounded-full flex items-center justify-center border border-background">
-                              {unreadCount > 9 ? '9+' : unreadCount}
-                            </span>
-                          )}
-                        </button>
-                      </motion.div>
+                        className="absolute right-0"
+                      />
                     ) : (
                       <motion.div 
                         key="actions-collapsed"
@@ -334,18 +312,6 @@ export function NavHeader() {
                           className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 border border-transparent transition-colors"
                         >
                           <Menu size={20} className="text-foreground/80" />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setShowNotifMenu(!showNotifMenu);
-                            setUnreadCount(0);
-                          }}
-                          className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 border border-border/10 transition-colors relative"
-                        >
-                          <Bell size={20} className="text-foreground/80" />
-                          {unreadCount > 0 && (
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--accent)] rounded-full border border-background"></span>
-                          )}
                         </button>
                       </motion.div>
                     )}
@@ -377,60 +343,6 @@ export function NavHeader() {
                     )}
                   </AnimatePresence>
 
-                  {/* Notification Menu Dropdown */}
-                  <AnimatePresence>
-                    {showNotifMenu && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute top-12 right-0 w-80 sm:w-96 rounded-2xl bg-background border border-border/40 shadow-2xl p-4 z-50 space-y-3"
-                      >
-                        <div className="flex items-center justify-between border-b border-border/10 pb-2">
-                          <h4 className="font-syne font-bold text-sm text-foreground">Notifications</h4>
-                          <span className="text-xs text-foreground/50">{notifications.length} recent</span>
-                        </div>
-
-                        <div className="max-h-72 overflow-y-auto space-y-2">
-                          {notifications.length === 0 ? (
-                            <div className="py-8 text-center text-xs text-foreground/50">
-                              No new notifications
-                            </div>
-                          ) : (
-                            notifications.map((n, idx) => (
-                              <Link
-                                key={idx}
-                                href={
-                                  (n.type === 'new_message'
-                                    ? `/messages/${n.conversationId}`
-                                    : n.type === 'booking_request' || n.type === 'booking_confirmed' || n.type === 'booking_rejected'
-                                    ? '/bookings'
-                                    : '/') as Route
-                                }
-                                onClick={() => setShowNotifMenu(false)}
-                                className="block p-3 rounded-xl bg-muted/30 hover:bg-muted/60 transition-colors text-xs space-y-1"
-                              >
-                                <div className="font-semibold text-foreground flex items-center justify-between">
-                                  <span>
-                                    {n.type === 'booking_request' && '📋 Rental Request'}
-                                    {n.type === 'booking_confirmed' && '✅ Booking Confirmed'}
-                                    {n.type === 'booking_rejected' && '❌ Request Declined'}
-                                    {n.type === 'new_message' && '💬 New Message'}
-                                  </span>
-                                </div>
-                                <p className="text-foreground/70 leading-normal">
-                                  {n.type === 'booking_request' && `${n.renterName} requested to rent ${n.listingTitle}`}
-                                  {n.type === 'booking_confirmed' && `Your booking for ${n.listingTitle} was confirmed by ${n.lenderName}`}
-                                  {n.type === 'booking_rejected' && `Your request for ${n.listingTitle} was declined`}
-                                  {n.type === 'new_message' && `${n.senderName}: "${n.preview}"`}
-                                </p>
-                              </Link>
-                            ))
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
 
                 {/* Live Toast Popover */}

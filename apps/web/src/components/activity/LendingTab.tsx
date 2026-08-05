@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ActivityBooking } from './types';
-import BookingCard from './BookingCard';
+import BookingCard, { getBookingEnd, getBookingStart, getDisplayStatus } from './BookingCard';
 import BookingSection from './BookingSection';
 import EarningsSummary from './EarningsSummary';
 import EmptyState from './EmptyState';
@@ -17,21 +17,23 @@ export default function LendingTab({ bookings, onBookingUpdated }: LendingTabPro
   const [processingId, setProcessingId] = useState<string | null>(null);
   const api = useApiClient();
 
-  const today = new Date();
+  const now = new Date();
 
   // Categorize bookings
   const pendingRequests = bookings.filter(b => b.status === 'pending');
 
   const activeRentals = bookings.filter(b =>
     b.status === 'confirmed' &&
-    new Date(b.start_date) <= today &&
-    new Date(b.end_date) >= today
+    getBookingStart(b.start_date) <= now &&
+    getBookingEnd(b.end_date) >= now
   );
 
   const upcomingLendings = bookings.filter(b =>
     b.status === 'confirmed' &&
-    new Date(b.start_date) > today
+    getBookingStart(b.start_date) > now
   );
+
+  const completedLendings = bookings.filter(b => getDisplayStatus(b) === 'completed');
 
   const handleAction = async (id: string, action: 'confirm' | 'reject') => {
     try {
@@ -133,6 +135,18 @@ export default function LendingTab({ bookings, onBookingUpdated }: LendingTabPro
         indicator="blue-dot"
       >
         {upcomingLendings.map(booking => (
+          <BookingCard key={booking.id} booking={booking} role="owner" />
+        ))}
+      </BookingSection>
+
+      <BookingSection
+        title="Completed Lendings"
+        count={completedLendings.length}
+        isEmpty={completedLendings.length === 0}
+        emptyMessage="No completed lending sessions yet."
+        indicator="check"
+      >
+        {completedLendings.map(booking => (
           <BookingCard key={booking.id} booking={booking} role="owner" />
         ))}
       </BookingSection>

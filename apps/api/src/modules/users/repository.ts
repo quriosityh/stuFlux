@@ -9,6 +9,23 @@ export const usersRepository = {
     return row ?? null;
   },
 
+  async findByEmail(email: string) {
+    const [row] = await db
+      .select()
+      .from(users)
+      .where(sql`lower(${users.email}) = lower(${email})`);
+    return row ?? null;
+  },
+
+  async attachClerkIdentity(userId: string, clerkUserId: string) {
+    const [row] = await db
+      .update(users)
+      .set({ clerk_user_id: clerkUserId, updated_at: sql`NOW()` })
+      .where(eq(users.id, userId))
+      .returning();
+    return row ?? null;
+  },
+
   async findById(id: string) {
     const [row] = await db.select().from(users).where(eq(users.id, id));
     return row ?? null;

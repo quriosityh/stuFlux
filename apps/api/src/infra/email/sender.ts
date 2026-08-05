@@ -19,12 +19,18 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
   }
 
   try {
-    await resend.emails.send({
+    const response = await resend.emails.send({
       from: resendFromAddress,
       to: params.to,
       subject: params.subject,
       html: params.html,
     });
+
+    if (response.error) {
+      console.error('[email] Resend API Error:', response.error);
+    } else {
+      console.log('[email] Sent successfully to', params.to);
+    }
   } catch (error) {
     console.error('[email] Failed to send email to', params.to, error);
   }
