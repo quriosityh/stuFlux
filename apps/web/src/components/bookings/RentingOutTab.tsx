@@ -47,8 +47,9 @@ export default function RentingOutTab() {
   const pendingApprovals = bookings.filter(b => b.phase === 'pending').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
   const upcomingRentals  = bookings.filter(b => b.phase === 'confirmed' && !isCompleted(b)).sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
   const currentlyOut     = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
-  // Keep completed items visible whether or not the lender has reviewed them.
-  const completedRentals = bookings.filter(isCompleted).sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
+  // Completed rentals remain on the dashboard only while the lender still
+  // needs to review the renter.
+  const completedRentals = bookings.filter(canReview).sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
 
   const hasActiveRequests = pendingApprovals.length > 0 || upcomingRentals.length > 0 || currentlyOut.length > 0 || completedRentals.length > 0;
 
@@ -234,7 +235,7 @@ export default function RentingOutTab() {
 
       {completedRentals.length > 0 && (
         <section>
-          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Completed Rentals · {completedRentals.length}</h2>
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Pending Reviews · {completedRentals.length}</h2>
           <div className="flex flex-col gap-4">{completedRentals.map(renderCard)}</div>
         </section>
       )}
