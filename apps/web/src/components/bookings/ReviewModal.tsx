@@ -130,7 +130,7 @@ export default function ReviewModal({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 260 }}
-              className="pointer-events-auto w-full max-w-[480px] rounded-3xl shadow-2xl overflow-hidden bg-background border border-border/60"
+              className="pointer-events-auto w-full max-w-[480px] rounded-[32px] shadow-2xl overflow-hidden chrome-card bg-surface/95 border border-border/30 backdrop-blur-2xl"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/40">

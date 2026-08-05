@@ -569,12 +569,12 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                   return (
                     <div
                       key={b.id}
-                      className="chrome-card p-4 rounded-2xl flex items-center justify-between gap-4"
+                      className="chrome-card p-4 sm:p-5 rounded-[24px] flex items-center justify-between gap-4 hover:bg-surface/80 transition-all border border-border/30 hover:border-border/60"
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="w-12 h-12 rounded-xl bg-[var(--border-color)] overflow-hidden flex-shrink-0 flex items-center justify-center text-[var(--foreground)]/30">
+                        <div className="w-14 h-14 rounded-xl bg-muted/50 overflow-hidden flex-shrink-0 flex items-center justify-center text-foreground/30 shadow-sm border border-border/20">
                           {b.listing?.photo?.url ? (
-                            <img src={b.listing.photo.url} alt="" className="w-full h-full object-cover" />
+                            <img src={b.listing.photo.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform" />
                           ) : (
                             <PackageCheck size={20} />
                           )}
@@ -677,7 +677,7 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
             ) : (
               <div className="space-y-3">
                 {filteredReviews.map((r) => (
-                  <div key={r.id} className="chrome-card p-5 rounded-2xl space-y-3">
+                  <div key={r.id} className="chrome-card p-5 rounded-[24px] space-y-3 border border-border/30 hover:border-border/60 transition-colors">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-blue-600 flex items-center justify-center text-white font-bold text-sm">

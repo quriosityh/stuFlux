@@ -341,7 +341,7 @@ export function PublicProfileClient({ profile, listings, reviews }: Props) {
             ) : (
               <div className="space-y-3">
                 {filteredReviews.map((r) => (
-                  <div key={r.id} className="chrome-card p-5 rounded-2xl space-y-2">
+                  <div key={r.id} className="chrome-card p-5 rounded-[24px] space-y-3 border border-border/30 hover:border-border/60 transition-colors">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--accent)] to-blue-600 flex items-center justify-center text-white font-bold text-xs">

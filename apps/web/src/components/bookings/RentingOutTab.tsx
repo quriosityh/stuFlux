@@ -88,7 +88,7 @@ export default function RentingOutTab() {
       <div 
         key={booking.id}
         onClick={() => setSelectedBooking(booking)}
-        className="group relative flex flex-col sm:flex-row gap-4 sm:gap-5 p-4 sm:p-5 rounded-[20px] bg-card/40 hover:bg-card border border-border/40 hover:border-border/80 transition-all cursor-pointer shadow-sm hover:shadow-md"
+        className="group relative flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 rounded-[24px] sm:rounded-[32px] chrome-card bg-surface/40 hover:bg-surface/80 border border-border/30 hover:border-[var(--accent)]/40 transition-all cursor-pointer shadow-sm hover:shadow-md overflow-hidden"
       >
         
         {/* Top/Left Section: Avatar + Info */}
