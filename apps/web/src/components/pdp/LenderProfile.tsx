@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import type { Route } from 'next';
 import { CheckCircle2, MessageCircle, MapPin, CalendarDays, Star } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useApiClient } from '@/lib/api-client';
@@ -162,6 +164,7 @@ export function LenderProfile({ owner, listingId }: LenderProfileProps) {
         
         {/* ===== LEFT COLUMN: Lender Card ===== */}
         <div className="w-full lg:w-auto shrink-0">
+          <Link href={`/users/${owner.id}` as Route} className="block group">
           <div className="chrome-card rounded-3xl p-5 sm:p-8 flex flex-row flex-nowrap items-center gap-5 sm:gap-8 relative overflow-hidden group">
             
             {/* Subtle glow effect */}
@@ -169,7 +172,7 @@ export function LenderProfile({ owner, listingId }: LenderProfileProps) {
 
             {/* Left side of card: Avatar & Name */}
             <div className="flex flex-col items-center justify-center text-center space-y-3 sm:space-y-4 shrink-0 w-[140px] sm:w-44">
-              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-surface shadow-lg">
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-surface shadow-lg ring-2 ring-transparent group-hover:ring-accent/40 transition-all duration-300">
                 <img 
                   src={owner.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(owner.display_name)}&background=random`} 
                   alt={owner.display_name} 
@@ -177,7 +180,7 @@ export function LenderProfile({ owner, listingId }: LenderProfileProps) {
                 />
               </div>
               <div>
-                <h3 className="text-base sm:text-lg font-bold font-syne truncate max-w-[130px] sm:max-w-none text-foreground">
+                <h3 className="text-base sm:text-lg font-bold font-syne truncate max-w-[130px] sm:max-w-none text-foreground group-hover:text-accent transition-colors duration-200">
                   {owner.display_name}
                 </h3>
                 <p className="text-[10px] text-foreground/60 font-semibold uppercase tracking-widest mt-1 flex items-center justify-center gap-1">
@@ -217,14 +220,17 @@ export function LenderProfile({ owner, listingId }: LenderProfileProps) {
               </div>
             </div>
           </div>
+          </Link>
         </div>
         
         {/* ===== RIGHT COLUMN: Name, Location/Joined Info, and Actions ===== */}
         <div className="w-full lg:flex-1 space-y-6">
           <div>
-            <h3 className="text-3xl sm:text-4xl font-bold font-syne text-foreground mb-2">
-              {owner.display_name}
-            </h3>
+            <Link href={`/users/${owner.id}` as Route} className="group inline-block">
+              <h3 className="text-3xl sm:text-4xl font-bold font-syne text-foreground mb-2 group-hover:text-accent transition-colors duration-200">
+                {owner.display_name}
+              </h3>
+            </Link>
             <p className="text-sm font-medium text-foreground/60">
               Active Lender in {locationLabel}
             </p>

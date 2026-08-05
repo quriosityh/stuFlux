@@ -401,6 +401,8 @@ function preparePhotosForInsert(listingId: string, photos: PhotoInput[]) {
 function buildWhere(filters: ListFiltersInput) {
   const clauses = [eq(listings.status, 'active' as any)];
 
+  if (filters.ownerId) clauses.push(eq(listings.owner_id, filters.ownerId));
+
   if (filters.q) {
     const query = filters.q.trim();
     if (query) {

@@ -9,11 +9,11 @@ export function TrustStrip() {
           <div>
             <h4 className="font-syne font-semibold text-sm mb-1">Backed by StuFlux Guarantee</h4>
             <p className="text-xs text-foreground/60 leading-relaxed">
-              Every rental is protected against damage and theft. Rent with peace of mind.
+              Rent with peace of mind.
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-start gap-3">
           <CheckCircle className="w-6 h-6 text-accent shrink-0 mt-0.5" />
           <div>
@@ -29,7 +29,7 @@ export function TrustStrip() {
           <div>
             <h4 className="font-syne font-semibold text-sm mb-1">In-app Messaging</h4>
             <p className="text-xs text-foreground/60 leading-relaxed">
-              Communicate securely on the platform. Never share your personal number.
+              Communicate securely on the platform.
             </p>
           </div>
         </div>

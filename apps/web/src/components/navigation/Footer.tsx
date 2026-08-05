@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import type { Route } from 'next';
 import Link from 'next/link';
 
 const HIDDEN_ROUTES = ['/messages', '/listings/', '/onboarding'];
@@ -17,8 +18,8 @@ export function Footer() {
         <span>&copy; {new Date().getFullYear()} StuFlux</span>
         <div className="flex gap-6">
           <Link href="/" className="hover:text-white/70 transition-colors">Home</Link>
-          <Link href="/explore" className="hover:text-white/70 transition-colors">Explore</Link>
-          <Link href="/bookings" className="hover:text-white/70 transition-colors">Bookings</Link>
+          <Link href={'/' as Route} className="hover:text-white/70 transition-colors">Explore</Link>
+          <Link href={'/bookings' as Route} className="hover:text-white/70 transition-colors">Bookings</Link>
         </div>
       </div>
     </footer>

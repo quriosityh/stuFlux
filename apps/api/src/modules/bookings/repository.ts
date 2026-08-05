@@ -188,7 +188,7 @@ export const bookingsRepository = {
       })
       .where(and(
         eq(bookings.status, 'confirmed'),
-        sql`${bookings.end_date} <= CURRENT_DATE`
+        sql`${bookings.end_date} < CURRENT_DATE`
       ))
       .returning({ id: bookings.id });
   },

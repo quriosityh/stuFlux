@@ -308,14 +308,15 @@ export const getBookings = async (
     // Dates in the bookings table are date-only values. Parse them as local
     // calendar dates so the phase cannot change unexpectedly because the
     // server or client is in a different timezone.
-    const startDate = parseISO(booking.start_date);
-    const endDate = parseISO(booking.end_date);
+    const startDate = new Date(booking.start_date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(booking.end_date);
+    endDate.setHours(0, 0, 0, 0);
 
     let phase = booking.status as string;
     if (booking.status === 'confirmed') {
-      // `end_date` is the checkout/return date, not an additional rental day.
-      // Keep this consistent with total_days (end - start) and overlap checks.
-      if (today >= startDate && today < endDate) {
+      // `end_date` is the checkout/return date. The rental remains active ON this date.
+      if (today >= startDate && today <= endDate) {
         phase = 'active';
       } else {
         phase = 'confirmed';

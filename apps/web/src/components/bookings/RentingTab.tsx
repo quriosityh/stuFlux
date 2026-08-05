@@ -33,19 +33,21 @@ export default function RentingTab() {
   const canReview = (booking: Booking) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const endDate = new Date(booking.endDate);
+    endDate.setHours(0, 0, 0, 0);
     return !booking.hasReviewed && (
       booking.phase === 'completed' ||
-      (booking.phase === 'confirmed' && booking.endDate < today)
+      (booking.phase === 'confirmed' && endDate < today)
     );
   };
 
-  const pendingRequests = bookings.filter(b => b.phase === 'pending').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const activeRentals = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
-  const upcomingRentals = bookings.filter(b => b.phase === 'confirmed' && !canReview(b)).sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const completedRentals = bookings.filter(b => b.phase === 'completed' || (b.phase === 'confirmed' && b.endDate < new Date())).sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
-  const reviewsNeeded = completedRentals.filter(canReview).length;
+  const pendingRequests  = bookings.filter(b => b.phase === 'pending').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  const activeRentals    = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
+  const upcomingRentals  = bookings.filter(b => b.phase === 'confirmed' && !canReview(b)).sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  // Only show bookings that still need a review — once reviewed, they disappear from this dashboard.
+  const pendingReviews   = bookings.filter(canReview).sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
 
-  const hasActiveRentals = pendingRequests.length > 0 || activeRentals.length > 0 || upcomingRentals.length > 0 || completedRentals.length > 0;
+  const hasActiveRentals = pendingRequests.length > 0 || activeRentals.length > 0 || upcomingRentals.length > 0 || pendingReviews.length > 0;
 
   if (bookings.length === 0 || !hasActiveRentals) {
     return (
@@ -209,7 +211,7 @@ export default function RentingTab() {
 
       {activeRentals.length > 0 && (
         <section>
-          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Active Rentals</h2>
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">In Hand</h2>
           <div className="flex flex-col gap-4">{activeRentals.map(renderCard)}</div>
         </section>
       )}
@@ -221,10 +223,10 @@ export default function RentingTab() {
         </section>
       )}
 
-      {completedRentals.length > 0 && (
+      {pendingReviews.length > 0 && (
         <section>
-          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Completed Rentals{reviewsNeeded > 0 ? ` · ${reviewsNeeded} review${reviewsNeeded === 1 ? '' : 's'} needed` : ''}</h2>
-          <div className="flex flex-col gap-4">{completedRentals.map(renderCard)}</div>
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Pending Reviews · {pendingReviews.length}</h2>
+          <div className="flex flex-col gap-4">{pendingReviews.map(renderCard)}</div>
         </section>
       )}
 

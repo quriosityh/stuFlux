@@ -34,19 +34,21 @@ export default function RentingOutTab() {
   const canReview = (booking: Booking) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const endDate = new Date(booking.endDate);
+    endDate.setHours(0, 0, 0, 0);
     return !booking.hasReviewed && (
       booking.phase === 'completed' ||
-      (booking.phase === 'confirmed' && booking.endDate < today)
+      (booking.phase === 'confirmed' && endDate < today)
     );
   };
 
   const pendingApprovals = bookings.filter(b => b.phase === 'pending').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const upcomingRentals = bookings.filter(b => b.phase === 'confirmed' && !canReview(b)).sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const currentlyOut = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
-  const completedRentals = bookings.filter(b => b.phase === 'completed' || (b.phase === 'confirmed' && b.endDate < new Date())).sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
-  const reviewsNeeded = completedRentals.filter(canReview).length;
+  const upcomingRentals  = bookings.filter(b => b.phase === 'confirmed' && !canReview(b)).sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  const currentlyOut     = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
+  // Only show bookings that still need a review — once reviewed they disappear.
+  const pendingReviews   = bookings.filter(canReview).sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
 
-  const hasActiveRequests = pendingApprovals.length > 0 || upcomingRentals.length > 0 || currentlyOut.length > 0 || completedRentals.length > 0;
+  const hasActiveRequests = pendingApprovals.length > 0 || upcomingRentals.length > 0 || currentlyOut.length > 0 || pendingReviews.length > 0;
 
   if (bookings.length === 0 || !hasActiveRequests) {
     return (
@@ -227,10 +229,10 @@ export default function RentingOutTab() {
         </section>
       )}
 
-      {completedRentals.length > 0 && (
+      {pendingReviews.length > 0 && (
         <section>
-          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Completed Rentals{reviewsNeeded > 0 ? ` · ${reviewsNeeded} review${reviewsNeeded === 1 ? '' : 's'} needed` : ''}</h2>
-          <div className="flex flex-col gap-4">{completedRentals.map(renderCard)}</div>
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Pending Reviews · {pendingReviews.length}</h2>
+          <div className="flex flex-col gap-4">{pendingReviews.map(renderCard)}</div>
         </section>
       )}
 
