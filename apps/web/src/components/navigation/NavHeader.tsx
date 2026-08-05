@@ -165,7 +165,7 @@ export function NavHeader() {
         )}
       </AnimatePresence>
 
-      <div className="w-[95%] max-w-[1600px] mx-auto py-3 relative z-10">
+      <div className="w-[95%] mx-auto py-3 relative z-10">
         {/* ROW 1: Logo, Nav/Pill, Actions */}
         <div className="flex items-center justify-between min-h-[48px]">
           {/* LEFT: Logo */}

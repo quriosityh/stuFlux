@@ -1,6 +1,7 @@
 import { inArray } from 'drizzle-orm';
 import { db } from '../../src/infra/db/client.js';
 import { bookings, reviews } from '../schema.js';
+import type { SeededBooking } from './bookings.js';
 
 const renterComments = [
   'Clear instructions, quick replies, and the item was exactly as described.',
@@ -13,7 +14,7 @@ const ownerComments = [
   'Reliable renter. I would be happy to rent to them again.',
 ];
 
-export async function seedReviews(seedBookings: (typeof bookings.$inferSelect)[]) {
+export async function seedReviews(seedBookings: SeededBooking[]) {
   const completed = seedBookings.filter((booking) => booking.status === 'completed');
   if (!completed.length) return [];
   const existing = await db.select().from(reviews).where(inArray(reviews.bookingId, completed.map((booking) => booking.id)));
@@ -32,8 +33,14 @@ export async function seedReviews(seedBookings: (typeof bookings.$inferSelect)[]
       categoryRatings: { communication: 5, care: 5, punctuality: index % 2 === 0 ? 5 : 4 } as Record<string, number>,
       comment: ownerComments[index % ownerComments.length], anonymous: false,
     } satisfies typeof reviews.$inferInsert;
-    if (!existingKeys.has(`${renterReview.bookingId}:${renterReview.reviewerId}`)) values.push(renterReview);
-    if (!existingKeys.has(`${ownerReview.bookingId}:${ownerReview.reviewerId}`)) values.push(ownerReview);
+    if (
+      booking.pendingReviewFor !== 'renter' &&
+      !existingKeys.has(`${renterReview.bookingId}:${renterReview.reviewerId}`)
+    ) values.push(renterReview);
+    if (
+      booking.pendingReviewFor !== 'owner' &&
+      !existingKeys.has(`${ownerReview.bookingId}:${ownerReview.reviewerId}`)
+    ) values.push(ownerReview);
   });
   if (values.length) await db.insert(reviews).values(values);
   return db.select().from(reviews).where(inArray(reviews.bookingId, completed.map((booking) => booking.id)));

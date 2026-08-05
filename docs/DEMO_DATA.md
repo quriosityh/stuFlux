@@ -6,7 +6,7 @@ Run the baseline fixture command after migrations:
 npm --prefix apps/api run db:seed
 ```
 
-It creates eight Lahore users, thirty-three item-specific listings (at least four active listings in every category), fifteen bookings across pending, confirmed, completed, rejected, and cancelled states, matching conversations, an open inquiry, and two-sided reviews for completed rentals. The fixture is repeat-safe: it fills in only missing fixture records.
+It creates eight Lahore users, thirty-three item-specific listings (at least four active listings in every category), and bookings across pending, confirmed, completed, rejected, and cancelled states. Completed rentals normally have two reviews, with three deliberate one-sided review scenarios to test the pending-review flow. The fixture is repeat-safe: it fills in only missing fixture records.
 
 For sign-in accounts, run this once against a **development Clerk instance**:
 
@@ -20,8 +20,8 @@ The most useful evaluator accounts are:
 
 | Account | Email | Why use it |
 | --- | --- | --- |
-| Ayesha Khan | `ayesha@stuflux-demo.com` | Active lender with a busy inbox, a pending generator request, completed rentals, and reviews. |
-| Hamza Ahmed | `hamza@stuflux-demo.com` | Both rents and lends; useful for comparing both booking tabs. |
-| Mahnoor Ali | `mahnoor@stuflux-demo.com` | Active renter with confirmed, pending, and historic transactions. |
+| Ayesha Khan | `ayesha@stuflux-demo.com` | Active lender with a pending generator request and one completed rental awaiting her review of Hamza. |
+| Hamza Ahmed | `hamza@stuflux-demo.com` | Both rents and lends; has a completed projector rental awaiting his review of Hira. |
+| Mahnoor Ali | `mahnoor@stuflux-demo.com` | Active renter with confirmed, pending, historic transactions, and one generator review still to submit for Ayesha. |
 
 Listing photographs use fixed, curated Unsplash image URLs instead of a random-image endpoint, so the same product presentation stays consistent between evaluations.

@@ -15,9 +15,10 @@ interface Props {
   onClose: () => void;
   role: 'renter' | 'lender';
   onActionSuccess?: () => void;
+  onOpenReview?: (booking: Booking) => void;
 }
 
-export default function BookingDetailSheet({ booking, isOpen, onClose, role, onActionSuccess }: Props) {
+export default function BookingDetailSheet({ booking, isOpen, onClose, role, onActionSuccess, onOpenReview }: Props) {
   const { getToken } = useAuth();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -259,6 +260,19 @@ export default function BookingDetailSheet({ booking, isOpen, onClose, role, onA
                         >
                           <Check size={18} />
                           Complete Rental
+                        </button>
+                      )}
+
+                      {booking.phase === 'completed' && !booking.hasReviewed && (
+                        <button
+                          onClick={() => {
+                            onClose();
+                            onOpenReview?.(booking);
+                          }}
+                          className="hyper-liquid w-full py-3.5 text-[14px] rounded-xl font-semibold flex justify-center items-center gap-2"
+                        >
+                          <Star size={18} />
+                          Write Review
                         </button>
                       )}
 

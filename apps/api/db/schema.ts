@@ -29,6 +29,7 @@ export const users = pgTable("users", {
 
     email: text("email"),
     avatar_url: text("avatar_url"),
+    onboarded: boolean("onboarded").default(false).notNull(),
 });
 
 // ====================== USER_VERIFICATIONS ======================
@@ -39,7 +40,9 @@ export const userVerifications = pgTable("user_verifications", {
         .notNull(),
     phone_verified: boolean("phone_verified").default(false), // Defaults to false
     verification_level: text("verification_level").default("unverified"), // Default value
-});
+}, (table) => [
+    uniqueIndex("user_verifications_user_id_unique").on(table.user_id),
+]);
 
 // ====================== PUSH SUBSCRIPTIONS ======================
 export const pushSubscriptions = pgTable("push_subscriptions", {

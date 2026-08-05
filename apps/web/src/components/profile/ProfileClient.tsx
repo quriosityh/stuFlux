@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSignOut } from '@/components/profile/useSignOut';
 import { EditProfileForm } from '@/components/profile/EditProfileForm';
+import { PhoneVerification } from '@/components/profile/PhoneVerification';
 import { useApiClient } from '@/lib/api-client';
 import { format } from 'date-fns';
 import { getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
@@ -85,6 +86,14 @@ function formatPKR(amount: number = 0): string {
   return `Rs. ${pkr.toLocaleString()}`;
 }
 
+function formatBookingDates(startDate?: string, endDate?: string): string | null {
+  if (!startDate && !endDate) return null;
+
+  const start = startDate ? format(new Date(startDate), 'dd MMM yyyy') : null;
+  const end = endDate ? format(new Date(endDate), 'dd MMM yyyy') : null;
+  return start && end ? `${start} – ${end}` : start ?? end;
+}
+
 export function ProfileClient({ initialProfile, initialBookings, initialReviews = [] }: Props) {
   const api = useApiClient();
   const { signOut } = useSignOut();
@@ -99,23 +108,29 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
   // History Sub-toggle: 'lender' | 'renter'
   const [historyRole, setHistoryRole] = useState<'lender' | 'renter'>('lender');
   
-  // Reviews Role Filter: 'all' | 'as_lender' | 'as_renter'
-  const [reviewFilter, setReviewFilter] = useState<'all' | 'as_lender' | 'as_renter'>('all');
+  // Reviews Role Filter: 'as_lender' | 'as_renter'
+  const [reviewFilter, setReviewFilter] = useState<'as_lender' | 'as_renter'>('as_lender');
   
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
 
-  // Load reviews on mount if not pre-fetched
+  // Fallback: fetch reviews client-side only if SSR missed them (race/error)
+  // Use useRef for the api client so it's stable across renders (avoids infinite loop)
+  const apiRef = useRef(api);
+  useEffect(() => { apiRef.current = api; });
+
   useEffect(() => {
-    if (profile?.id && initialReviews.length === 0) {
-      api.get(`users/${profile.id}/reviews`)
-        .json<{ data: Review[] }>()
-        .then((res) => {
-          if (res.data) setReviews(res.data);
-        })
-        .catch(() => {});
-    }
-  }, [profile?.id, initialReviews.length, api]);
+    if (!profile?.id || initialReviews.length > 0) return;
+    apiRef.current
+      .get(`reviews?targetId=${profile.id}&limit=50`)
+      .json<{ data: { reviews: Review[] } | Review[] }>()
+      .then((res: any) => {
+        const arr = res?.data?.reviews ?? res?.data ?? [];
+        if (Array.isArray(arr)) setReviews(arr);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
 
   // Theme detector
   useEffect(() => {
@@ -148,10 +163,17 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
 
   // Filter history bookings based on historyRole toggle
   const filteredBookings = useMemo(() => {
-    return bookings.filter((b) => {
-      const isLenderRole = b.role === 'owner' || b.role === 'lender';
-      return historyRole === 'lender' ? isLenderRole : !isLenderRole;
-    });
+    return bookings
+      .filter((b) => {
+        const isLenderRole = b.role === 'owner' || b.role === 'lender';
+        const matchesRole = historyRole === 'lender' ? isLenderRole : !isLenderRole;
+        return matchesRole && (b.status === 'confirmed' || b.status === 'completed');
+      })
+      .sort((a, b) => {
+        const aDate = new Date(a.end_date || a.start_date || a.created_at || 0).getTime();
+        const bDate = new Date(b.end_date || b.start_date || b.created_at || 0).getTime();
+        return bDate - aDate;
+      });
   }, [bookings, historyRole]);
 
   // Monthly earnings summary calculation from completed lender bookings
@@ -159,30 +181,37 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
     const completedLenderBookings = bookings.filter(
       (b) => (b.role === 'owner' || b.role === 'lender') && b.status === 'completed'
     );
-    const monthsMap = new Map<string, { total: number; count: number }>();
+    const monthsMap = new Map<string, { total: number; count: number; sortDate: Date }>();
 
     completedLenderBookings.forEach((b) => {
-      const monthKey = b.end_date || b.created_at
-        ? format(new Date(b.end_date || b.created_at!), 'MMMM yyyy')
+      const earningDate = b.end_date || b.created_at;
+      const monthKey = earningDate
+        ? format(new Date(earningDate), 'MMMM yyyy')
         : 'Recent';
       const amount = (b.total_amount || 0) + (b.delivery_fee || 0);
-      const existing = monthsMap.get(monthKey) || { total: 0, count: 0 };
+      const existing = monthsMap.get(monthKey) || {
+        total: 0,
+        count: 0,
+        sortDate: earningDate ? new Date(earningDate) : new Date(0),
+      };
       monthsMap.set(monthKey, {
         total: existing.total + amount,
         count: existing.count + 1,
+        sortDate: existing.sortDate,
       });
     });
 
-    return Array.from(monthsMap.entries()).map(([month, data]) => ({
-      month,
-      total: data.total,
-      count: data.count,
-    }));
+    return Array.from(monthsMap.entries())
+      .sort(([, a], [, b]) => b.sortDate.getTime() - a.sortDate.getTime())
+      .map(([month, data]) => ({
+        month,
+        total: data.total,
+        count: data.count,
+      }));
   }, [bookings]);
 
   // Filtered reviews based on reviewFilter
   const filteredReviews = useMemo(() => {
-    if (reviewFilter === 'all') return reviews;
     return reviews.filter((r) => r.role === reviewFilter);
   }, [reviews, reviewFilter]);
 
@@ -534,41 +563,50 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredBookings.map((b) => (
-                  <div
-                    key={b.id}
-                    className="chrome-card p-4 rounded-2xl flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-12 h-12 rounded-xl bg-[var(--border-color)] overflow-hidden flex-shrink-0 flex items-center justify-center text-[var(--foreground)]/30">
-                        {b.listing?.photo?.url ? (
-                          <img src={b.listing.photo.url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <PackageCheck size={20} />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-display text-sm font-bold truncate">
-                          {b.listing?.title || 'Rental Booking'}
-                        </h4>
-                        <div className="text-xs text-[var(--foreground)]/50 truncate mt-0.5">
-                          {historyRole === 'lender'
-                            ? `Renter: ${b.renter?.display_name || 'Student'}`
-                            : `Host: ${b.owner?.display_name || 'Owner'}`}
+                {filteredBookings.map((b) => {
+                  const dateRange = formatBookingDates(b.start_date, b.end_date);
+
+                  return (
+                    <div
+                      key={b.id}
+                      className="chrome-card p-4 rounded-2xl flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="w-12 h-12 rounded-xl bg-[var(--border-color)] overflow-hidden flex-shrink-0 flex items-center justify-center text-[var(--foreground)]/30">
+                          {b.listing?.photo?.url ? (
+                            <img src={b.listing.photo.url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <PackageCheck size={20} />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-display text-sm font-bold truncate">
+                            {b.listing?.title || 'Rental Booking'}
+                          </h4>
+                          <div className="text-xs text-[var(--foreground)]/50 truncate mt-0.5">
+                            {historyRole === 'lender'
+                              ? `Renter: ${b.renter?.display_name || 'Student'}`
+                              : `Host: ${b.owner?.display_name || 'Owner'}`}
+                          </div>
+                          {dateRange && (
+                            <div className="text-[11px] text-[var(--foreground)]/40 mt-0.5">
+                              {dateRange}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
 
-                    <div className="text-right flex-shrink-0">
-                      <div className="font-display text-sm font-bold text-[var(--foreground)]">
-                        {formatPKR((b.total_amount || 0) + (b.delivery_fee || 0))}
+                      <div className="text-right flex-shrink-0">
+                        <div className="font-display text-sm font-bold text-[var(--foreground)]">
+                          {formatPKR((b.total_amount || 0) + (b.delivery_fee || 0))}
+                        </div>
+                        <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 mt-1">
+                          {b.status || 'Completed'}
+                        </span>
                       </div>
-                      <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 mt-1">
-                        {b.status || 'Completed'}
-                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -591,9 +629,7 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                     <span className="font-display text-xl font-bold text-[var(--foreground)]">
                       {reviewFilter === 'as_lender'
                         ? (stats?.lender_rating_avg || 'N/A')
-                        : reviewFilter === 'as_renter'
-                        ? (stats?.renter_rating_avg || 'N/A')
-                        : ((stats?.lender_rating_avg || stats?.renter_rating_avg) || 'N/A')}
+                        : (stats?.renter_rating_avg || 'N/A')}
                     </span>
                   </div>
                   <span className="text-xs text-[var(--foreground)]/40">
@@ -604,16 +640,6 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
 
               {/* Role Filters */}
               <div className="flex items-center gap-1.5 bg-[var(--background)] p-1 rounded-xl border border-[var(--border-color)]">
-                <button
-                  onClick={() => setReviewFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    reviewFilter === 'all'
-                      ? 'bg-[var(--accent)] text-white'
-                      : 'text-[var(--foreground)]/50'
-                  }`}
-                >
-                  All
-                </button>
                 <button
                   onClick={() => setReviewFilter('as_lender')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -655,23 +681,22 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                          {r.reviewer?.display_name?.[0] || 'S'}
+                          {r.reviewer?.avatar_url ? (
+                            <img
+                              src={r.reviewer.avatar_url}
+                              alt={r.reviewer.display_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            r.reviewer?.display_name?.[0] || 'S'
+                          )}
                         </div>
                         <div>
                           <div className="font-display text-sm font-bold">
                             {r.reviewer?.display_name || 'Anonymous Student'}
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                              r.role === 'as_lender'
-                                ? 'bg-blue-500/10 text-blue-400'
-                                : 'bg-purple-500/10 text-purple-400'
-                            }`}>
-                              {r.role === 'as_lender' ? 'Lender Review' : 'Renter Review'}
-                            </span>
-                            <span className="text-[10px] text-[var(--foreground)]/40">
-                              {r.created_at ? format(new Date(r.created_at), 'MMM d, yyyy') : 'Recent'}
-                            </span>
+                          <div className="text-[10px] text-[var(--foreground)]/40 mt-0.5">
+                            Reviewed {r.created_at ? format(new Date(r.created_at), 'MMM d, yyyy') : 'recently'}
                           </div>
                         </div>
                       </div>
@@ -696,10 +721,13 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                     )}
 
                     {/* Listing reference link */}
-                    {r.listing && (
-                      <div className="text-[11px] text-[var(--accent)] font-semibold pt-1 border-t border-[var(--border-color)]/30">
-                        Re: {r.listing.title}
-                      </div>
+                    {reviewFilter === 'as_lender' && r.listing && (
+                      <a
+                        href={`/listings/${r.listing.id}`}
+                        className="block text-[11px] text-[var(--accent)] font-semibold pt-1 border-t border-[var(--border-color)]/30 hover:underline"
+                      >
+                        {r.listing.title}
+                      </a>
                     )}
                   </div>
                 ))}
@@ -747,13 +775,12 @@ export function ProfileClient({ initialProfile, initialBookings, initialReviews 
                     </p>
                   </div>
                 </div>
-                <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                  profile?.phone_verified
-                    ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'bg-amber-500/10 text-amber-400'
-                }`}>
-                  {profile?.phone_verified ? 'Verified' : 'Pending'}
-                </span>
+              </div>
+              <div className="px-5 pb-5">
+                <PhoneVerification
+                  verified={Boolean(profile?.phone_verified)}
+                  onVerified={() => setProfile((current) => current ? { ...current, phone_verified: true } : current)}
+                />
               </div>
 
               {/* Appearance / Theme Selector Row */}

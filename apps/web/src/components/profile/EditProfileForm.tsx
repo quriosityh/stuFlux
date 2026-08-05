@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useApiClient } from '@/lib/api-client';
 import { searchAreas, POPULAR_AREA_IDS, getAreaById, LAHORE_AREAS_DATA, type LahoreArea } from '@stuflux/types';
-import { Search, MapPin, Check, Save, Loader2, X } from 'lucide-react';
+import { Search, MapPin, Check, Save, Loader2, X, Camera, User } from 'lucide-react';
 
 type Profile = {
   id?: string;
@@ -18,13 +18,18 @@ type Props = {
   profile: Profile | null;
   onSaved: (updated: Partial<Profile>) => void;
   onCancel: () => void;
+  onboarding?: boolean;
 };
 
-export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
+export function EditProfileForm({ profile, onSaved, onCancel, onboarding = false }: Props) {
   const api = useApiClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '');
   const [selectedArea, setSelectedArea] = useState(profile?.area ?? '');
   const [areaSearch, setAreaSearch] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,24 +49,98 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
 
   const isDirty =
     displayName !== (profile?.display_name ?? '') ||
-    selectedArea !== (profile?.area ?? '');
+    selectedArea !== (profile?.area ?? '') ||
+    avatarUrl !== (profile?.avatar_url ?? null);
+
+  // ─── Avatar upload: get Cloudinary signature → upload directly → store URL ──
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate client-side first
+    if (file.size > 7 * 1024 * 1024) {
+      setError('Photo must be under 7 MB.');
+      return;
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(file.type)) {
+      setError('Only JPEG, PNG or WebP photos are allowed.');
+      return;
+    }
+
+    setAvatarUploading(true);
+    setError(null);
+
+    try {
+      // 1. Get signed upload parameters from our API
+      const sigRes = await api.post('uploads/signature').json<{
+        upload: {
+          timestamp: number;
+          folder: string;
+          signature: string;
+          api_key: string;
+          cloud_name: string;
+        };
+      }>();
+
+      const { upload } = sigRes;
+
+      // 2. Upload directly to Cloudinary (browser → Cloudinary, no server proxy)
+      const form = new FormData();
+      form.append('file', file);
+      form.append('timestamp', String(upload.timestamp));
+      form.append('folder', upload.folder);
+      form.append('signature', upload.signature);
+      form.append('api_key', upload.api_key);
+
+      const cloudRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${upload.cloud_name}/image/upload`,
+        { method: 'POST', body: form }
+      );
+
+      if (!cloudRes.ok) throw new Error('Cloudinary upload failed');
+
+      const cloudData = await cloudRes.json();
+      setAvatarUrl(cloudData.secure_url);
+    } catch {
+      setError('Photo upload failed. Please try again.');
+    } finally {
+      setAvatarUploading(false);
+      // Reset input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleSave = async () => {
     if (!displayName.trim()) {
       setError('Display name is required.');
       return;
     }
+    if (onboarding && !selectedArea) {
+      setError('Please select your area in Lahore.');
+      return;
+    }
+    if (onboarding && !avatarUrl) {
+      setError('Please add a profile photo to continue.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await api.put('users/me', {
-        json: {
-          display_name: displayName.trim(),
-          ...(selectedArea && { area: selectedArea }),
-        },
-      }).json();
-      onSaved({ display_name: displayName.trim(), area: selectedArea });
-    } catch (e: any) {
+      const profilePayload = {
+        display_name: displayName.trim(),
+        ...(selectedArea && { area: selectedArea }),
+        ...(avatarUrl !== profile?.avatar_url && { avatar_url: avatarUrl }),
+      };
+      await (onboarding
+        ? api.post('users/me/complete-onboarding', { json: { ...profilePayload, avatar_url: avatarUrl! } })
+        : api.put('users/me', { json: profilePayload })
+      ).json();
+      onSaved({
+        display_name: displayName.trim(),
+        area: selectedArea,
+        avatar_url: avatarUrl,
+      });
+    } catch {
       setError('Failed to save. Please try again.');
     } finally {
       setSaving(false);
@@ -82,7 +161,69 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
       </div>
 
       <div className="flex flex-col gap-6">
-        {/* Display Name */}
+        {/* ── Avatar Picker ── */}
+        <div className="flex flex-col gap-2">
+          <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--foreground)]/40 font-display">
+            Profile Photo
+          </label>
+          <div className="flex items-center gap-4">
+            {/* Avatar preview */}
+            <div className="relative flex-shrink-0">
+              <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-[var(--accent)] to-blue-600 flex items-center justify-center text-white shadow-sm">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={32} />
+                )}
+              </div>
+              {/* Loading overlay */}
+              {avatarUploading && (
+                <div className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center">
+                  <Loader2 size={20} className="text-white animate-spin" />
+                </div>
+              )}
+            </div>
+
+            {/* Upload button */}
+            <div className="flex flex-col gap-2">
+              <button
+                id="avatar-upload-btn"
+                type="button"
+                disabled={avatarUploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border-color)] text-xs font-bold text-[var(--foreground)]/70 hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Camera size={14} />
+                {avatarUploading ? 'Uploading…' : avatarUrl ? 'Change Photo' : 'Upload Photo'}
+              </button>
+              <p className="text-[10px] text-[var(--foreground)]/30">
+                JPEG · PNG · WebP · max 7 MB
+              </p>
+            </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+          </div>
+
+          {/* Remove photo option */}
+          {avatarUrl && (
+            <button
+              type="button"
+              onClick={() => setAvatarUrl(null)}
+              className="text-[11px] text-red-400/70 hover:text-red-400 transition-colors text-left"
+            >
+              Remove photo
+            </button>
+          )}
+        </div>
+
+        {/* ── Display Name ── */}
         <div className="flex flex-col gap-2">
           <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--foreground)]/40 font-display">
             Display Name
@@ -97,13 +238,12 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
           />
         </div>
 
-        {/* Area Selection */}
+        {/* ── Area Selection ── */}
         <div className="flex flex-col gap-2">
           <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--foreground)]/40 font-display">
             Your Area in Lahore
           </label>
 
-          {/* Selected pill */}
           {selectedAreaLabel && (
             <div className="flex items-center gap-2 mb-1">
               <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--accent)] bg-[var(--accent)]/8 px-3 py-1 rounded-full border border-[var(--accent)]/20">
@@ -119,7 +259,6 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
             </div>
           )}
 
-          {/* Search input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground)]/30" />
             <input
@@ -132,8 +271,7 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
             />
           </div>
 
-          {/* Area list */}
-          <div className="flex flex-col divide-y divide-[var(--border-color)]/30 overflow-y-auto max-h-48 rounded-xl border border-[var(--border-color)]/40 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-[var(--border-color)] [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="flex flex-col divide-y divide-[var(--border-color)]/30 overflow-y-auto max-h-48 rounded-xl border border-[var(--border-color)]/40">
             {filteredAreas.length === 0 ? (
               <div className="text-center text-[var(--foreground)]/30 text-sm py-6">
                 No areas found for &ldquo;{areaSearch}&rdquo;
@@ -171,20 +309,22 @@ export function EditProfileForm({ profile, onSaved, onCancel }: Props) {
 
         {/* Actions */}
         <div className="flex gap-3 pt-1">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl border border-[var(--border-color)] text-sm font-semibold text-[var(--foreground)]/60 hover:text-[var(--foreground)] transition-colors"
-          >
-            Cancel
-          </button>
+          {!onboarding && (
+            <button
+              onClick={onCancel}
+              className="flex-1 py-2.5 rounded-xl border border-[var(--border-color)] text-sm font-semibold text-[var(--foreground)]/60 hover:text-[var(--foreground)] transition-colors"
+            >
+              Cancel
+            </button>
+          )}
           <button
             id="save-profile-btn"
             onClick={handleSave}
-            disabled={saving || !isDirty}
+            disabled={saving || !isDirty || avatarUploading}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl hyper-liquid text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            {saving ? 'Saving…' : 'Save Changes'}
+            {saving ? 'Saving…' : onboarding ? 'Complete Profile' : 'Save Changes'}
           </button>
         </div>
       </div>

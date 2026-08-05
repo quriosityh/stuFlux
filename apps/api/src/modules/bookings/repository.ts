@@ -1,5 +1,5 @@
 import { db } from '../../infra/db/client.js';
-import { bookings, conversations, listings, listingPhotos, users } from '../../../db/schema.js';
+import { bookings, conversations, listings, listingPhotos, reviews, users } from '../../../db/schema.js';
 import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { CreateBookingInput } from './validations.js';
@@ -130,6 +130,7 @@ export const bookingsRepository = {
           email: ownerUser.email,
         },
         conversation_id: conversations.id,
+        has_reviewed: sql<boolean>`CASE WHEN ${reviews.id} IS NOT NULL THEN TRUE ELSE FALSE END`,
       })
       .from(bookings)
       .innerJoin(listings, eq(bookings.listing_id, listings.id))
@@ -144,6 +145,14 @@ export const bookingsRepository = {
         )
       )
       .leftJoin(conversations, eq(conversations.booking_id, bookings.id))
+      .leftJoin(
+        reviews,
+        and(
+          eq(reviews.bookingId, bookings.id),
+          eq(reviews.reviewerId, userId),
+          isNull(reviews.deletedAt)
+        )
+      )
       .where(and(...conditions))
       .orderBy(desc(bookings.created_at))
       .limit(limit);
@@ -160,6 +169,25 @@ export const bookingsRepository = {
       .where(eq(bookings.id, id))
       .returning();
     return row ?? null;
+  },
+
+  /**
+   * Finalize rentals whose confirmed end date has passed. This keeps the
+   * persisted booking status aligned with the status displayed to users and
+   * with review eligibility.
+   */
+  async completeExpiredBookings() {
+    await db
+      .update(bookings)
+      .set({
+        status: 'completed',
+        completed_at: sql`NOW()`,
+        updated_at: sql`NOW()`,
+      })
+      .where(and(
+        eq(bookings.status, 'confirmed'),
+        sql`${bookings.end_date} < CURRENT_DATE`
+      ));
   },
 
   async incrementListingBookingCount(listingId: string) {

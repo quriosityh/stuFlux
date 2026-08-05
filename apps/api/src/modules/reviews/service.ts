@@ -64,14 +64,20 @@ export const createReview = async (userId: string, input: CreateReviewInput) => 
     const booking = await repository.getBookingDetails(input.bookingId, tx);
     if (!booking) throw new AppError('Booking not found', 404, 'BOOKING_NOT_FOUND');
     
-    // ✅ Check booking status AND end date is in the past
-    if (booking.status !== 'completed') {
-      throw new AppError('You can only review completed bookings', 400, 'BOOKING_NOT_COMPLETED');
+    const now = new Date();
+    if (new Date(booking.endDate) > now) {
+      throw new AppError('You can only review bookings after the end date', 400, 'BOOKING_NOT_ENDED');
     }
 
-    const now = new Date();
-    if (booking.endDate > now) {
-      throw new AppError('You can only review bookings after the end date', 400, 'BOOKING_NOT_ENDED');
+    // A list request normally finalizes elapsed bookings. Repeat the
+    // transition here so direct review submissions follow the same rule.
+    if (booking.status === 'confirmed') {
+      const completed = await repository.completeBookingIfEnded(booking.id, tx);
+      if (!completed) {
+        throw new AppError('You can only review completed bookings', 400, 'BOOKING_NOT_COMPLETED');
+      }
+    } else if (booking.status !== 'completed') {
+      throw new AppError('You can only review completed bookings', 400, 'BOOKING_NOT_COMPLETED');
     }
 
     // 3. Get listing

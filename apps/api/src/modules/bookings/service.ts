@@ -291,6 +291,10 @@ export const getBookings = async (
   if (status && !VALID_STATUSES.includes(status)) {
     throw new AppError('Invalid status filter', 400, 'INVALID_STATUS');
   }
+  // The UI treats an elapsed confirmed booking as completed. Persist that
+  // transition before returning bookings so review submission sees the same
+  // status rather than rejecting a visibly completed rental.
+  await bookingsRepository.completeExpiredBookings();
   const rawRows = await bookingsRepository.findForUser(userId, role, status, listingId, limit);
 
   const today = new Date();
@@ -308,8 +312,6 @@ export const getBookings = async (
     if (booking.status === 'confirmed') {
       if (today >= startDate && today <= endDate) {
         phase = 'active';
-      } else if (today > endDate) {
-        phase = 'completed';
       } else {
         phase = 'confirmed';
       }
@@ -346,6 +348,7 @@ export const getBookings = async (
         deliveryFee: booking.delivery_fee,
         securityDeposit: booking.security_deposit,
       },
+      hasReviewed: !!row.has_reviewed,
       conversation_id: conversation_id || null,
       created_at: booking.created_at,
     };
