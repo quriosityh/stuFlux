@@ -22,7 +22,7 @@ export function TrustStrip() {
               All users pass strict identity checks. You're renting from real people.
             </p>
           </div>
-        </div>
+        </div>  
 
         <div className="flex items-start gap-3">
           <MessageSquare className="w-6 h-6 text-accent shrink-0 mt-0.5" />

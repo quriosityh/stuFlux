@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { User, Plus, Menu, Search, X } from 'lucide-react';
+import { Bell, User, Plus, Menu, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchBar, ActiveTab } from '../explore/SearchBar';
 import { LahoreArea, getAreaById, LAHORE_AREAS_DATA } from '@stuflux/types';
@@ -39,6 +39,10 @@ export function NavHeader() {
     }
   }, [isSignedIn, api]);
 
+  // Notifications state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [activeToast, setActiveToast] = useState<any | null>(null);
 
@@ -49,6 +53,8 @@ export function NavHeader() {
       const notif = customEvent.detail;
       if (!notif) return;
 
+      setNotifications((prev) => [notif, ...prev.slice(0, 19)]);
+      setUnreadCount((prev) => prev + 1);
       setActiveToast(notif);
 
       const timer = setTimeout(() => {
@@ -90,30 +96,30 @@ export function NavHeader() {
   // Theme initialization + scroll handling
   useEffect(() => {
     // Check initial theme from HTML data attribute or OS preference
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
-                  document.documentElement.classList.contains('dark') ||
-                  (document.documentElement.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+      document.documentElement.classList.contains('dark') ||
+      (document.documentElement.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     const initialTheme = isDark ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', initialTheme);
     document.documentElement.classList.toggle('dark', isDark);
 
     let lastScrollY = window.scrollY;
-    
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
-      
+
       // Only close the search dropdown if the user ACTUALLY scrolls (e.g., > 10px) while it's open
       if (activeTab !== null && Math.abs(window.scrollY - lastScrollY) > 10) {
         setActiveTab(null);
       }
       lastScrollY = window.scrollY;
     };
-    
+
     window.addEventListener('scroll', handleScroll, { passive: true });
-    
+
     // Initial check for isScrolled (do not call handleScroll to prevent instant collapse)
     setIsScrolled(window.scrollY > 50);
-    
+
     return () => window.removeEventListener('scroll', handleScroll);
   }, [activeTab]);
 
@@ -123,7 +129,7 @@ export function NavHeader() {
   const navItems = [
     { name: 'Explore', href: '/' as const },
     { name: 'Chats', href: '/messages' as const },
-    { name: 'Activity', href: '/bookings' as const },
+    { name: 'Bookings', href: '/bookings' as const },
     { name: 'Listings', href: '/listings' as const },
   ];
 
@@ -134,28 +140,25 @@ export function NavHeader() {
     const checkPDP = () => {
       setHiddenByPDP(document.body.hasAttribute('data-pdp-nav'));
     };
-    
+
     // Use MutationObserver to watch body attributes
     const observer = new MutationObserver(checkPDP);
     observer.observe(document.body, { attributes: true, attributeFilter: ['data-pdp-nav'] });
     checkPDP();
-    
+
     return () => observer.disconnect();
   }, []);
 
   return (
     <nav
       data-nav-spacer="true"
-      className={cn(
-        "!fixed top-0 left-0 right-0 z-50 bg-zinc-50 dark:bg-zinc-900 border-b border-border/10 shadow-sm transition-all duration-300",
-        pathname.startsWith('/messages') ? "hidden md:block" : "block"
-      )}
+      className="!fixed top-0 left-0 right-0 z-50 bg-zinc-50 dark:bg-zinc-900 border-b border-border/10 shadow-sm transition-all duration-300"
       style={{ transform: hiddenByPDP ? 'translateY(-100%)' : 'translateY(0)' }}
     >
       {/* Background Dimmer when search is forced open while scrolled */}
       <AnimatePresence>
         {activeTab !== null && isScrolled && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -190,8 +193,8 @@ export function NavHeader() {
                   {navItems.map((item) => {
                     const isActive = pathname === item.href;
                     return (
-                      <Link 
-                        key={item.name} 
+                      <Link
+                        key={item.name}
                         href={item.href as any}
                         className={cn(
                           "relative px-1 py-2 transition-colors glitch-text",
@@ -200,7 +203,7 @@ export function NavHeader() {
                       >
                         {item.name}
                         {isActive && (
-                          <motion.div 
+                          <motion.div
                             layoutId="nav-indicator"
                             className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent)] rounded-full"
                           />
@@ -219,8 +222,8 @@ export function NavHeader() {
                   transition={transitionConfig}
                   className="absolute inset-0 flex items-center justify-center"
                 >
-                    <div className="flex items-center chrome-card rounded-full shadow-md hover:shadow-lg cursor-pointer border border-border/20 overflow-hidden divide-x divide-border/10">
-                    <span 
+                  <div className="flex items-center chrome-card rounded-full shadow-md hover:shadow-lg cursor-pointer border border-border/20 overflow-hidden divide-x divide-border/10">
+                    <span
                       onClick={(e) => {
                         e.stopPropagation();
                         if (isExplorePage) setActiveTab('where');
@@ -230,7 +233,7 @@ export function NavHeader() {
                     >
                       {selectedArea ? selectedArea.name : 'Anywhere'}
                     </span>
-                    <span 
+                    <span
                       onClick={(e) => {
                         e.stopPropagation();
                         if (isExplorePage) setActiveTab('when');
@@ -240,7 +243,7 @@ export function NavHeader() {
                     >
                       {selectedDates.start && selectedDates.end ? `${selectedDates.start.toLocaleDateString()} - ${selectedDates.end.toLocaleDateString()}` : 'Anytime'}
                     </span>
-                    <span 
+                    <span
                       onClick={(e) => {
                         e.stopPropagation();
                         if (isExplorePage) setActiveTab('what');
@@ -250,7 +253,7 @@ export function NavHeader() {
                     >
                       {whatSearch || 'Search gear...'}
                     </span>
-                    <div 
+                    <div
                       onClick={(e) => {
                         e.stopPropagation();
                         if (isExplorePage) setActiveTab('what');
@@ -287,19 +290,35 @@ export function NavHeader() {
               </div>
             ) : (
               <>
-                <div className="relative flex items-center justify-end h-10 mr-2">
+                {/* Action Crossfade container */}
+                <div className="relative flex items-center justify-end w-32 h-10 mr-2">
                   <AnimatePresence initial={false}>
                     {isExpanded ? (
-                      <motion.div 
+                      <motion.div
                         key="actions-expanded"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={transitionConfig}
-                        className="absolute right-0"
-                      />
+                        className="absolute right-0 flex items-center gap-2"
+                      >
+                        <button
+                          onClick={() => {
+                            setShowNotifMenu(!showNotifMenu);
+                            setUnreadCount(0);
+                          }}
+                          className="p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors relative"
+                        >
+                          <Bell size={20} className="text-foreground/80" />
+                          {unreadCount > 0 && (
+                            <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 bg-[var(--accent)] text-black font-extrabold text-[10px] rounded-full flex items-center justify-center border border-background">
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                          )}
+                        </button>
+                      </motion.div>
                     ) : (
-                      <motion.div 
+                      <motion.div
                         key="actions-collapsed"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -307,11 +326,23 @@ export function NavHeader() {
                         transition={transitionConfig}
                         className="absolute right-0 flex items-center gap-2"
                       >
-                        <button 
+                        <button
                           onClick={() => setShowNavMenu(!showNavMenu)}
                           className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 border border-transparent transition-colors"
                         >
                           <Menu size={20} className="text-foreground/80" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowNotifMenu(!showNotifMenu);
+                            setUnreadCount(0);
+                          }}
+                          className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10 border border-border/10 transition-colors relative"
+                        >
+                          <Bell size={20} className="text-foreground/80" />
+                          {unreadCount > 0 && (
+                            <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--accent)] rounded-full border border-background"></span>
+                          )}
                         </button>
                       </motion.div>
                     )}
@@ -343,6 +374,60 @@ export function NavHeader() {
                     )}
                   </AnimatePresence>
 
+                  {/* Notification Menu Dropdown */}
+                  <AnimatePresence>
+                    {showNotifMenu && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute top-12 right-0 w-80 sm:w-96 rounded-2xl bg-background border border-border/40 shadow-2xl p-4 z-50 space-y-3"
+                      >
+                        <div className="flex items-center justify-between border-b border-border/10 pb-2">
+                          <h4 className="font-syne font-bold text-sm text-foreground">Notifications</h4>
+                          <span className="text-xs text-foreground/50">{notifications.length} recent</span>
+                        </div>
+
+                        <div className="max-h-72 overflow-y-auto space-y-2">
+                          {notifications.length === 0 ? (
+                            <div className="py-8 text-center text-xs text-foreground/50">
+                              No new notifications
+                            </div>
+                          ) : (
+                            notifications.map((n, idx) => (
+                              <Link
+                                key={idx}
+                                href={
+                                  (n.type === 'new_message'
+                                    ? `/messages/${n.conversationId}`
+                                    : n.type === 'booking_request' || n.type === 'booking_confirmed' || n.type === 'booking_rejected'
+                                      ? '/bookings'
+                                      : '/') as Route
+                                }
+                                onClick={() => setShowNotifMenu(false)}
+                                className="block p-3 rounded-xl bg-muted/30 hover:bg-muted/60 transition-colors text-xs space-y-1"
+                              >
+                                <div className="font-semibold text-foreground flex items-center justify-between">
+                                  <span>
+                                    {n.type === 'booking_request' && '📋 Rental Request'}
+                                    {n.type === 'booking_confirmed' && '✅ Booking Confirmed'}
+                                    {n.type === 'booking_rejected' && '❌ Request Declined'}
+                                    {n.type === 'new_message' && '💬 New Message'}
+                                  </span>
+                                </div>
+                                <p className="text-foreground/70 leading-normal">
+                                  {n.type === 'booking_request' && `${n.renterName} requested to rent ${n.listingTitle}`}
+                                  {n.type === 'booking_confirmed' && `Your booking for ${n.listingTitle} was confirmed by ${n.lenderName}`}
+                                  {n.type === 'booking_rejected' && `Your request for ${n.listingTitle} was declined`}
+                                  {n.type === 'new_message' && `${n.senderName}: "${n.preview}"`}
+                                </p>
+                              </Link>
+                            ))
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Live Toast Popover */}
@@ -387,7 +472,7 @@ export function NavHeader() {
                 <Link href={{ pathname: '/listings/new' }} className={cn(
                   "hyper-liquid inline-flex items-center justify-center font-semibold transition-all overflow-hidden whitespace-nowrap gap-2 text-sm px-4 py-2 rounded-full relative z-10"
                 )}>
-                  <Plus size={18} strokeWidth={2.5} />
+                  <Plus size={18} strokeWidth={2.5} /> Rent
                 </Link>
 
                 <Link
