@@ -377,19 +377,9 @@ pnpm lint
 - [ ] **Mobile App**: Cross-platform React Native / Expo mobile app sharing the `@stuflux/types` package.
 - [ ] **AI-Powered Item Valuation**: Suggested daily rental pricing based on item model, age, and demand trends.
 
----
 
-## 👥 Authors & Academic Context
-
-StuFlux was engineered as a Bachelor of Science in Computer Science Final Year Project at:
-**Govt. Queen Mary Graduate College, University of the Punjab, Lahore**
-
-* **Hajra Mubasher** (Roll No. 093080)
-* **Wajeeha Shahzeb** (Roll No. 093078)
-* **Project Supervisor**: Miss Rida
-
----
 
 <div align="center">
   <p><sub>Built with passion for sustainable urban sharing, clean code, and resilient system design.</sub></p>
 </div>
+  
