@@ -8,7 +8,7 @@
 
 --> statement-breakpoint
 ALTER TABLE "conversations"
-    ADD COLUMN "booking_id" uuid
+    ADD COLUMN IF NOT EXISTS "booking_id" uuid
     REFERENCES "public"."bookings"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
 
 --> statement-breakpoint

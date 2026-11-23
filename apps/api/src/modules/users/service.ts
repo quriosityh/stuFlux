@@ -1,6 +1,8 @@
 import { createClerkClient } from '@clerk/backend';
+import { AppError } from '../../common/errors.js';
 import { usersRepository } from './repository.js';
-import type { UpdateProfileInput } from './validations.js';
+import type { SyncPhoneVerificationInput } from './validations.js';
+import type { CompleteOnboardingInput, UpdateProfileInput } from './validations.js';
 
 const DEFAULT_AREA = 'johar-town';
 const DEFAULT_NAME = 'User';
@@ -49,19 +51,31 @@ export const ensureUserSynced = async (clerkUserId: string) => {
     `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() ||
     clerkUser.username ||
     clerkUser.emailAddresses[0]?.emailAddress ||
-    existing?.display_name ||
     DEFAULT_NAME;
 
-  const email = clerkUser.emailAddresses[0]?.emailAddress || existing?.email || null;
-  const avatar_url = clerkUser.imageUrl || existing?.avatar_url || null;
-  const area = (existing as any)?.area || DEFAULT_AREA;
+  const email = clerkUser.emailAddresses[0]?.emailAddress || null;
+  const avatar_url = clerkUser.imageUrl || null;
+
+  // Demo data may have been created before the matching Clerk account. Reuse
+  // that profile by email so its listings, bookings, and reviews stay linked
+  // to the person instead of creating a second database identity.
+  if (email) {
+    const matchingUser = await usersRepository.findByEmail(email);
+    if (matchingUser) {
+      const user = await usersRepository.attachClerkIdentity(matchingUser.id, clerkUserId);
+      if (user) {
+        setCachedUser(clerkUserId, user);
+        return user;
+      }
+    }
+  }
 
   const user = await usersRepository.upsertFromClerk({
     clerk_user_id: clerkUserId,
     display_name: displayName,
     email,
     avatar_url,
-    area,
+    area: DEFAULT_AREA,
   });
 
   if (user) {
@@ -71,10 +85,74 @@ export const ensureUserSynced = async (clerkUserId: string) => {
   return user;
 };
 
-export const getProfile = async (dbUserId: string) => {
-  return usersRepository.findById(dbUserId);
+/**
+ * Get own profile with stats + phone verification (3 DB calls total, 2 in parallel)
+ * The user row is passed in from auth middleware — no redundant findById call.
+ */
+export const getProfile = async (userRow: any) => {
+  const [phoneVerified, stats] = await Promise.all([
+    usersRepository.isPhoneVerified(userRow.id),
+    usersRepository.getUserStats(userRow.id),
+  ]);
+
+  return {
+    ...userRow,
+    phone_verified: phoneVerified,
+    stats,
+  };
+};
+
+/** Confirms the phone belongs to the authenticated Clerk user before persisting its verified state. */
+export const syncPhoneVerification = async (
+  userRow: { id: string; clerk_user_id: string },
+  input: SyncPhoneVerificationInput
+) => {
+  const clerkUser = await clerkClient.users.getUser(userRow.clerk_user_id);
+  const phone = clerkUser.phoneNumbers.find((item) => item.id === input.phone_number_id);
+
+  if (!phone || phone.verification?.status !== 'verified') {
+    throw new AppError('Phone number has not been verified', 400, 'PHONE_NOT_VERIFIED');
+  }
+
+  await usersRepository.setPhoneVerified(userRow.id);
+  return { phone_verified: true };
+};
+
+/**
+ * Public profile — strips private financials (earned/pending amounts)
+ */
+export const getPublicProfile = async (targetUserId: string) => {
+  const [user, phoneVerified, stats] = await Promise.all([
+    usersRepository.findById(targetUserId),
+    usersRepository.isPhoneVerified(targetUserId),
+    usersRepository.getUserStats(targetUserId),
+  ]);
+
+  if (!user) return null;
+
+  // Strip private financial fields — renter should not see host's earnings
+  const { total_earned: _te, pending_earnings: _pe, ...publicStats } = stats;
+
+  return {
+    id:           user.id,
+    display_name: user.display_name,
+    area:         user.area,
+    avatar_url:   user.avatar_url,
+    created_at:   user.created_at,
+    phone_verified: phoneVerified,
+    stats:        publicStats,
+  };
 };
 
 export const updateProfile = async (dbUserId: string, payload: UpdateProfileInput) => {
   return usersRepository.updateProfile(dbUserId, payload);
+};
+
+/**
+ * Marks onboarding complete only alongside the required profile data. Keeping
+ * this separate from the regular profile update prevents a client from setting
+ * an arbitrary `onboarded: true` flag.
+ */
+export const completeOnboarding = async (dbUserId: string, payload: CompleteOnboardingInput) => {
+  return usersRepository.updateProfile(dbUserId, { ...payload, onboarded: true });
 };

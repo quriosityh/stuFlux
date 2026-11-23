@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useState, useEffect } from 'react';
-import { isFuture, isPast, differenceInCalendarDays } from 'date-fns';
+import { endOfDay, isFuture, isPast, differenceInCalendarDays, parseISO } from 'date-fns';
 import {
   IconCalendar,
   IconUser,
@@ -18,10 +18,20 @@ import type { ActivityBooking } from './types';
 
 export type DisplayStatus = 'active' | 'upcoming' | 'completed' | 'pending' | 'declined';
 
+// Booking dates are calendar dates, not instants. Treat the return date as
+// running through the end of that day so an item does not disappear on the
+// morning it is due back.
+export function getBookingStart(date: string) {
+  return parseISO(date);
+}
+
+export function getBookingEnd(date: string) {
+  return endOfDay(parseISO(date));
+}
+
 export function getDisplayStatus(booking: ActivityBooking): DisplayStatus {
-  const start = new Date(booking.start_date);
-  const end = new Date(booking.end_date);
-  const now = new Date();
+  const start = getBookingStart(booking.start_date);
+  const end = getBookingEnd(booking.end_date);
 
   if (booking.status === 'pending') return 'pending';
   if (booking.status === 'rejected') return 'declined';
@@ -91,8 +101,8 @@ function formatCurrency(amount: number) {
 }
 
 function getDaysText(booking: ActivityBooking): string {
-  const start = new Date(booking.start_date);
-  const end = new Date(booking.end_date);
+  const start = getBookingStart(booking.start_date);
+  const end = getBookingEnd(booking.end_date);
   const now = new Date();
 
   if (booking.status === 'confirmed') {

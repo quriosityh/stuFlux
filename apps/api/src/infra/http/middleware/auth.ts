@@ -9,10 +9,11 @@ const clerkClient = createClerkClient({
 
 export interface AuthenticatedRequest extends Request {
   auth?: {
-    userId: string; // Database user UUID
+    userId: string;     // Database user UUID
     clerkUserId: string; // Clerk user ID (e.g. user_...)
     sessionId: string;
     claims: any;
+    userRow?: any;       // Full user DB row — available when authentication succeeds
   };
 }
 
@@ -42,12 +43,13 @@ export const requireAuth = async (
       throw new AppError('User synchronization failed', 500, 'USER_SYNC_ERROR');
     }
 
-    // Add user info to request
+    // Attach full user row — downstream controllers skip redundant DB lookups
     req.auth = {
       userId: user.id,
       clerkUserId: payload.sub,
       sessionId: payload.sid as string,
-      claims: payload
+      claims: payload,
+      userRow: user,
     };
 
     next();

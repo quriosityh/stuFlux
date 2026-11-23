@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../../infra/http/middleware/errorHandler.js';
 import { requireAuth, type AuthenticatedRequest } from '../../infra/http/middleware/auth.js';
-import { sendMessage, listConversations, listMessages, deleteMessage, markConversationSeen } from './service.js';
+import { sendMessage, listConversations, listMessages, deleteMessage, markConversationSeen, getConversationByListing } from './service.js';
 import { messageEmitter, trackStream, untrackStream } from '../../infra/events/messageEmitter.js';
 import { messagesRepository } from './repository.js';
 import { AppError } from '../../common/errors.js';
@@ -49,6 +49,16 @@ export const markConversationSeenHandler = [
   }),
 ];
 
+export const getConversationByListingHandler = [
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { listingId } = req.params;
+    const data = await getConversationByListing(listingId, req.auth!.userId);
+    // 200 with null data = no thread yet (caller should start one)
+    res.json({ data });
+  }),
+];
+
 export const streamConversationHandler = [
   requireAuth,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -61,22 +71,33 @@ export const streamConversationHandler = [
     }
 
     res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Nginx: disable proxy buffering
     res.flushHeaders?.();
 
+    // Disable Nagle's algorithm so each event is sent immediately
+    const socket = (req.socket ?? (req as any).connection);
+    if (socket?.setNoDelay) socket.setNoDelay(true);
+
     // Track active stream for delivery semantics
-    trackStream(id, req.auth!.userId);
+    trackStream(id, userId);
 
     // Mark any pending undelivered messages as delivered upon connection
-    await messagesRepository.markUndeliveredAsDelivered(id, req.auth!.userId);
+    void messagesRepository.markUndeliveredAsDelivered(id, userId);
 
     const heartbeat = setInterval(() => {
       res.write(':heartbeat\n\n');
-    }, 25000);
+    }, 20000);
 
     const listener = (payload: any) => {
-      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      try {
+        res.write(`data: ${JSON.stringify(payload)}\n\n`);
+        // Force flush if available (e.g. compression middleware wraps write)
+        if (typeof (res as any).flush === 'function') (res as any).flush();
+      } catch {
+        // Connection already closed
+      }
     };
 
     messageEmitter.on(`conversation:${id}`, listener);
@@ -84,7 +105,7 @@ export const streamConversationHandler = [
     req.on('close', () => {
       clearInterval(heartbeat);
       messageEmitter.off(`conversation:${id}`, listener);
-      untrackStream(id, req.auth!.userId);
+      untrackStream(id, userId);
     });
   }),
 ];

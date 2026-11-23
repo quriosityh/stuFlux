@@ -1,39 +1,55 @@
 'use client';
 
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Heart, Star } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Star } from 'lucide-react';
+
+type ListingCardItem = {
+  id?: unknown;
+  title?: string;
+  area?: string;
+  city?: string;
+  daily_rate?: number;
+  price?: number;
+  rating?: number | null;
+  photos?: Array<{ is_primary?: boolean; url?: string }>;
+  photo?: { thumbnail_url?: string; url?: string };
+  imageUrl?: string;
+  delivery_available?: boolean;
+  booking_count?: number;
+};
 
 interface ListingCardProps {
-  item: any;
+  item: ListingCardItem;
 }
 
 export function ListingCard({ item }: ListingCardProps) {
-  const [isSaved, setIsSaved] = useState(false);
-
   // Map API response fields to display values
   const title = item?.title || 'Untitled Listing';
   const area = item?.area || item?.city || '';
   const price = item?.daily_rate ?? item?.price ?? 0;
+  // Never stringify a malformed listing id into a route such as
+  // `/listings/[object Object]`; the API correctly rejects that as non-UUID.
+  const listingId = typeof item?.id === 'string' ? item.id : null;
+
+  // `rating` and `review_count` are calculated by the listings API from renter reviews.
+  const rating = item?.rating == null ? null : Number(item.rating);
+
   // Primary photo: try photos array first, then thumbnail, then imageUrl fallback
-  const primaryPhoto = item?.photos?.find((p: any) => p.is_primary)?.url
+  const primaryPhoto = item?.photos?.find((p) => p.is_primary)?.url
     ?? item?.photos?.[0]?.url
     ?? item?.photo?.thumbnail_url
     ?? item?.photo?.url
-    ?? item?.imageUrl
-    ?? null;
-  const isFeatured = item?.isFeatured || false;
+    ?? item?.imageUrl;
 
   return (
-    <Link href={{ pathname: `/listings/${item?.id || '1'}` }} className="group block cursor-pointer">
+    <Link href={listingId ? { pathname: `/listings/${listingId}` } : { pathname: '/' }} className="group block cursor-pointer">
       {/* Image Container */}
-      <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-3 bg-surface border border-border/5">
+      <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-3.5 bg-surface border border-border/5">
         <motion.div
           className="w-full h-full"
-          whileHover={{ scale: 1.05 }}
-          transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
+          whileHover={{ scale: 1.04 }}
+          transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
         >
           {primaryPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -43,58 +59,55 @@ export function ListingCard({ item }: ListingCardProps) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-[var(--surface)] to-[var(--border-color)]/30 flex items-center justify-center text-foreground/20 text-4xl">
-              📦
+            <div className="w-full h-full bg-gradient-to-br from-surface to-border/10 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-border/5 border border-border/10 flex items-center justify-center text-foreground/20 text-2xl shadow-inner">
+                📦
+              </div>
             </div>
           )}
         </motion.div>
-
-        {/* Featured Badge */}
-        {isFeatured && (
-          <div className="absolute top-3 left-3 bg-background/90 backdrop-blur-md px-2 py-1 rounded-md shadow-sm border border-border/10">
-            <span className="text-[10px] font-bold tracking-wider uppercase">Featured ✨</span>
-          </div>
-        )}
-
-        {/* Save Button (Heart) */}
-        <button 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsSaved(!isSaved);
-          }}
-          className="absolute top-3 right-3 p-1.5 z-10"
-        >
-          <motion.div
-            whileTap={{ scale: 0.8 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-          >
-            <Heart 
-              size={24} 
-              className={cn(
-                "drop-shadow-md transition-colors",
-                isSaved ? "fill-[var(--accent)] text-[var(--accent)]" : "fill-black/30 text-white"
-              )} 
-            />
-          </motion.div>
-        </button>
       </div>
 
-      {/* Card Content */}
-      <div className="space-y-0.5 px-1">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-syne font-bold text-base truncate">{title}</h3>
+      {/* Card Content: Structured & Organized */}
+      <div className="space-y-1 px-1">
+        {/* Row 1: Title & Rating */}
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-bold text-[14px] sm:text-[15px] leading-snug truncate text-foreground flex-1">
+            {title}
+          </h3>
+          {rating !== null ? (
+            <div className="flex items-center gap-1 shrink-0 text-amber-500 font-bold text-[12px] sm:text-[13px]">
+              <Star size={14} className="fill-amber-500 stroke-none" />
+              <span>{rating.toFixed(1)}</span>
+            </div>
+          ) : (
+            <span className="text-[11px] sm:text-[12px] font-bold text-foreground/45 bg-foreground/5 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+              New
+            </span>
+          )}
         </div>
         
-        {area && (
-          <div className="text-xs text-foreground/50 truncate">
-            📍 {area}
+        {/* Row 2: Location/Area & Delivery */}
+        <div className="flex items-center justify-between text-[11px] sm:text-[12px] text-muted-foreground font-medium">
+          <div className="truncate flex items-center gap-1">
+            <span className="opacity-70">📍</span>
+            <span>{area || 'Location N/A'}</span>
           </div>
-        )}
+          {item?.delivery_available && (
+            <span className="shrink-0 text-sm leading-none" title="Delivery Available">🚚</span>
+          )}
+        </div>
         
-        <div className="pt-1">
-          <span className="text-base font-extrabold text-[var(--accent)]">Rs. {price.toLocaleString()}</span>
-          <span className="text-xs text-foreground/40 font-medium"> / day</span>
+        {/* Row 3: Price & Booking metrics */}
+        <div className="flex items-baseline justify-between pt-1 border-t border-border/5">
+          <div className="font-bold text-[13px] sm:text-[14px] text-foreground">
+            Rs. {price.toLocaleString()}<span className="text-muted-foreground text-[10px] sm:text-[11px] font-medium">/day</span>
+          </div>
+          {item?.booking_count > 0 && (
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground/75 font-medium">
+              {item.booking_count} rentals
+            </span>
+          )}
         </div>
       </div>
     </Link>

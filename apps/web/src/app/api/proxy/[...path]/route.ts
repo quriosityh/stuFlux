@@ -1,8 +1,9 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextRequest } from 'next/server';
 
+// Force dynamic to prevent aggressive Next.js App Router caching of API responses (like bookings)
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:4000/api/v1';
 
@@ -10,18 +11,22 @@ async function forwardRequest(req: NextRequest, path: string[]) {
   const { getToken } = await auth();
   const token = await getToken();
 
-  if (!token) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
   const targetUrl = new URL(`${API_BASE_URL}/${path.map((segment) => encodeURIComponent(segment)).join('/')}`);
   targetUrl.search = req.nextUrl.search;
 
   const headers = new Headers(req.headers);
-  headers.set('Authorization', `Bearer ${token}`);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  } else {
+    headers.delete('Authorization');
+  }
   headers.delete('host');
   headers.delete('connection');
   headers.delete('content-length');
+  // This is a server-to-server request. Forwarding the browser's Origin makes
+  // the API apply its CORS allowlist to the web app's LAN address (for example,
+  // when the app is opened on a phone during local development).
+  headers.delete('origin');
 
   const hasBody = !['GET', 'HEAD'].includes(req.method);
   const body = hasBody ? await req.text() : undefined;

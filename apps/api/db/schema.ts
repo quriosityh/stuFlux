@@ -9,7 +9,10 @@ import {
     serial,
     pgEnum,
     date,
+    index,
+    uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ====================== USERS ======================
 
@@ -26,6 +29,7 @@ export const users = pgTable("users", {
 
     email: text("email"),
     avatar_url: text("avatar_url"),
+    onboarded: boolean("onboarded").default(false).notNull(),
 });
 
 // ====================== USER_VERIFICATIONS ======================
@@ -36,7 +40,9 @@ export const userVerifications = pgTable("user_verifications", {
         .notNull(),
     phone_verified: boolean("phone_verified").default(false), // Defaults to false
     verification_level: text("verification_level").default("unverified"), // Default value
-});
+}, (table) => [
+    uniqueIndex("user_verifications_user_id_unique").on(table.user_id),
+]);
 
 // ====================== PUSH SUBSCRIPTIONS ======================
 export const pushSubscriptions = pgTable("push_subscriptions", {
@@ -104,7 +110,7 @@ export const listingBlockedDates = pgTable("listing_blocked_dates", {
 });
 
 // ====================== BOOKINGS ======================
-export const bookingStatus = pgEnum('booking_status', ['pending', 'confirmed', 'rejected', 'completed']);
+export const bookingStatus = pgEnum('booking_status', ['pending', 'confirmed', 'rejected', 'completed', 'cancelled']);
 
 export const bookings = pgTable("bookings", {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -121,6 +127,7 @@ export const bookings = pgTable("bookings", {
     delivery_fee: integer("delivery_fee").default(0),
     confirmed_at: timestamp("confirmed_at", { withTimezone: true }),
     rejected_at: timestamp("rejected_at", { withTimezone: true }),
+    cancelled_at: timestamp("cancelled_at", { withTimezone: true }),
     completed_at: timestamp("completed_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
@@ -193,3 +200,32 @@ export const messages = pgTable("messages", {
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     deleted_at: timestamp("deleted_at", { withTimezone: true }),
 });
+
+// ====================== REVIEWS ======================
+// Kept in the database schema so Drizzle Kit can load it directly.
+export const reviewRoleEnum = pgEnum('review_role', ['as_lender', 'as_renter']);
+
+export const reviews = pgTable(
+    'reviews',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        bookingId: uuid('booking_id').notNull().references(() => bookings.id, { onDelete: 'cascade' }),
+        listingId: uuid('listing_id').notNull().references(() => listings.id, { onDelete: 'cascade' }),
+        reviewerId: uuid('reviewer_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+        targetId: uuid('target_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+        role: reviewRoleEnum('role').notNull(),
+        rating: integer('rating').notNull(),
+        categoryRatings: jsonb('category_ratings').$type<Record<string, number>>().default({}).notNull(),
+        comment: text('comment'),
+        anonymous: boolean('anonymous').default(false).notNull(),
+        createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+        deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    },
+    (table) => ({
+        uniqueBookingReviewer: uniqueIndex('uniq_booking_reviewer').on(table.bookingId, table.reviewerId),
+        listingRatingLookup: index('idx_reviews_listing_public_rating')
+            .on(table.listingId, table.rating)
+            .where(sql`${table.role} = 'as_lender' AND ${table.deletedAt} IS NULL`),
+    }),
+);

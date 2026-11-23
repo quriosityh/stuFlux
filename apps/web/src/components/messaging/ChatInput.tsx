@@ -4,9 +4,10 @@ import { cn } from '@/lib/utils';
 
 interface Props {
   onSendMessage: (text: string) => void;
+  isSending?: boolean;
 }
 
-export function ChatInput({ onSendMessage }: Props) {
+export function ChatInput({ onSendMessage, isSending = false }: Props) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -19,12 +20,12 @@ export function ChatInput({ onSendMessage }: Props) {
   }, [text]);
 
   const handleSend = () => {
-    if (text.trim()) {
+    if (text.trim() && !isSending) {
       onSendMessage(text.trim());
       setText('');
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
-        textareaRef.current.focus(); // Keep keyboard open by re-focusing
+        textareaRef.current.focus();
       }
     }
   };
@@ -54,15 +55,19 @@ export function ChatInput({ onSendMessage }: Props) {
             e.preventDefault();
           }}
           onClick={handleSend}
-          disabled={!text.trim()}
+          disabled={!text.trim() || isSending}
           className={cn(
             "w-9 h-9 rounded-xl flex-shrink-0 transition-all flex items-center justify-center",
-            text.trim() 
+            text.trim() && !isSending
               ? "bg-[var(--accent)] text-black shadow-sm hover:scale-105 active:scale-95" 
               : "opacity-30 cursor-not-allowed bg-[var(--surface)] text-[var(--foreground)]"
           )}
         >
-          <SendHorizontal size={16} className={text.trim() ? "text-black ml-0.5" : "text-[var(--foreground)]"} />
+          {isSending ? (
+            <div className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin" />
+          ) : (
+            <SendHorizontal size={16} className={text.trim() ? "text-black ml-0.5" : "text-[var(--foreground)]"} />
+          )}
         </button>
       </div>
     </div>

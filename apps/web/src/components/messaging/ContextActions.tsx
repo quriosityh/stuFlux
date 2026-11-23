@@ -1,9 +1,35 @@
+import { useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { Conversation } from './types';
 import { Calendar } from 'lucide-react';
 import Link from 'next/link';
 
 export function ContextActions({ conversation }: { conversation: Conversation }) {
-  const { phase, role, listingId } = conversation;
+  const { getToken } = useAuth();
+  const router = useRouter();
+  const { phase, role, listingId, bookingId } = conversation;
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+
+  const handleBookingAction = async (action: 'confirm' | 'reject' | 'cancel') => {
+    if (!bookingId) return;
+    setLoadingAction(action);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch(`/api/proxy/bookings/${bookingId}/${action}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error(`Failed to ${action} booking:`, err);
+    } finally {
+      setLoadingAction(null);
+    }
+  };
 
   const hasNoActions = phase === 'inquiry' && role === 'lender';
 
@@ -22,45 +48,59 @@ export function ContextActions({ conversation }: { conversation: Conversation })
 
       {phase === 'pending' && role === 'lender' && (
         <>
-          <button className="hyper-liquid w-full py-3 text-sm">
-            Approve Request
+          <button 
+            onClick={() => handleBookingAction('confirm')}
+            disabled={!!loadingAction}
+            className="hyper-liquid w-full py-3 text-sm disabled:opacity-50"
+          >
+            {loadingAction === 'confirm' ? 'Approving...' : 'Approve Request'}
           </button>
-          <button className="w-full py-3 text-sm font-bold text-red-500 border border-red-500/30 rounded-full hover:bg-red-500/10 transition-colors">
-            Decline
+          <button 
+            onClick={() => handleBookingAction('reject')}
+            disabled={!!loadingAction}
+            className="w-full py-3 text-sm font-bold text-red-500 border border-red-500/30 rounded-full hover:bg-red-500/10 transition-colors disabled:opacity-50"
+          >
+            {loadingAction === 'reject' ? 'Declining...' : 'Decline'}
           </button>
         </>
       )}
 
       {phase === 'pending' && role === 'renter' && (
-        <button className="w-full py-3 text-sm font-bold text-red-500 border border-red-500/30 rounded-full hover:bg-red-500/10 transition-colors">
-          Cancel Request
+        <button 
+          onClick={() => handleBookingAction('cancel')}
+          disabled={!!loadingAction}
+          className="w-full py-3 text-sm font-bold text-red-500 border border-red-500/30 rounded-full hover:bg-red-500/10 transition-colors disabled:opacity-50"
+        >
+          {loadingAction === 'cancel' ? 'Cancelling...' : 'Cancel Request'}
         </button>
       )}
 
-      {phase === 'confirmed' && (
-        <button className="secondary-button w-full py-3 text-sm font-bold">
+      {(phase === 'confirmed' || phase === 'ongoing') && (
+        <button 
+          onClick={() => router.push('/bookings' as any)}
+          className="secondary-button w-full py-3 text-sm font-bold"
+        >
           View Booking Details
         </button>
       )}
 
-      {phase === 'ongoing' && (
-        <div className="flex flex-col gap-2">
-           <button className="secondary-button w-full py-3 text-sm font-bold">
-             View Booking Details
-           </button>
-        </div>
-      )}
-
       {phase === 'completed' && (
         <>
-          <button className="hyper-liquid w-full py-3 text-sm">
+          <button 
+            onClick={() => router.push('/bookings' as any)}
+            className="hyper-liquid w-full py-3 text-sm"
+          >
             Leave a Review
           </button>
-          <button className="secondary-button w-full py-3 text-sm font-bold">
+          <Link 
+            href={`/listings/${listingId}` as any}
+            className="secondary-button w-full py-3 text-sm font-bold text-center block"
+          >
             Rent Again
-          </button>
+          </Link>
         </>
       )}
     </div>
   );
 }
+

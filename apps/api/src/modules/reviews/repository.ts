@@ -1,0 +1,372 @@
+import { db } from '../../infra/db/client.js';
+import { reviews, bookings, listings, users } from '../../../db/schema.js';
+import { eq, and, isNull, desc, asc, sql, inArray } from 'drizzle-orm';
+import type { NewReview, Review } from './schema.js';
+import type { GetReviewsQuery } from './validation.js';
+import type { PgTransaction } from 'drizzle-orm/pg-core';
+
+// Constants
+const REVIEW_ANONYMITY_PERIOD_DAYS = 14;
+
+/**
+ * Get listing details
+ */
+export const getListingDetails = async (listingId: string, tx: any = db) => {
+  const [listing] = await tx
+    .select({
+      id: listings.id,
+      ownerId: listings.owner_id,
+      title: listings.title,
+    })
+    .from(listings)
+    .where(eq(listings.id, listingId));
+
+  return listing || null;
+};
+
+/**
+ * Get booking details
+ */
+export const getBookingDetails = async (bookingId: string, tx: any = db) => {
+  const [booking] = await tx
+    .select({
+      id: bookings.id,
+      status: bookings.status,
+      renterId: bookings.renter_id,
+      listingId: bookings.listing_id,
+      startDate: bookings.start_date,
+      endDate: bookings.end_date,
+    })
+    .from(bookings)
+    .where(eq(bookings.id, bookingId));
+
+  return booking || null;
+};
+
+/** Mark one elapsed confirmed booking complete before creating its review. */
+export const completeBookingIfEnded = async (bookingId: string, tx: any = db) => {
+  const [booking] = await tx
+    .update(bookings)
+    .set({
+      status: 'completed',
+      completed_at: sql`NOW()`,
+      updated_at: sql`NOW()`,
+    })
+    .where(and(
+      eq(bookings.id, bookingId),
+      eq(bookings.status, 'confirmed'),
+      sql`${bookings.end_date} <= CURRENT_DATE`
+    ))
+    .returning({ id: bookings.id });
+
+  return !!booking;
+};
+
+/**
+ * Find review by booking + reviewer
+ */
+export const findReviewByBookingAndReviewer = async (
+  bookingId: string,
+  reviewerId: string,
+  tx: any = db
+): Promise<Review | null> => {
+  const [review] = await tx
+    .select()
+    .from(reviews)
+    .where(and(
+      eq(reviews.bookingId, bookingId),
+      eq(reviews.reviewerId, reviewerId),
+      isNull(reviews.deletedAt)
+    ));
+
+  return review || null;
+};
+
+/**
+ * Find review by ID
+ */
+export const findReviewById = async (id: string, tx: any = db): Promise<Review | null> => {
+  const [review] = await tx
+    .select()
+    .from(reviews)
+    .where(and(eq(reviews.id, id), isNull(reviews.deletedAt)));
+
+  return review || null;
+};
+
+/**
+ * Create new review
+ */
+export const createReview = async (data: NewReview, tx: any = db): Promise<Review> => {
+  const [review] = await tx.insert(reviews).values(data).returning();
+  return review;
+};
+
+/**
+ * Soft delete review
+ */
+export const softDeleteReview = async (id: string, tx: any = db): Promise<boolean> => {
+  const [deleted] = await tx.update(reviews)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(reviews.id, id), isNull(reviews.deletedAt)))
+    .returning();
+
+  return !!deleted;
+};
+
+/**
+ * Update review
+ */
+export const updateReview = async (
+  id: string, 
+  data: Partial<NewReview>,
+  tx: any = db
+): Promise<Review | null> => {
+  const [updated] = await tx.update(reviews)
+    .set({ ...data, updatedAt: new Date() })
+    .where(and(eq(reviews.id, id), isNull(reviews.deletedAt)))
+    .returning();
+
+  return updated || null;
+};
+
+/**
+ * Rate limiting (reviews in last 1 hour)
+ */
+export const getRecentReviewCount = async (userId: string, tx: any = db): Promise<number> => {
+  const oneHourAgo = new Date();
+  oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+  const [{ count }] = await tx.select({ count: sql<number>`count(*)::int` })
+    .from(reviews)
+    .where(and(
+      eq(reviews.reviewerId, userId),
+      sql`${reviews.createdAt} >= ${oneHourAgo}`
+    ));
+
+  return count;
+};
+
+/**
+ * Update anonymity after both parties review or 14 days
+ * ✅ FIXED: SQL injection vulnerability removed
+ */
+export const updateAnonymityStatus = async (bookingId: string, tx: any = db): Promise<void> => {
+  const bookingReviews = await tx.select().from(reviews)
+    .where(and(eq(reviews.bookingId, bookingId), isNull(reviews.deletedAt)));
+
+  // Case 1: Both parties have reviewed - reveal immediately
+  if (bookingReviews.length === 2) {
+    const reviewIds = bookingReviews.map((r: any) => r.id);
+    await tx.update(reviews)
+      .set({ anonymous: false, updatedAt: new Date() })
+      .where(inArray(reviews.id, reviewIds)); // ✅ SAFE: Using inArray instead of string interpolation
+  }
+
+  // Case 2: 14 days have passed - reveal any remaining anonymous reviews
+  const fourteenDaysAgo = new Date();
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - REVIEW_ANONYMITY_PERIOD_DAYS);
+
+  await tx.update(reviews)
+    .set({ anonymous: false, updatedAt: new Date() })
+    .where(and(
+      eq(reviews.bookingId, bookingId),
+      isNull(reviews.deletedAt),
+      eq(reviews.anonymous, true),
+      sql`${reviews.createdAt} <= ${fourteenDaysAgo}`
+    ));
+};
+
+/**
+ * Get paginated listing reviews with sorting + category averages.
+ * Fetches reviewer name/avatar via correlated subquery.
+ * Anonymous reviews have identity fields nulled.
+ */
+export const getListingReviews = async (query: GetReviewsQuery) => {
+  const page = query.page || 1;
+  const limit = query.limit || 10;
+  const offset = (page - 1) * limit;
+
+  let orderBy;
+  switch (query.sort) {
+    case 'highest':
+      orderBy = desc(reviews.rating);
+      break;
+    case 'lowest':
+      orderBy = asc(reviews.rating);
+      break;
+    default:
+      orderBy = desc(reviews.createdAt);
+  }
+
+  const whereClause = and(
+    eq(reviews.listingId, query.listingId!),
+    isNull(reviews.deletedAt),
+    query.role && query.role !== 'all' ? eq(reviews.role, query.role as any) : sql`TRUE`,
+    query.category ? sql`${reviews.categoryRatings}->>${query.category} IS NOT NULL` : sql`TRUE`
+  );
+
+  // Run data rows + aggregate stats in parallel
+  const [rawRows, statsRows] = await Promise.all([
+    db
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        categoryRatings: reviews.categoryRatings,
+        comment: reviews.comment,
+        role: reviews.role,
+        anonymous: reviews.anonymous,
+        reviewerId: reviews.reviewerId,
+        targetId: reviews.targetId,
+        createdAt: reviews.createdAt,
+        reviewer_display_name: sql<string>`(
+          SELECT display_name FROM users WHERE id = ${reviews.reviewerId} LIMIT 1
+        )`,
+        reviewer_avatar_url: sql<string | null>`(
+          SELECT avatar_url FROM users WHERE id = ${reviews.reviewerId} LIMIT 1
+        )`,
+        listing_id: reviews.listingId,
+        listing_title: sql<string>`(
+          SELECT title FROM listings WHERE id = ${reviews.listingId} LIMIT 1
+        )`,
+      })
+      .from(reviews)
+      .where(whereClause)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset),
+
+    db
+      .select({
+        total:    sql<number>`count(*)::int`,
+        avgRating: sql<number>`round(avg(${reviews.rating}::numeric), 1)::float`,
+        avgCleanliness:  sql<number>`round(avg((${reviews.categoryRatings}->>'cleanliness')::numeric),  1)::float`,
+        avgCommunication: sql<number>`round(avg((${reviews.categoryRatings}->>'communication')::numeric), 1)::float`,
+        avgAccuracy: sql<number>`round(avg((${reviews.categoryRatings}->>'accuracy')::numeric), 1)::float`,
+        avgValue:    sql<number>`round(avg((${reviews.categoryRatings}->>'value')::numeric),    1)::float`,
+      })
+      .from(reviews)
+      .where(whereClause),
+  ]);
+
+  const statsRow = statsRows[0];
+
+  // Null out identity fields for reviews still in the anonymity window
+  const reviewRows = rawRows.map((r) => ({
+    id:              r.id,
+    rating:          r.rating,
+    categoryRatings: r.categoryRatings,
+    comment:         r.comment,
+    role:            r.role,
+    anonymous:       r.anonymous,
+    createdAt:       r.createdAt,
+    reviewer: r.anonymous
+      ? { id: r.reviewerId, display_name: 'Anonymous', avatar_url: null }
+      : { id: r.reviewerId, display_name: r.reviewer_display_name ?? 'User', avatar_url: r.reviewer_avatar_url ?? null },
+    listing: { id: r.listing_id, title: r.listing_title ?? 'Listing' },
+  }));
+
+  return {
+    reviews:    reviewRows,
+    pagination: { page, limit, total: Number(statsRow?.total || 0) },
+    ratings: {
+      average: Number(statsRow?.avgRating || 0),
+      category: {
+        cleanliness:   Number(statsRow?.avgCleanliness   || 0),
+        communication: Number(statsRow?.avgCommunication || 0),
+        accuracy:      Number(statsRow?.avgAccuracy      || 0),
+        value:         Number(statsRow?.avgValue         || 0),
+      },
+    },
+  };
+};
+
+/**
+ * Get paginated user reviews (received as lender or renter).
+ * Includes reviewer display_name + avatar for non-anonymous reviews.
+ * Runs data + count queries in parallel.
+ */
+export const getUserReviews = async (query: GetReviewsQuery) => {
+  const page  = query.page  || 1;
+  const limit = query.limit || 10;
+  const offset = (page - 1) * limit;
+
+  const orderBy = query.sort === 'highest'
+    ? desc(reviews.rating)
+    : query.sort === 'lowest'
+    ? asc(reviews.rating)
+    : desc(reviews.createdAt);
+
+  const targetId = query.targetId || query.ownerId;
+
+  const whereClause = and(
+    eq(reviews.targetId, targetId!),
+    isNull(reviews.deletedAt),
+    query.role && query.role !== 'all'
+      ? eq(reviews.role, query.role as any)
+      : sql`TRUE`
+  );
+
+  // Run rows + total count in parallel
+  const [rawRows, statsRows] = await Promise.all([
+    db
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        categoryRatings: reviews.categoryRatings,
+        comment: reviews.comment,
+        role: reviews.role,
+        anonymous: reviews.anonymous,
+        reviewerId: reviews.reviewerId,
+        targetId: reviews.targetId,
+        createdAt: reviews.createdAt,
+        reviewer_display_name: sql<string>`(
+          SELECT display_name FROM users WHERE id = ${reviews.reviewerId} LIMIT 1
+        )`,
+        reviewer_avatar_url: sql<string | null>`(
+          SELECT avatar_url FROM users WHERE id = ${reviews.reviewerId} LIMIT 1
+        )`,
+        listing_id: reviews.listingId,
+        listing_title: sql<string>`(
+          SELECT title FROM listings WHERE id = ${reviews.listingId} LIMIT 1
+        )`,
+      })
+      .from(reviews)
+      .where(whereClause)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset),
+
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        avgRating: sql<number>`round(avg(${reviews.rating}::numeric), 1)::float`,
+      })
+      .from(reviews)
+      .where(whereClause),
+  ]);
+
+  const statsRow = statsRows[0];
+
+  const reviewRows = rawRows.map((r) => ({
+    id:              r.id,
+    rating:          r.rating,
+    categoryRatings: r.categoryRatings,
+    comment:         r.comment,
+    role:            r.role,
+    anonymous:       r.anonymous,
+    created_at:      r.createdAt,
+    reviewer: r.anonymous
+      ? { id: r.reviewerId, display_name: 'Anonymous', avatar_url: null }
+      : { id: r.reviewerId, display_name: r.reviewer_display_name ?? 'User', avatar_url: r.reviewer_avatar_url ?? null },
+    listing: { id: r.listing_id, title: r.listing_title ?? 'Listing' },
+  }));
+
+  return {
+    reviews:    reviewRows,
+    pagination: { page, limit, total: Number(statsRow?.total || 0) },
+    ratings: {
+      average: Number(statsRow?.avgRating || 0),
+    },
+  };
+};

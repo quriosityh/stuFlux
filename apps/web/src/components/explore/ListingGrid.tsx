@@ -5,6 +5,7 @@ import { ListingCard } from './ListingCard';
 
 interface ListingGridProps {
   items: any[];
+  total?: number;
 }
 
 const containerVariants = {
@@ -30,7 +31,7 @@ const itemVariants = {
   },
 };
 
-export function ListingGrid({ items }: ListingGridProps) {
+export function ListingGrid({ items, total }: ListingGridProps) {
   if (!items || items.length === 0) {
     return (
       <div className="w-full py-20 flex flex-col items-center justify-center text-center">
@@ -48,9 +49,12 @@ export function ListingGrid({ items }: ListingGridProps) {
     );
   }
 
+  // Only show the button if total is provided and there are more items server-side
+  const hasMore = total !== undefined && items.length < total;
+
   return (
     <div className="w-full">
-      <motion.div 
+      <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="show"
@@ -63,12 +67,14 @@ export function ListingGrid({ items }: ListingGridProps) {
         ))}
       </motion.div>
 
-      {/* Load More Trigger (V1: Button) */}
-      <div className="mt-12 flex justify-center">
-        <button className="px-8 py-3 text-sm font-bold bg-surface border border-border/10 hover:border-foreground/30 hover:bg-transparent rounded-full transition-all cursor-pointer">
-          Show More
-        </button>
-      </div>
+      {/* Show More — only rendered when there are more results than currently displayed */}
+      {hasMore && (
+        <div className="mt-12 flex justify-center">
+          <button className="px-8 py-3 text-sm font-bold bg-surface border border-border/10 hover:border-foreground/30 hover:bg-transparent rounded-full transition-all cursor-pointer">
+            Show More
+          </button>
+        </div>
+      )}
     </div>
   );
 }

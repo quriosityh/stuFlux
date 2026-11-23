@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function ChatHeader({ conversation, onBack, onOpenContext }: Props) {
-  const { otherUserName, listingTitle, dailyRate, phase, listingId } = conversation;
+  const { otherUserName, otherUserAvatar, listingTitle, dailyRate, phase, listingId } = conversation;
   
   const getPhaseBadgeClasses = (phase: string) => {
     switch(phase) {
@@ -39,7 +39,11 @@ export function ChatHeader({ conversation, onBack, onOpenContext }: Props) {
         
         {/* Avatar */}
         <div className="w-14 h-14 rounded-full border border-[var(--border-color)] bg-[var(--background)] flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
-          <span className="text-3xl">🧑</span>
+          {otherUserAvatar ? (
+            <img src={otherUserAvatar} alt={otherUserName} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-xl font-bold">{otherUserName.charAt(0).toUpperCase()}</span>
+          )}
         </div>
         
         {/* Info */}

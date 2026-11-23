@@ -1,86 +1,207 @@
-import { Star } from 'lucide-react';
+'use client';
 
-const mockReviews = [
-  {
-    id: 1,
-    author: "Zainab R.",
-    date: "March 2026",
-    rating: 5,
-    text: "Absolutely fantastic! The camera was in pristine condition, and Ali was super helpful in explaining how the autofocus works. Will definitely rent again.",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80"
-  },
-  {
-    id: 2,
-    author: "Omar S.",
-    date: "February 2026",
-    rating: 5,
-    text: "Smooth transaction and great gear. Battery lasted the whole shoot.",
-    avatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=150&h=150&q=80"
-  },
-  {
-    id: 3,
-    author: "Fatima K.",
-    date: "January 2026",
-    rating: 4,
-    text: "Good experience overall. The lens was slightly dusty on the outside but glass was perfect. Very prompt communication.",
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&h=150&q=80"
-  }
-];
+import { useState, useEffect, useCallback } from 'react';
+import { Star, ChevronDown } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { useApiClient } from '@/lib/api-client';
 
-export function ReviewsSection() {
-  const averageRating = (mockReviews.reduce((acc, rev) => acc + rev.rating, 0) / mockReviews.length).toFixed(1);
+interface Reviewer {
+  display_name: string;
+  avatar_url: string | null;
+}
+
+interface ReviewItem {
+  id: string;
+  rating: number;
+  comment?: string;
+  anonymous: boolean;
+  createdAt: string;
+  reviewer: Reviewer;
+}
+
+interface ReviewsData {
+  reviews: ReviewItem[];
+  pagination: { page: number; limit: number; total: number };
+  ratings: { average: number };
+}
+
+interface ReviewsSectionProps {
+  listingId: string;
+  initialAverage?: number;
+  initialCount?: number;
+}
+
+const PAGE_LIMIT = 5;
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+function SkeletonCard() {
+  return (
+    <div className="animate-pulse flex gap-4 py-6 border-b border-border/10 last:border-0">
+      <div className="w-9 h-9 rounded-full bg-border/15 shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 w-28 rounded bg-border/15" />
+        <div className="h-2.5 w-16 rounded bg-border/10" />
+        <div className="h-3 w-full rounded bg-border/10 mt-2" />
+        <div className="h-3 w-2/3 rounded bg-border/10" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Stars ────────────────────────────────────────────────────────────────────
+function Stars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'lg' }) {
+  const filled = Math.round(rating);
+  const cls = size === 'lg' ? 'w-5 h-5' : 'w-3.5 h-3.5';
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star
+          key={i}
+          className={`${cls} ${i <= filled ? 'text-amber-400 fill-amber-400' : 'text-border/30 fill-current'}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Review card ──────────────────────────────────────────────────────────────
+function ReviewCard({ review }: { review: ReviewItem }) {
+  const avatar =
+    review.reviewer.avatar_url ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(review.reviewer.display_name)}&background=random&size=80`;
 
   return (
-    <div className="py-16 px-4 md:px-0 border-t border-border/10" id="reviews-section">
-      <div className="flex flex-col items-center justify-center mb-12 text-center">
-        <div className="flex items-center gap-3 mb-2">
-          <Star className="w-8 h-8 text-accent fill-current" />
-          <h2 className="text-3xl font-bold font-syne tracking-tight">
-            {averageRating} <span className="text-foreground/50 text-xl font-normal">({mockReviews.length} Reviews)</span>
-          </h2>
+    <div className="flex gap-4 py-6 border-b border-border/10 last:border-0">
+      <img
+        src={avatar}
+        alt={review.reviewer.display_name}
+        className="w-9 h-9 rounded-full object-cover shrink-0 border border-border/10"
+      />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+          <span className="font-semibold text-sm font-syne">{review.reviewer.display_name}</span>
+          <span className="text-xs text-foreground/40">
+            {formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
+          </span>
         </div>
-        <p className="text-foreground/70 font-medium">What our community says about this item</p>
+        <Stars rating={review.rating} />
+        {review.comment && (
+          <p className="mt-2 text-sm text-foreground/70 leading-relaxed">{review.comment}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+export function ReviewsSection({ listingId, initialAverage = 0, initialCount = 0 }: ReviewsSectionProps) {
+  const api = useApiClient();
+  const [data, setData] = useState<ReviewsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [allLoaded, setAllLoaded] = useState(false);
+
+  const fetchReviews = useCallback(
+    async (p: number, append: boolean) => {
+      try {
+        const res = await api
+          .get('reviews', {
+            searchParams: { listingId, limit: PAGE_LIMIT, page: p, sort: 'recent', role: 'as_lender' },
+          })
+          .json<{ success: boolean; data: ReviewsData }>();
+
+        if (res.success) {
+          setData((prev) =>
+            append && prev
+              ? { ...res.data, reviews: [...prev.reviews, ...res.data.reviews] }
+              : res.data
+          );
+          const loaded = (p - 1) * PAGE_LIMIT + res.data.reviews.length;
+          setAllLoaded(loaded >= res.data.pagination.total);
+        }
+      } catch {
+        // degrade silently
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [api, listingId]
+  );
+
+  useEffect(() => {
+    setLoading(true);
+    fetchReviews(1, false);
+  }, [listingId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleLoadMore = () => {
+    const next = page + 1;
+    setPage(next);
+    setLoadingMore(true);
+    fetchReviews(next, true);
+  };
+
+  const average = data?.ratings.average ?? initialAverage;
+  const total   = data?.pagination.total ?? initialCount;
+
+  // ── Loading ────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="mt-10 pt-8 border-t border-border/10" id="reviews-section">
+        <div className="h-6 w-28 rounded bg-border/15 animate-pulse mb-6" />
+        {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+      </div>
+    );
+  }
+
+  // ── No reviews ─────────────────────────────────────────────────────────
+  if (total === 0) {
+    return (
+      <div className="mt-10 pt-8 border-t border-border/10" id="reviews-section">
+        <h2 className="text-xl font-bold font-syne mb-6">Reviews</h2>
+        <div className="flex flex-col items-center justify-center py-10 text-center">
+          <div className="flex gap-0.5 mb-3">
+            {[1,2,3,4,5].map((i) => <Star key={i} className="w-5 h-5 text-border/25 fill-current" />)}
+          </div>
+          <p className="font-syne font-semibold text-foreground/50 text-sm">No reviews yet</p>
+          <p className="text-xs text-foreground/35 mt-1">Be the first to rent and share your experience.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Has reviews ────────────────────────────────────────────────────────
+  return (
+    <div className="mt-10 pt-8 border-t border-border/10" id="reviews-section">
+
+      {/* Heading + inline rating summary */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <h2 className="text-xl font-bold font-syne">Reviews</h2>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-2xl font-bold font-syne leading-none">{average.toFixed(1)}</span>
+          <Stars rating={average} size="sm" />
+          <span className="text-xs text-foreground/40 font-medium">({total})</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-0 max-w-5xl mx-auto w-full">
-        {mockReviews.map((review) => (
-          <div 
-            key={review.id} 
-            className="py-8 border-b border-border/10 flex flex-col gap-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <img 
-                  src={review.avatar} 
-                  alt={review.author} 
-                  className="w-12 h-12 rounded-full object-cover border border-border/10"
-                />
-                <div>
-                  <h4 className="font-bold font-syne text-[15px] leading-tight">{review.author}</h4>
-                  <span className="text-sm text-foreground/50">{review.date}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-0.5">
-                {[...Array(5)].map((_, i) => (
-                  <Star 
-                    key={i} 
-                    className={`w-4 h-4 ${i < review.rating ? 'text-foreground fill-current' : 'text-foreground/20'}`} 
-                  />
-                ))}
-              </div>
-            </div>
-            <p className="text-[15px] text-foreground/80 leading-relaxed font-medium">
-              "{review.text}"
-            </p>
-          </div>
-        ))}
-      </div>
-      
-      <div className="mt-10 flex justify-center">
-        <button className="px-8 py-3 rounded-full border border-border/20 hover:border-foreground/30 font-semibold text-sm transition-colors duration-300">
-          Show all {mockReviews.length} reviews
+      {/* Review list */}
+      {data!.reviews.map((r) => <ReviewCard key={r.id} review={r} />)}
+
+      {/* Load more */}
+      {!allLoaded && (
+        <button
+          onClick={handleLoadMore}
+          disabled={loadingMore}
+          className="mt-5 w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-border/20 text-sm font-semibold text-foreground/60 hover:bg-border/5 hover:text-foreground transition-all duration-200 disabled:opacity-50"
+        >
+          {loadingMore ? (
+            <span className="w-4 h-4 border-2 border-foreground/25 border-t-foreground/60 rounded-full animate-spin inline-block" />
+          ) : (
+            <><ChevronDown className="w-4 h-4" /> Show more</>
+          )}
         </button>
-      </div>
+      )}
     </div>
   );
 }
