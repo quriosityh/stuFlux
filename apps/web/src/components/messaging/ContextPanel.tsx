@@ -88,7 +88,7 @@ export function ContextPanel({ conversation, isMobileSheet }: { conversation: Co
               </div>
             </div>
             <Link
-              href={`/profile/${conversation.otherUserId}` as any}
+              href={`/users/${conversation.otherUserId}` as any}
               className="text-xs font-bold text-[var(--accent)] hover:underline flex-shrink-0"
             >
               View

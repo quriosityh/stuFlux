@@ -1,4 +1,4 @@
-import { differenceInCalendarDays } from 'date-fns';
+import { differenceInCalendarDays, parseISO } from 'date-fns';
 import { AppError } from '../../common/errors.js';
 import { listingsRepository } from '../listings/infrastructure/repository.js';
 import { createBookingSchema } from './validations.js';
@@ -294,7 +294,7 @@ export const getBookings = async (
   // The UI treats an elapsed confirmed booking as completed. Persist that
   // transition before returning bookings so review submission sees the same
   // status rather than rejecting a visibly completed rental.
-  await bookingsRepository.completeExpiredBookings();
+  await completeExpiredBookings();
   const rawRows = await bookingsRepository.findForUser(userId, role, status, listingId, limit);
 
   const today = new Date();
@@ -305,11 +305,17 @@ export const getBookings = async (
     const isLender = role === 'owner';
     const counterpartUser = isLender ? renter : owner;
 
+    // Dates in the bookings table are date-only values. Parse them as local
+    // calendar dates so the phase cannot change unexpectedly because the
+    // server or client is in a different timezone.
     const startDate = new Date(booking.start_date);
+    startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(booking.end_date);
+    endDate.setHours(0, 0, 0, 0);
 
     let phase = booking.status as string;
     if (booking.status === 'confirmed') {
+      // `end_date` is the checkout/return date. The rental remains active ON this date.
       if (today >= startDate && today <= endDate) {
         phase = 'active';
       } else {
@@ -354,6 +360,9 @@ export const getBookings = async (
     };
   });
 };
+
+/** Persist all rentals whose exclusive end date has arrived as completed. */
+export const completeExpiredBookings = async () => bookingsRepository.completeExpiredBookings();
 
 export const getAvailability = async (listingId: string) => {
   const [confirmedBookings, blockedDates] = await Promise.all([

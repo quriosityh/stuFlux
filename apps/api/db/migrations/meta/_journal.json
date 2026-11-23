@@ -57,6 +57,13 @@
       "when": 1785585601000,
       "tag": "0009_listings_full_text_search",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786021200000,
+      "tag": "0011_merge_seeded_demo_identities",
+      "breakpoints": true
     }
   ]
 }

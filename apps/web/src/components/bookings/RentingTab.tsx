@@ -28,13 +28,26 @@ export default function RentingTab() {
     return <BookingsLoadError message={error.message} onRetry={refetch} />;
   }
 
-  // Active Command Center sorting (Completed rentals only show if NOT reviewed yet; cancelled/rejected requests removed)
-  const pendingRequests = bookings.filter(b => b.phase === 'pending').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const activeRentals = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
-  const upcomingRentals = bookings.filter(b => b.phase === 'confirmed').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const completedRentals = bookings.filter(b => b.phase === 'completed' && !b.hasReviewed).sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
+  // Review eligibility must not depend solely on the API having already
+  // transitioned an elapsed confirmed booking to `completed`.
+  const canReview = (booking: Booking) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(booking.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    return !booking.hasReviewed && (
+      booking.phase === 'completed' ||
+      (booking.phase === 'confirmed' && endDate < today)
+    );
+  };
 
-  const hasActiveRentals = pendingRequests.length > 0 || activeRentals.length > 0 || upcomingRentals.length > 0 || completedRentals.length > 0;
+  const pendingRequests  = bookings.filter(b => b.phase === 'pending').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  const activeRentals    = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
+  const upcomingRentals  = bookings.filter(b => b.phase === 'confirmed' && !canReview(b)).sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  // Only show bookings that still need a review — once reviewed, they disappear from this dashboard.
+  const pendingReviews   = bookings.filter(canReview).sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
+
+  const hasActiveRentals = pendingRequests.length > 0 || activeRentals.length > 0 || upcomingRentals.length > 0 || pendingReviews.length > 0;
 
   if (bookings.length === 0 || !hasActiveRentals) {
     return (
@@ -76,13 +89,14 @@ export default function RentingTab() {
     const today = new Date();
     const daysUntilDue = differenceInDays(booking.endDate, today);
     const isUrgent = daysUntilDue <= 2 && booking.phase === 'active';
+    const reviewDue = canReview(booking);
     const totalCost = booking.financials.rentTotal + booking.financials.deliveryFee;
 
     return (
       <div 
         key={booking.id}
         onClick={() => setSelectedBooking(booking)}
-        className="group relative flex flex-col sm:flex-row gap-4 sm:gap-5 p-4 sm:p-5 rounded-[20px] bg-card/40 hover:bg-card border border-border/40 hover:border-border/80 transition-all cursor-pointer shadow-sm hover:shadow-md"
+        className="group relative flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 rounded-[24px] sm:rounded-[32px] chrome-card bg-surface/40 hover:bg-surface/80 border border-border/30 hover:border-[var(--accent)]/40 transition-all cursor-pointer shadow-sm hover:shadow-md overflow-hidden"
       >
         
         {/* Top/Left Section: Image + Info */}
@@ -107,7 +121,8 @@ export default function RentingTab() {
                 {booking.phase === 'pending' && <span className="text-amber-500 flex items-center gap-1">Pending <span className="animate-pulse">⏳</span></span>}
                 {booking.phase === 'active' && <span className="text-emerald-500">Active</span>}
                 {booking.phase === 'confirmed' && <span className="text-emerald-500">Confirmed</span>}
-                {booking.phase === 'completed' && <span className="text-foreground/60">Completed</span>}
+                {reviewDue && <span className="text-amber-600">Review due</span>}
+                {booking.phase === 'completed' && !reviewDue && <span className="text-foreground/60">Completed</span>}
                 {booking.phase === 'cancelled' && <span className="text-rose-500">Cancelled</span>}
                 {booking.phase === 'rejected' && <span className="text-rose-500">Declined</span>}
               </div>
@@ -160,7 +175,7 @@ export default function RentingTab() {
                 Cancel
               </button>
             )}
-            {booking.phase === 'completed' ? (
+            {reviewDue ? (
               <button 
                 onClick={(e) => { e.stopPropagation(); setReviewingBooking(booking); }}
                 className="px-4 sm:px-5 py-2 sm:py-2.5 text-[12px] sm:text-[13px] font-semibold rounded-lg sm:rounded-xl bg-foreground text-background hover:bg-foreground/90 transition-all shadow-md shadow-foreground/10"
@@ -196,7 +211,7 @@ export default function RentingTab() {
 
       {activeRentals.length > 0 && (
         <section>
-          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Active Rentals</h2>
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">In Hand</h2>
           <div className="flex flex-col gap-4">{activeRentals.map(renderCard)}</div>
         </section>
       )}
@@ -208,10 +223,10 @@ export default function RentingTab() {
         </section>
       )}
 
-      {completedRentals.length > 0 && (
+      {pendingReviews.length > 0 && (
         <section>
-          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Completed Rentals</h2>
-          <div className="flex flex-col gap-4">{completedRentals.map(renderCard)}</div>
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Pending Reviews · {pendingReviews.length}</h2>
+          <div className="flex flex-col gap-4">{pendingReviews.map(renderCard)}</div>
         </section>
       )}
 

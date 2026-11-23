@@ -1,5 +1,7 @@
 import BookingsClient from '@/components/bookings/BookingsClient';
 import { Metadata } from 'next';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Bookings — StuFlux',
@@ -12,6 +14,12 @@ export default function BookingsPage() {
       {/* Desktop Top Padding for Navigation */}
       <div className="pt-14 px-4 max-w-[860px] mx-auto space-y-8">
         <div className="space-y-1.5">
+          <Link
+            href="/"
+            className="mb-3 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-bold text-[var(--text-muted)] transition-colors hover:bg-[var(--tag-bg)] hover:text-[var(--foreground)]"
+          >
+            <ArrowLeft size={15} /> Back to home
+          </Link>
           <div className="flex items-center gap-2.5 mb-1">
             <div className="w-1 h-7 rounded-full bg-gradient-to-b from-violet-500 to-indigo-500 shadow-[0_0_10px_rgba(139,92,246,0.6)]" />
             <h1 className="text-[32px] font-extrabold tracking-tight font-display leading-none">Bookings</h1>

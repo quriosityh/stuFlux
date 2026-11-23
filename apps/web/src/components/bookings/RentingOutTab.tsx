@@ -29,13 +29,29 @@ export default function RentingOutTab() {
     return <BookingsLoadError message={error.message} onRetry={refetch} />;
   }
 
-  // Active Command Center sorting (Pending reviews only show completed bookings that are NOT reviewed yet; cancelled/rejected requests removed)
-  const pendingApprovals = bookings.filter(b => b.phase === 'pending').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const upcomingRentals = bookings.filter(b => b.phase === 'confirmed').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  const currentlyOut = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
-  const pendingReviews = bookings.filter(b => b.phase === 'completed' && !b.hasReviewed).sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
+  // An elapsed booking should be shown as completed even if the API has not
+  // yet persisted its transition from `confirmed` to `completed`.
+  const isCompleted = (booking: Booking) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(booking.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    return (
+      booking.phase === 'completed' ||
+      (booking.phase === 'confirmed' && endDate < today)
+    );
+  };
 
-  const hasActiveRequests = pendingApprovals.length > 0 || upcomingRentals.length > 0 || currentlyOut.length > 0 || pendingReviews.length > 0;
+  const canReview = (booking: Booking) => !booking.hasReviewed && isCompleted(booking);
+
+  const pendingApprovals = bookings.filter(b => b.phase === 'pending').sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  const upcomingRentals  = bookings.filter(b => b.phase === 'confirmed' && !isCompleted(b)).sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  const currentlyOut     = bookings.filter(b => b.phase === 'active').sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
+  // Completed rentals remain on the dashboard only while the lender still
+  // needs to review the renter.
+  const completedRentals = bookings.filter(canReview).sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
+
+  const hasActiveRequests = pendingApprovals.length > 0 || upcomingRentals.length > 0 || currentlyOut.length > 0 || completedRentals.length > 0;
 
   if (bookings.length === 0 || !hasActiveRequests) {
     return (
@@ -70,13 +86,15 @@ export default function RentingOutTab() {
     const today = new Date();
     const daysUntilDue = differenceInDays(booking.endDate, today);
     const isUrgent = daysUntilDue <= 2 && booking.phase === 'active';
+    const completed = isCompleted(booking);
+    const reviewDue = canReview(booking);
     const earnings = booking.financials.rentTotal + booking.financials.deliveryFee;
 
     return (
       <div 
         key={booking.id}
         onClick={() => setSelectedBooking(booking)}
-        className="group relative flex flex-col sm:flex-row gap-4 sm:gap-5 p-4 sm:p-5 rounded-[20px] bg-card/40 hover:bg-card border border-border/40 hover:border-border/80 transition-all cursor-pointer shadow-sm hover:shadow-md"
+        className="group relative flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 rounded-[24px] sm:rounded-[32px] chrome-card bg-surface/40 hover:bg-surface/80 border border-border/30 hover:border-[var(--accent)]/40 transition-all cursor-pointer shadow-sm hover:shadow-md overflow-hidden"
       >
         
         {/* Top/Left Section: Avatar + Info */}
@@ -107,8 +125,9 @@ export default function RentingOutTab() {
               <div className="my-2 px-2 py-1 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-[11px] font-bold uppercase tracking-wider bg-background border border-border/50 shadow-sm w-max mb-1 sm:mb-2">
                 {booking.phase === 'active' && <span className="text-emerald-500">Active</span>}
                 {booking.phase === 'pending' && <span className="text-amber-500 flex items-center gap-1">Pending</span>}
-                {booking.phase === 'confirmed' && <span className="text-emerald-500">Confirmed</span>}
-                {booking.phase === 'completed' && <span className="text-foreground/60">Completed</span>}
+                {booking.phase === 'confirmed' && !completed && <span className="text-emerald-500">Confirmed</span>}
+                {reviewDue && <span className="text-amber-600">Review due</span>}
+                {completed && !reviewDue && <span className="text-foreground/60">Completed</span>}
                 {booking.phase === 'cancelled' && <span className="text-rose-500">Cancelled</span>}
                 {booking.phase === 'rejected' && <span className="text-rose-500">Declined</span>}
               </div>
@@ -123,7 +142,7 @@ export default function RentingOutTab() {
                   {format(booking.startDate, 'MMM d')} – {format(booking.endDate, 'MMM d')} ({booking.totalDays} days)
                 </p>
               )}
-              {booking.phase === 'confirmed' && (
+              {booking.phase === 'confirmed' && !completed && (
                 <p className="text-[12px] sm:text-[13px] font-medium text-foreground/80">
                   Starts {format(booking.startDate, 'MMM d')} (In {differenceInDays(booking.startDate, today)}d)
                 </p>
@@ -167,7 +186,7 @@ export default function RentingOutTab() {
                 </button>
               </div>
             )}
-            {booking.phase === 'completed' && (
+            {reviewDue && (
               <button 
                 onClick={(e) => { e.stopPropagation(); setReviewingBooking(booking); }}
                 className="px-4 sm:px-5 py-2 sm:py-2.5 text-[12px] sm:text-[13px] font-semibold rounded-lg sm:rounded-xl bg-foreground text-background hover:bg-foreground/90 transition-all shadow-md shadow-foreground/10"
@@ -175,7 +194,7 @@ export default function RentingOutTab() {
                 Write Review
               </button>
             )}
-            {(booking.phase === 'active' || booking.phase === 'confirmed') && (
+            {!completed && (booking.phase === 'active' || booking.phase === 'confirmed') && (
               <button 
                 onClick={(e) => handleChat(e, booking.conversation_id)}
                 className="hyper-liquid px-4 sm:px-5 py-2 sm:py-2.5 text-[12px] sm:text-[13px] rounded-lg sm:rounded-xl flex items-center justify-center gap-1.5 shadow-sm"
@@ -214,10 +233,10 @@ export default function RentingOutTab() {
         </section>
       )}
 
-      {pendingReviews.length > 0 && (
+      {completedRentals.length > 0 && (
         <section>
-          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Pending Reviews</h2>
-          <div className="flex flex-col gap-4">{pendingReviews.map(renderCard)}</div>
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-4 pl-1">Pending Reviews · {completedRentals.length}</h2>
+          <div className="flex flex-col gap-4">{completedRentals.map(renderCard)}</div>
         </section>
       )}
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Compass, MessageCircle, Activity, User, Plus } from 'lucide-react';
+import { Compass, MessageCircle, Activity, User, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function DesktopNav() {
@@ -12,7 +12,6 @@ export function DesktopNav() {
     { name: 'Discover', href: '/' as const, icon: Compass },
     { name: 'DMs', href: '/messages' as const, icon: MessageCircle, badge: 2 },
     { name: 'Activity', href: '/bookings' as const, icon: Activity },
-    { name: 'Notifications', href: '/notifications' as const, icon: Bell },
   ];
 
   return (

@@ -1,20 +1,48 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import type { Route } from 'next';
 import { createServerApiClient } from '@/lib/api-client';
 import { ListingFormWizard } from '@/components/listing-form/ListingFormWizard';
+import type { ListingFormData, PhotoObject } from '@/components/listing-form/types';
 
-export default async function EditListingPage({ params }: { params: { id: string } }) {
+type ListingDetails = {
+  title?: string;
+  description?: string;
+  category?: { id?: number | null } | null;
+  daily_rate?: number;
+  area?: string;
+  condition?: ListingFormData['condition'];
+  rental_rules?: string;
+  specs?: Record<string, string>;
+  min_rental_days?: number;
+  max_rental_days?: number;
+  delivery_available?: boolean;
+  delivery_fee?: number;
+  security_deposit?: number;
+  status?: 'draft' | 'active' | 'inactive' | 'archived';
+  photos?: Array<PhotoObject & { width?: number; height?: number; size_kb?: number; mime_type?: string }>;
+};
+
+type BlockedRange = { start_date: string; end_date: string };
+
+// No conversion needed for PKR values
+
+export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { userId, getToken } = await auth();
-  if (!userId) redirect('/auth/sign-in' as any);
+  if (!userId) redirect('/auth/sign-in');
 
   const token = await getToken();
   const api = await createServerApiClient(token ?? undefined);
 
-  let defaultValues = {};
+  let defaultValues: Partial<ListingFormData> = {};
   try {
-    const res = await api.get(`listings/${params.id}`).json<{ data: any }>();
+    const [res, blockedDatesResponse] = await Promise.all([
+      api.get(`listings/${id}`).json<{ data: ListingDetails }>(),
+      api.get(`listings/${id}/blocked-dates`).json<{ data: BlockedRange[] }>(),
+    ]);
     const l = res.data;
-    if (!l) redirect('/' as any);
+    if (!l) redirect('/');
 
     defaultValues = {
       title: l.title ?? '',
@@ -30,25 +58,25 @@ export default async function EditListingPage({ params }: { params: { id: string
       delivery_available: l.delivery_available ?? false,
       delivery_fee: l.delivery_fee ?? 0,
       security_deposit: l.security_deposit ?? 0,
-      status: l.status ?? 'draft',
       // Map existing photo rows → PhotoObject[] so the wizard can show and re-submit them
-      photos: (l.photos ?? []).map((p: any) => ({
+      photos: (l.photos ?? []).map((p) => ({
         url: p.url,
         secure_url: p.url,
         width: p.width ?? undefined,
         height: p.height ?? undefined,
         size_kb: p.size_kb ?? undefined,
         mime_type: p.mime_type ?? undefined,
-      })).filter((p: any) => Boolean(p.url)),
-      blocked_dates: [],
+      })).filter((p) => Boolean(p.url)),
+      blocked_dates: blockedDatesResponse.data ?? [],
+      status: l.status === 'active' ? 'active' : 'draft',
     };
   } catch {
-    redirect('/profile' as any);
+    redirect('/profile' as Route);
   }
 
   return (
     <main>
-      <ListingFormWizard mode="edit" listingId={params.id} defaultValues={defaultValues} />
+      <ListingFormWizard mode="edit" listingId={id} defaultValues={defaultValues} />
     </main>
   );
 }

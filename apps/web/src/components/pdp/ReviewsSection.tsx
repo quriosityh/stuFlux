@@ -175,16 +175,14 @@ export function ReviewsSection({ listingId, initialAverage = 0, initialCount = 0
   return (
     <div className="mt-10 pt-8 border-t border-border/10" id="reviews-section">
 
-      {/* Centred heading */}
-      <h2 className="text-2xl font-bold font-syne text-center mb-6">Reviews</h2>
-
-      {/* Rating summary — centred, responsive */}
-      <div className="flex flex-col items-center gap-2 mb-8 pb-8 border-b border-border/10">
-        <span className="text-5xl font-bold font-syne leading-none">{average.toFixed(1)}</span>
-        <Stars rating={average} size="lg" />
-        <span className="text-sm text-foreground/50">
-          Based on {total} {total === 1 ? 'review' : 'reviews'}
-        </span>
+      {/* Heading + inline rating summary */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <h2 className="text-xl font-bold font-syne">Reviews</h2>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-2xl font-bold font-syne leading-none">{average.toFixed(1)}</span>
+          <Stars rating={average} size="sm" />
+          <span className="text-xs text-foreground/40 font-medium">({total})</span>
+        </div>
       </div>
 
       {/* Review list */}
@@ -200,7 +198,7 @@ export function ReviewsSection({ listingId, initialAverage = 0, initialCount = 0
           {loadingMore ? (
             <span className="w-4 h-4 border-2 border-foreground/25 border-t-foreground/60 rounded-full animate-spin inline-block" />
           ) : (
-            <><ChevronDown className="w-4 h-4" /> Show more reviews</>
+            <><ChevronDown className="w-4 h-4" /> Show more</>
           )}
         </button>
       )}

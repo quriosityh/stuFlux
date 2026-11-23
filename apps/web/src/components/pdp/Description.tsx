@@ -6,9 +6,10 @@ import { cn } from '@/lib/utils';
 
 interface DescriptionProps {
   text: string;
+  specs?: Record<string, string>;
 }
 
-export function Description({ text }: DescriptionProps) {
+export function Description({ text, specs: propSpecs }: DescriptionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Split description and specs
@@ -37,6 +38,18 @@ export function Description({ text }: DescriptionProps) {
       return null;
     })
     .filter((spec): spec is { label: string; value: string } => spec !== null && spec.label !== '' && spec.value !== '');
+
+  // Merge prop-level specs with text-parsed specs (prop specs take priority)
+  let specsObj: Record<string, string> = {};
+  if (propSpecs && typeof propSpecs === 'object' && !Array.isArray(propSpecs)) {
+    specsObj = propSpecs;
+  } else if (typeof propSpecs === 'string') {
+    try { specsObj = JSON.parse(propSpecs); } catch { specsObj = {}; }
+  }
+  const propSpecEntries = Object.entries(specsObj)
+    .filter(([k, v]) => typeof k === 'string' && typeof v === 'string' && k.trim() && v.trim())
+    .map(([label, value]) => ({ label: label.trim(), value: String(value).trim() }));
+  const allSpecs = propSpecEntries.length > 0 ? propSpecEntries : parsedSpecs;
 
   const isLongText = mainDescription.length > 250 || (mainDescription.match(/\n/g) || []).length > 4;
 
@@ -72,11 +85,11 @@ export function Description({ text }: DescriptionProps) {
       </div>
 
       {/* Specifications Section - Prominent and outside of the 'show more' fold */}
-      {parsedSpecs.length > 0 && (
+      {allSpecs.length > 0 && (
         <div className="mt-8 pt-8 border-t border-border/10">
           <h3 className="text-lg font-bold font-syne mb-4 tracking-tight">Product Specifications</h3>
           <div className="border border-border/10 rounded-2xl overflow-hidden bg-surface/10 dark:bg-zinc-900/10 divide-y divide-border/10">
-            {parsedSpecs.map((spec, index) => (
+            {allSpecs.map((spec, index) => (
               <div 
                 key={index}
                 className="flex flex-row items-center py-4 px-4 sm:px-6 gap-4 hover:bg-surface/30 dark:hover:bg-zinc-900/30 transition-colors duration-200"

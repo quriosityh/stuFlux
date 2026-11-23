@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import type { Route } from 'next';
 import { useApiClient } from '@/lib/api-client';
 import { ListingFormData } from './types';
 import { StepIndicator } from './StepIndicator';
@@ -40,6 +41,8 @@ const INITIAL_DATA: ListingFormData = {
   blocked_dates: [],
   status: 'draft',
 };
+
+// The form and API use actual currency values (PKR).
 
 function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: ListingFormWizardProps) {
   const router = useRouter();
@@ -126,11 +129,13 @@ function ListingFormWizardInner({ mode, listingId, defaultValues = {} }: Listing
         }
       }
 
-      router.push(`/listings/${finalId}` as any);
-    } catch (error: any) {
+      router.push(`/listings/${finalId}` as Route);
+    } catch (error: unknown) {
       console.error('Failed to publish listing:', error);
       setSubmitError(
-        error?.message ?? 'Something went wrong. Please check your details and try again.'
+        error instanceof Error
+          ? error.message
+          : 'Something went wrong. Please check your details and try again.'
       );
       setIsSubmitting(false);
     }
